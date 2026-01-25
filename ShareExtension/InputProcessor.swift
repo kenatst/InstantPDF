@@ -12,7 +12,7 @@ enum ShareItem {
 
 class InputProcessor {
     
-    private let processingQueue = DispatchQueue(label: "com.instantpdf.processor", attributes: .concurrent)
+    // Removed unused processingQueue
     private let resultQueue = DispatchQueue(label: "com.instantpdf.result")
 
     /// Extracts all supported content from the extension context while strictly preserving order and avoiding data races.
@@ -38,12 +38,12 @@ class InputProcessor {
                 group.enter()
                 
                 processProvider(provider, itemTitle: item.attributedTitle?.string) { result in
-                    if let result = result {
-                        self.resultQueue.async {
+                    // CRITICAL FIX: Always interact with indexedResults AND group.leave() on the specific resultQueue
+                    // This prevents race conditions and ensures notify() is not called prematurely or while simple writes are pending.
+                    self.resultQueue.async {
+                        if let result = result {
                             indexedResults[currentIndex] = result
-                            group.leave()
                         }
-                    } else {
                         group.leave()
                     }
                 }
@@ -64,21 +64,32 @@ class InputProcessor {
             provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { (data, error) in
                 guard let url = data as? URL else { completion(nil); return }
                 
+                // Allow renderer to determine if it's an image or PDF more robustly
                 if url.pathExtension.lowercased() == "pdf" {
                     if let pdfData = try? Data(contentsOf: url) {
                         completion(.pdf(pdfData))
                     } else {
                         completion(.file(url))
                     }
-                } else if UTType(filenameExtension: url.pathExtension)?.conforms(to: .image) ?? false {
-                     // If it's an image file, we return it as an image to allow downsampling in renderer
-                     completion(.file(url)) 
                 } else {
+                    // Pass to renderer as file; logic there will check if it's an image via layout/source
                     completion(.file(url))
                 }
             }
         } 
-        // 2. Web URL
+        // 2. PDF (as Data or direct provider) - Moved UP in priority
+        else if provider.hasItemConformingToTypeIdentifier(UTType.pdf.identifier) {
+            provider.loadItem(forTypeIdentifier: UTType.pdf.identifier, options: nil) { (data, error) in
+                if let pdfData = data as? Data {
+                    completion(.pdf(pdfData))
+                } else if let url = data as? URL, let pdfData = try? Data(contentsOf: url) {
+                    completion(.pdf(pdfData))
+                } else {
+                    completion(nil)
+                }
+            }
+        }
+        // 3. Web URL
         else if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
             provider.loadItem(forTypeIdentifier: UTType.url.identifier, options: nil) { (data, error) in
                 if let url = data as? URL {
@@ -88,7 +99,7 @@ class InputProcessor {
                 }
             }
         }
-        // 3. Images (Direct)
+        // 4. Images (Direct)
         else if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
             provider.loadItem(forTypeIdentifier: UTType.image.identifier, options: nil) { (data, error) in
                 if let image = data as? UIImage {
@@ -97,18 +108,6 @@ class InputProcessor {
                     completion(.file(url)) // Pass URL to renderer for safer downsampling
                 } else if let imageData = data as? Data, let image = UIImage(data: imageData) {
                     completion(.image(image))
-                } else {
-                    completion(nil)
-                }
-            }
-        }
-        // 4. PDF (as Data)
-        else if provider.hasItemConformingToTypeIdentifier(UTType.pdf.identifier) {
-            provider.loadItem(forTypeIdentifier: UTType.pdf.identifier, options: nil) { (data, error) in
-                if let pdfData = data as? Data {
-                    completion(.pdf(pdfData))
-                } else if let url = data as? URL, let pdfData = try? Data(contentsOf: url) {
-                    completion(.pdf(pdfData))
                 } else {
                     completion(nil)
                 }

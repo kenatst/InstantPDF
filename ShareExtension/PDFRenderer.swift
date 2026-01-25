@@ -62,18 +62,27 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
     
     private func handleFileURL(_ url: URL, index: Int, items: [ShareItem], processNext: @escaping (Int) -> Void) {
         let ext = url.pathExtension.lowercased()
+        
+        // 1. Explicit PDF check
         if ext == "pdf" {
             if let pdfDoc = CGPDFDocument(url as CFURL) {
                 appendPDFDocument(pdfDoc)
             }
             processNext(index + 1)
-        } else if UTType(filenameExtension: ext)?.conforms(to: .image) ?? false {
+            return
+        }
+        
+        // 2. Robust Image Check using ImageIO (Handles mismatched extensions)
+        if let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary),
+           CGImageSourceGetCount(source) > 0 {
             addImagePage(image: nil, sourceURL: url)
             processNext(index + 1)
-        } else {
-            addPaginatedText("File attached: \(url.lastPathComponent)", title: "Attached File")
-            processNext(index + 1)
+            return
         }
+        
+        // 3. Fallback: Generic File Attachment
+        addPaginatedText("File attached: \(url.lastPathComponent)", title: "Attached File")
+        processNext(index + 1)
     }
     
     // MARK: - Core Text Pagination
@@ -103,7 +112,7 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
         ]))
         
         let framesetter = CTFramesetterCreateWithAttributedString(combinedString as CFAttributedString)
-        var textRange = CFRangeMake(0, 0)
+        var currentRange = CFRange(location: 0, length: 0) // Explicit 0 length = calculate internally
         let printableRect = pageRect.insetBy(dx: margin, dy: margin)
         
         repeat {
@@ -117,15 +126,19 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
             
             // Adjust path for margins
             let path = CGPath(rect: CGRect(x: margin, y: margin, width: printableRect.width, height: printableRect.height), transform: nil)
-            let frame = CTFramesetterCreateFrame(framesetter, textRange, path, nil)
+            
+            // Create frame for remaining text
+            let frame = CTFramesetterCreateFrame(framesetter, currentRange, path, nil)
             CTFrameDraw(frame, context)
             
             context.restoreGState()
             
+            // Calculate what was actually drawn to advance
             let visibleRange = CTFrameGetVisibleStringRange(frame)
-            textRange.location += visibleRange.length
+            currentRange.location += visibleRange.length
+            currentRange.length = 0 // Reset length to 0 to indicate "as much as fits" for next page
             
-        } while (textRange.location < combinedString.length)
+        } while (currentRange.location < combinedString.length)
     }
     
     // MARK: - Image Handling (Downsampling focused)
@@ -177,21 +190,26 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
     }
     
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        // Give a tiny bit of time for JS/Layout to settle
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.captureWebViewPDF(webView)
+        // Robust Height Detection via JS
+        webView.evaluateJavaScript("document.body.scrollHeight") { [weak self] (result, error) in
+            // Fallback to scrollView contentSize if JS fails
+            let scrollHeight = (result as? CGFloat) ?? webView.scrollView.contentSize.height
+            // Ensure minimum reasonable height
+            let finalHeight = max(scrollHeight, (self?.pageRect.height ?? 800))
+            
+            // Capture with delay for lazy loading
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self?.captureWebViewPDF(webView, height: finalHeight)
+            }
         }
     }
     
-    private func captureWebViewPDF(_ webView: WKWebView) {
+    private func captureWebViewPDF(_ webView: WKWebView, height: CGFloat) {
         timeoutWorkItem?.cancel()
         
         if #available(iOS 14.0, *) {
             let config = WKPDFConfiguration()
-            
-            // Capture the full scrollable content size
-            let contentSize = webView.scrollView.contentSize
-            config.rect = CGRect(origin: .zero, size: contentSize)
+            config.rect = CGRect(x: 0, y: 0, width: webView.frame.width, height: height)
             
             webView.createPDF(configuration: config) { [weak self] result in
                 switch result {
