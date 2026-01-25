@@ -2,6 +2,7 @@ import UIKit
 import PDFKit
 import WebKit
 import ImageIO
+import AVFoundation
 
 class PDFRenderer: NSObject, WKNavigationDelegate {
     
@@ -9,18 +10,15 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
     private var webCompletion: ((Data?) -> Void)?
     private var timeoutWorkItem: DispatchWorkItem?
     
-    // A4 Size approx 595 x 842 points
-    private let pageRect = CGRect(x: 0, y: 0, width: 595.2, height: 841.8)
-    private let margin: CGFloat = 40.0
+    private let pageRect = CGRect(x: 0, y: 0, width: 595.2, height: 841.8) // A4
+    private let margin: CGFloat = 50.0
     
-    /// Renders a list of items into a single PDF
+    // MARK: - Merging Logic
+    
     func renderMergedPDF(from items: [ShareItem], completion: @escaping (Data?) -> Void) {
         let pdfData = NSMutableData()
         UIGraphicsBeginPDFContextToData(pdfData, pageRect, nil)
         
-        let group = DispatchGroup()
-        
-        // We process items sequentially to maintain order and manage resources
         func processItem(index: Int) {
             guard index < items.count else {
                 UIGraphicsEndPDFContext()
@@ -29,31 +27,31 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
             }
             
             let item = items[index]
-            
             switch item {
             case .text(let content, let title):
-                addTextPage(content, title: title)
+                addPaginatedText(content, title: title)
                 processItem(index: index + 1)
                 
             case .image(let image):
-                addImagePage(image)
+                addImagePage(image: image, sourceURL: nil)
                 processItem(index: index + 1)
+                
+            case .file(let url):
+                handleFileURL(url, index: index, items: items, processNext: processItem)
                 
             case .url(let url):
                 renderWebPageToPDF(url) { data in
                     if let data = data, let provider = CGDataProvider(data: data as CFData), let pdfDoc = CGPDFDocument(provider) {
                         self.appendPDFDocument(pdfDoc)
                     } else {
-                        self.addTextPage("Failed to render web page: \(url.absoluteString)", title: "Error")
+                        self.addPaginatedText("Failed to render web page: \(url.absoluteString)", title: "Link Error")
                     }
                     processItem(index: index + 1)
                 }
                 
-            case .file(let url):
-                if let pdfDoc = CGPDFDocument(url as CFURL) {
+            case .pdf(let data):
+                if let provider = CGDataProvider(data: data as CFData), let pdfDoc = CGPDFDocument(provider) {
                     self.appendPDFDocument(pdfDoc)
-                } else {
-                    self.addTextPage("File attached: \(url.lastPathComponent)", title: "File")
                 }
                 processItem(index: index + 1)
             }
@@ -62,41 +60,170 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
         processItem(index: 0)
     }
     
-    // MARK: - Page Generators
+    private func handleFileURL(_ url: URL, index: Int, items: [ShareItem], processNext: @escaping (Int) -> Void) {
+        let ext = url.pathExtension.lowercased()
+        if ext == "pdf" {
+            if let pdfDoc = CGPDFDocument(url as CFURL) {
+                appendPDFDocument(pdfDoc)
+            }
+            processNext(index + 1)
+        } else if UTType(filenameExtension: ext)?.conforms(to: .image) ?? false {
+            addImagePage(image: nil, sourceURL: url)
+            processNext(index + 1)
+        } else {
+            addPaginatedText("File attached: \(url.lastPathComponent)", title: "Attached File")
+            processNext(index + 1)
+        }
+    }
     
-    private func addTextPage(_ text: String, title: String?) {
-        UIGraphicsBeginPDFPage()
+    // MARK: - Core Text Pagination
+    
+    private func addPaginatedText(_ text: String, title: String?) {
+        let titleFont = UIFont.boldSystemFont(ofSize: 20)
+        let bodyFont = UIFont.systemFont(ofSize: 12)
+        let textColor = UIColor.black
         
-        let titleFont = UIFont.boldSystemFont(ofSize: 22)
-        let bodyFont = UIFont.systemFont(ofSize: 14)
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 4
+        paragraphStyle.alignment = .left
         
-        let titleAttrs: [NSAttributedString.Key: Any] = [.font: titleFont]
-        let bodyAttrs: [NSAttributedString.Key: Any] = [.font: bodyFont]
-        
-        var currentY: CGFloat = margin
+        let combinedString = NSMutableAttributedString()
         
         if let title = title {
-            let titleSize = title.size(withAttributes: titleAttrs)
-            title.draw(at: CGPoint(x: margin, y: currentY), withAttributes: titleAttrs)
-            currentY += titleSize.height + 20
+            combinedString.append(NSAttributedString(string: title + "\n\n", attributes: [
+                .font: titleFont,
+                .foregroundColor: textColor
+            ]))
         }
         
-        let bodyRect = CGRect(x: margin, y: currentY, width: pageRect.width - (margin * 2), height: pageRect.height - currentY - margin)
-        text.draw(in: bodyRect, withAttributes: bodyAttrs)
+        combinedString.append(NSAttributedString(string: text, attributes: [
+            .font: bodyFont,
+            .foregroundColor: textColor,
+            .paragraphStyle: paragraphStyle
+        ]))
+        
+        let framesetter = CTFramesetterCreateWithAttributedString(combinedString as CFAttributedString)
+        var textRange = CFRangeMake(0, 0)
+        let printableRect = pageRect.insetBy(dx: margin, dy: margin)
+        
+        repeat {
+            UIGraphicsBeginPDFPage()
+            guard let context = UIGraphicsGetCurrentContext() else { break }
+            
+            // Flip context for Core Text
+            context.saveGState()
+            context.translateBy(x: 0, y: pageRect.height)
+            context.scaleBy(x: 1, y: -1)
+            
+            // Adjust path for margins
+            let path = CGPath(rect: CGRect(x: margin, y: margin, width: printableRect.width, height: printableRect.height), transform: nil)
+            let frame = CTFramesetterCreateFrame(framesetter, textRange, path, nil)
+            CTFrameDraw(frame, context)
+            
+            context.restoreGState()
+            
+            let visibleRange = CTFrameGetVisibleStringRange(frame)
+            textRange.location += visibleRange.length
+            
+        } while (textRange.location < combinedString.length)
     }
     
-    private func addImagePage(_ image: UIImage) {
+    // MARK: - Image Handling (Downsampling focused)
+    
+    private func addImagePage(image: UIImage?, sourceURL: URL?) {
         UIGraphicsBeginPDFPage()
         
-        // Robust Downsampling
-        let downsampled = downsample(image: image, to: CGSize(width: 2000, height: 2000)) ?? image
+        var finalImage: UIImage?
         
-        let aspectWidth = pageRect.width - (margin * 2)
-        let aspectHeight = pageRect.height - (margin * 2)
+        if let url = sourceURL {
+            finalImage = downsample(imageURL: url, to: CGSize(width: 2000, height: 2000))
+        } else if let image = image {
+            // Fallback: If we only have UIImage, downsample from its data
+            if let data = image.jpegData(compressionQuality: 0.8) {
+                finalImage = downsample(imageData: data, to: CGSize(width: 2000, height: 2000))
+            } else {
+                finalImage = image
+            }
+        }
         
-        let imageRect = AVMakeRect(aspectRatio: downsampled.size, insideRect: CGRect(x: margin, y: margin, width: aspectWidth, height: aspectHeight))
-        downsampled.draw(in: imageRect)
+        guard let img = finalImage else { return }
+        
+        let drawRect = AVMakeRect(aspectRatio: img.size, insideRect: pageRect.insetBy(dx: margin, dy: margin))
+        img.draw(in: drawRect)
     }
+    
+    // MARK: - WKWebView with Content Size Logic
+    
+    private func renderWebPageToPDF(_ url: URL, completion: @escaping (Data?) -> Void) {
+        DispatchQueue.main.async {
+            // Use an iPhone-like width for rendering
+            let webWidth: CGFloat = 390
+            let initialFrame = CGRect(x: 0, y: 0, width: webWidth, height: self.pageRect.height)
+            
+            let config = WKWebViewConfiguration()
+            let webView = WKWebView(frame: initialFrame, configuration: config)
+            self.webView = webView
+            webView.navigationDelegate = self
+            self.webCompletion = completion
+            
+            let timeout = DispatchWorkItem { [weak self] in
+                self?.handleWebFailure(reason: "Loading Timeout")
+            }
+            self.timeoutWorkItem = timeout
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10.0, execute: timeout)
+            
+            webView.load(URLRequest(url: url))
+        }
+    }
+    
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        // Give a tiny bit of time for JS/Layout to settle
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.captureWebViewPDF(webView)
+        }
+    }
+    
+    private func captureWebViewPDF(_ webView: WKWebView) {
+        timeoutWorkItem?.cancel()
+        
+        if #available(iOS 14.0, *) {
+            let config = WKPDFConfiguration()
+            
+            // Capture the full scrollable content size
+            let contentSize = webView.scrollView.contentSize
+            config.rect = CGRect(origin: .zero, size: contentSize)
+            
+            webView.createPDF(configuration: config) { [weak self] result in
+                switch result {
+                case .success(let data):
+                    self?.webCompletion?(data)
+                case .failure:
+                    self?.handleWebFailure(reason: "createPDF failed")
+                }
+                self?.cleanupWeb()
+            }
+        } else {
+            handleWebFailure(reason: "iOS < 14")
+        }
+    }
+    
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        handleWebFailure(reason: error.localizedDescription)
+    }
+    
+    private func handleWebFailure(reason: String) {
+        timeoutWorkItem?.cancel()
+        webCompletion?(nil)
+        cleanupWeb()
+    }
+    
+    private func cleanupWeb() {
+        webView = nil
+        webCompletion = nil
+        timeoutWorkItem = nil
+    }
+    
+    // MARK: - Helpers
     
     private func appendPDFDocument(_ document: CGPDFDocument) {
         for i in 1...document.numberOfPages {
@@ -113,74 +240,20 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
         }
     }
     
-    // MARK: - WKWebView PDF Generation
-    
-    private func renderWebPageToPDF(_ url: URL, completion: @escaping (Data?) -> Void) {
-        DispatchQueue.main.async {
-            let config = WKWebViewConfiguration()
-            let webView = WKWebView(frame: self.pageRect, configuration: config)
-            self.webView = webView
-            webView.navigationDelegate = self
-            
-            self.webCompletion = completion
-            
-            // Timeout handling
-            let timeout = DispatchWorkItem { [weak self] in
-                self?.handleWebFailure(reason: "Timeout (10s)")
-            }
-            self.timeoutWorkItem = timeout
-            DispatchQueue.main.asyncAfter(deadline: .now() + 10.0, execute: timeout)
-            
-            webView.load(URLRequest(url: url))
-        }
-    }
-    
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        timeoutWorkItem?.cancel()
-        
-        if #available(iOS 14.0, *) {
-            let config = WKPDFConfiguration()
-            webView.createPDF(configuration: config) { result in
-                switch result {
-                case .success(let data):
-                    self.webCompletion?(data)
-                case .failure:
-                    self.handleWebFailure(reason: "createPDF failed")
-                }
-                self.cleanupWeb()
-            }
-        } else {
-            // Fallback for older iOS or failure
-            self.handleWebFailure(reason: "iOS < 14 fallback")
-        }
-    }
-    
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        handleWebFailure(reason: error.localizedDescription)
-    }
-    
-    private func handleWebFailure(reason: String) {
-        timeoutWorkItem?.cancel()
-        // Provide a simple fallback PDF page in the stream instead of nil if possible,
-        // but here we return nil to the callback so the merger can add an error page.
-        webCompletion?(nil)
-        cleanupWeb()
-    }
-    
-    private func cleanupWeb() {
-        webView = nil
-        webCompletion = nil
-        timeoutWorkItem = nil
-    }
-    
-    // MARK: - Image Helpers
-    
-    private func downsample(image: UIImage, to pointSize: CGSize) -> UIImage? {
-        guard let data = image.jpegData(compressionQuality: 0.8) else { return nil }
+    private func downsample(imageURL: URL, to pointSize: CGSize) -> UIImage? {
         let imageSourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
-        guard let imageSource = CGImageSourceCreateWithData(data as CFData, imageSourceOptions) else { return nil }
-        
-        let maxDimensionInPixels = max(pointSize.width, pointSize.height)
+        guard let imageSource = CGImageSourceCreateWithURL(imageURL as CFURL, imageSourceOptions) else { return nil }
+        return createThumbnail(from: imageSource, to: pointSize)
+    }
+    
+    private func downsample(imageData: Data, to pointSize: CGSize) -> UIImage? {
+        let imageSourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let imageSource = CGImageSourceCreateWithData(imageData as CFData, imageSourceOptions) else { return nil }
+        return createThumbnail(from: imageSource, to: pointSize)
+    }
+    
+    private func createThumbnail(from source: CGImageSource, to pointSize: CGSize) -> UIImage? {
+        let maxDimensionInPixels = max(pointSize.width, pointSize.height) * UIScreen.main.scale
         let downsampleOptions = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceShouldCacheImmediately: true,
@@ -188,9 +261,7 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
             kCGImageSourceThumbnailMaxPixelSize: maxDimensionInPixels
         ] as CFDictionary
         
-        guard let downsampledImage = CGImageSourceCreateThumbnailAtIndex(imageSource, 0, downsampleOptions) else { return nil }
+        guard let downsampledImage = CGImageSourceCreateThumbnailAtIndex(source, 0, downsampleOptions) else { return nil }
         return UIImage(cgImage: downsampledImage)
     }
 }
-
-import AVFoundation // For AVMakeRect
