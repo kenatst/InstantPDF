@@ -191,15 +191,31 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
     
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         // Robust Height Detection via JS
-        webView.evaluateJavaScript("document.body.scrollHeight") { [weak self] (result, error) in
-            // Fallback to scrollView contentSize if JS fails
-            let scrollHeight = (result as? CGFloat) ?? webView.scrollView.contentSize.height
-            // Ensure minimum reasonable height
-            let finalHeight = max(scrollHeight, (self?.pageRect.height ?? 800))
+        // We use Math.max across multiple properties to get the true document height
+        let heightScript = "Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, document.body.offsetHeight, document.documentElement.offsetHeight, document.body.clientHeight, document.documentElement.clientHeight)"
+        
+        webView.evaluateJavaScript(heightScript) { [weak self] (result, error) in
+            guard let self = self else { return }
+            
+            // Robust Casting: result can be NSNumber, Double, or Int
+            var scrollHeight: CGFloat = 0
+            if let number = result as? NSNumber {
+                scrollHeight = CGFloat(truncating: number)
+            } else if let double = result as? Double {
+                scrollHeight = CGFloat(double)
+            } else if let int = result as? Int {
+                scrollHeight = CGFloat(int)
+            } else {
+                scrollHeight = webView.scrollView.contentSize.height
+            }
+            
+            // Safety Clamp: Prevent OOM on infinite scroll pages (Max ~30k points)
+            let maxHeight: CGFloat = 30000
+            let finalHeight = min(max(scrollHeight, self.pageRect.height), maxHeight)
             
             // Capture with delay for lazy loading
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self?.captureWebViewPDF(webView, height: finalHeight)
+                self.captureWebViewPDF(webView, height: finalHeight)
             }
         }
     }
