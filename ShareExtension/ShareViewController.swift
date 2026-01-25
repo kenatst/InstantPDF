@@ -143,6 +143,9 @@ class ShareViewController: UIViewController {
         let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         
         activityVC.completionWithItemsHandler = { [weak self] _, _, _, _ in
+            // Optimization: Clean up the temporary file immediately
+            try? FileManager.default.removeItem(at: url)
+            
             self?.extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
         }
         
