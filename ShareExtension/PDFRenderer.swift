@@ -7,7 +7,7 @@ import AVFoundation
 class PDFRenderer: NSObject, WKNavigationDelegate {
     
     private var webView: WKWebView?
-    private var webCompletion: ((Data?) -> Void)?
+    private var webCompletion: ((Data?, Bool) -> Void)?
     private var timeoutWorkItem: DispatchWorkItem?
     
     private let pageRect = CGRect(x: 0, y: 0, width: 595.2, height: 841.8) // A4
@@ -40,9 +40,12 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
                 handleFileURL(url, index: index, items: items, processNext: processItem)
                 
             case .url(let url):
-                renderWebPageToPDF(url) { data in
+                renderWebPageToPDF(url) { data, wasTruncated in
                     if let data = data, let provider = CGDataProvider(data: data as CFData), let pdfDoc = CGPDFDocument(provider) {
                         self.appendPDFDocument(pdfDoc)
+                        if wasTruncated {
+                             self.addPaginatedText("Page too long (infinite scroll). Captured the first part only.", title: "Content Truncated")
+                        }
                     } else {
                         self.addPaginatedText("Failed to render web page: \(url.absoluteString)", title: "Link Error")
                     }
@@ -116,28 +119,29 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
         let printableRect = pageRect.insetBy(dx: margin, dy: margin)
         
         repeat {
-            UIGraphicsBeginPDFPage()
-            guard let context = UIGraphicsGetCurrentContext() else { break }
-            
-            // Flip context for Core Text
-            context.saveGState()
-            context.translateBy(x: 0, y: pageRect.height)
-            context.scaleBy(x: 1, y: -1)
-            
-            // Adjust path for margins
-            let path = CGPath(rect: CGRect(x: margin, y: margin, width: printableRect.width, height: printableRect.height), transform: nil)
-            
-            // Create frame for remaining text
-            let frame = CTFramesetterCreateFrame(framesetter, currentRange, path, nil)
-            CTFrameDraw(frame, context)
-            
-            context.restoreGState()
-            
-            // Calculate what was actually drawn to advance
-            let visibleRange = CTFrameGetVisibleStringRange(frame)
-            currentRange.location += visibleRange.length
-            currentRange.length = 0 // Reset length to 0 to indicate "as much as fits" for next page
-            
+            autoreleasepool {
+                UIGraphicsBeginPDFPage()
+                guard let context = UIGraphicsGetCurrentContext() else { return }
+                
+                // Flip context for Core Text
+                context.saveGState()
+                context.translateBy(x: 0, y: pageRect.height)
+                context.scaleBy(x: 1, y: -1)
+                
+                // Adjust path for margins
+                let path = CGPath(rect: CGRect(x: margin, y: margin, width: printableRect.width, height: printableRect.height), transform: nil)
+                
+                // Create frame for remaining text
+                let frame = CTFramesetterCreateFrame(framesetter, currentRange, path, nil)
+                CTFrameDraw(frame, context)
+                
+                context.restoreGState()
+                
+                // Calculate what was actually drawn to advance
+                let visibleRange = CTFrameGetVisibleStringRange(frame)
+                currentRange.location += visibleRange.length
+                currentRange.length = 0 // Reset length to 0 to indicate "as much as fits" for next page
+            }
         } while (currentRange.location < combinedString.length)
     }
     
@@ -167,7 +171,7 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
     
     // MARK: - WKWebView with Content Size Logic
     
-    private func renderWebPageToPDF(_ url: URL, completion: @escaping (Data?) -> Void) {
+    private func renderWebPageToPDF(_ url: URL, completion: @escaping (Data?, Bool) -> Void) {
         DispatchQueue.main.async {
             // Use an iPhone-like width for rendering
             let webWidth: CGFloat = 390
@@ -211,16 +215,17 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
             
             // Safety Clamp: Prevent OOM on infinite scroll pages (Max ~30k points)
             let maxHeight: CGFloat = 30000
+            let wasTruncated = scrollHeight > maxHeight
             let finalHeight = min(max(scrollHeight, self.pageRect.height), maxHeight)
             
             // Capture with delay for lazy loading
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.captureWebViewPDF(webView, height: finalHeight)
+                self.captureWebViewPDF(webView, height: finalHeight, truncated: wasTruncated)
             }
         }
     }
     
-    private func captureWebViewPDF(_ webView: WKWebView, height: CGFloat) {
+    private func captureWebViewPDF(_ webView: WKWebView, height: CGFloat, truncated: Bool) {
         timeoutWorkItem?.cancel()
         
         if #available(iOS 14.0, *) {
@@ -230,7 +235,7 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
             webView.createPDF(configuration: config) { [weak self] result in
                 switch result {
                 case .success(let data):
-                    self?.webCompletion?(data)
+                    self?.webCompletion?(data, truncated)
                 case .failure:
                     self?.handleWebFailure(reason: "createPDF failed")
                 }
@@ -247,7 +252,7 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
     
     private func handleWebFailure(reason: String) {
         timeoutWorkItem?.cancel()
-        webCompletion?(nil)
+        webCompletion?(nil, false)
         cleanupWeb()
     }
     
