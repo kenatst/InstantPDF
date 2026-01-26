@@ -47,7 +47,7 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
                              self.addPaginatedText("Page too long (infinite scroll). Captured the first part only.", title: "Content Truncated")
                         }
                     } else {
-                        self.addPaginatedText("Failed to render web page: \(url.absoluteString)", title: "Link Error")
+                        self.addPaginatedText("Impossible de charger la page web : \(url.absoluteString).\n\nVérifiez votre connexion internet et réessayez.", title: "Erreur de chargement")
                     }
                     processItem(index: index + 1)
                 }
@@ -91,20 +91,22 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
     // MARK: - Core Text Pagination
     
     private func addPaginatedText(_ text: String, title: String?) {
-        let titleFont = UIFont.boldSystemFont(ofSize: 20)
-        let bodyFont = UIFont.systemFont(ofSize: 12)
-        let textColor = UIColor.black
+        let titleFont = UIFont.systemFont(ofSize: 24, weight: .bold)
+        let bodyFont = UIFont.systemFont(ofSize: 13, weight: .regular)
+        let textColor = UIColor(white: 0.1, alpha: 1.0)
         
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = 4
+        paragraphStyle.lineSpacing = 6
+        paragraphStyle.paragraphSpacing = 12
         paragraphStyle.alignment = .left
         
         let combinedString = NSMutableAttributedString()
         
         if let title = title {
-            combinedString.append(NSAttributedString(string: title + "\n\n", attributes: [
+            combinedString.append(NSAttributedString(string: title + "\n", attributes: [
                 .font: titleFont,
-                .foregroundColor: textColor
+                .foregroundColor: textColor,
+                .kern: -0.5 // Subtle letter spacing for premium look
             ]))
         }
         
@@ -115,40 +117,65 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
         ]))
         
         let framesetter = CTFramesetterCreateWithAttributedString(combinedString as CFAttributedString)
-        var currentRange = CFRange(location: 0, length: 0) // Explicit 0 length = calculate internally
-        let printableRect = pageRect.insetBy(dx: margin, dy: margin)
+        var currentRange = CFRange(location: 0, length: 0)
+        let printableRect = pageRect.insetBy(dx: margin, dy: margin).inset(by: UIEdgeInsets(top: 0, left: 0, bottom: 40, right: 0)) // Extra space for footer
         
         repeat {
             autoreleasepool {
                 UIGraphicsBeginPDFPage()
                 guard let context = UIGraphicsGetCurrentContext() else { return }
                 
+                // Draw Footer
+                drawFooter()
+                
                 // Flip context for Core Text
                 context.saveGState()
                 context.translateBy(x: 0, y: pageRect.height)
                 context.scaleBy(x: 1, y: -1)
                 
-                // Adjust path for margins
-                let path = CGPath(rect: CGRect(x: margin, y: margin, width: printableRect.width, height: printableRect.height), transform: nil)
+                // Adjust path for margins (Core Text uses flipped Y)
+                let textPath = CGPath(rect: CGRect(x: margin, y: margin + 40, width: printableRect.width, height: printableRect.height), transform: nil)
                 
-                // Create frame for remaining text
-                let frame = CTFramesetterCreateFrame(framesetter, currentRange, path, nil)
+                let frame = CTFramesetterCreateFrame(framesetter, currentRange, textPath, nil)
                 CTFrameDraw(frame, context)
                 
                 context.restoreGState()
                 
-                // Calculate what was actually drawn to advance
                 let visibleRange = CTFrameGetVisibleStringRange(frame)
                 currentRange.location += visibleRange.length
-                currentRange.length = 0 // Reset length to 0 to indicate "as much as fits" for next page
+                currentRange.length = 0
             }
         } while (currentRange.location < combinedString.length)
+    }
+
+    private func drawFooter() {
+        let footerText = "Généré avec InstantPDF"
+        let footerFont = UIFont.systemFont(ofSize: 10, weight: .medium)
+        let footerAttributes: [NSAttributedString.Key: Any] = [
+            .font: footerFont,
+            .foregroundColor: UIColor.secondaryLabel
+        ]
+        
+        let textSize = footerText.size(withAttributes: footerAttributes)
+        let x = (pageRect.width - textSize.width) / 2
+        let y = pageRect.height - margin + 10
+        
+        footerText.draw(at: CGPoint(x: x, y: y), withAttributes: footerAttributes)
+        
+        // Subtle decorative line
+        let path = UIBezierPath()
+        path.move(to: CGPoint(x: margin, y: y - 5))
+        path.addLine(to: CGPoint(x: pageRect.width - margin, y: y - 5))
+        UIColor.separator.withAlphaComponent(0.5).setStroke()
+        path.lineWidth = 0.5
+        path.stroke()
     }
     
     // MARK: - Image Handling (Downsampling focused)
     
     private func addImagePage(image: UIImage?, sourceURL: URL?) {
         UIGraphicsBeginPDFPage()
+        drawFooter()
         
         var finalImage: UIImage?
         
@@ -269,6 +296,8 @@ class PDFRenderer: NSObject, WKNavigationDelegate {
             guard let page = document.page(at: i) else { continue }
             let mediaBox = page.getBoxRect(.mediaBox)
             UIGraphicsBeginPDFPageWithInfo(mediaBox, nil)
+            drawFooter()
+            
             guard let context = UIGraphicsGetCurrentContext() else { continue }
             
             context.saveGState()

@@ -59,11 +59,25 @@ class InputProcessor {
     
     private func processProvider(_ provider: NSItemProvider, itemTitle: String?, completion: @escaping (ShareItem?) -> Void) {
         
+        // 0. CHECK FOR UNSUPPORTED TYPES (Videos/Audios)
+        if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) || 
+           provider.hasItemConformingToTypeIdentifier(UTType.audio.identifier) {
+            completion(nil) // Will be handled as "No shareable content" or could be logged
+            return
+        }
+
         // 1. File URL (Priority for local files like PDFs or Documents)
         if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
             provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { (data, error) in
                 guard let url = data as? URL else { completion(nil); return }
                 
+                // Block extremely large files (e.g. > 100MB) to prevent crash
+                if let resources = try? url.resourceValues(forKeys: [.fileSizeKey]),
+                   let size = resources.fileSize, size > 100 * 1024 * 1024 {
+                    completion(nil)
+                    return
+                }
+
                 // Allow renderer to determine if it's an image or PDF more robustly
                 if url.pathExtension.lowercased() == "pdf" {
                     if let pdfData = try? Data(contentsOf: url) {
@@ -71,8 +85,10 @@ class InputProcessor {
                     } else {
                         completion(.file(url))
                     }
+                } else if UTType(filenameExtension: url.pathExtension)?.conforms(to: .image) == true {
+                    completion(.file(url))
                 } else {
-                    // Pass to renderer as file; logic there will check if it's an image via layout/source
+                    // Fallback for other files: we'll just show the name in the PDF
                     completion(.file(url))
                 }
             }
