@@ -1,18 +1,34 @@
 import Foundation
 
-/// Owns the temporary staging area used while an import or conversion is in
-/// flight. Everything lands in one per-session directory that is wiped as
-/// soon as the operation finishes, so nothing accumulates on disk.
+/// Owns the temporary staging area for one share/import lifecycle.
+/// Everything lands in one per-session directory. The owner (share flow or
+/// import flow) keeps the store alive for as long as `IncomingItem`s may
+/// reference staged files and calls `cleanUp()` when the lifecycle ends —
+/// after conversion succeeds/fails, on cancellation, or on dismissal. Files
+/// are never deleted while the user sits on a Ready screen.
 ///
 /// `@unchecked Sendable`: the directory is immutable and FileManager calls
 /// are thread-safe; staging happens on whichever queue the provider uses.
 final class TempFileStore: @unchecked Sendable {
     let directory: URL
+    private let lock = NSLock()
+    private var cleanedFlag = false
+
+    /// True once `cleanUp()` ran. Staged URLs must be treated as dead after
+    /// this point — reading them back is a lifecycle bug.
+    var isCleanedUp: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return cleanedFlag
+    }
 
     init() {
         let parent = FileManager.default.temporaryDirectory
         directory = parent.appendingPathComponent("pdfit-staging-\(UUID().uuidString)", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    }
+
+    deinit {
+        cleanUp()
     }
 
     /// Copies a provider-delivered file URL (which is only valid inside the
@@ -38,8 +54,13 @@ final class TempFileStore: @unchecked Sendable {
         return destination
     }
 
-    /// Removes the whole staging directory. Safe to call twice.
+    /// Removes the whole staging directory. Safe to call any number of times.
     func cleanUp() {
+        lock.lock()
+        let alreadyCleaned = cleanedFlag
+        cleanedFlag = true
+        lock.unlock()
+        guard !alreadyCleaned else { return }
         try? FileManager.default.removeItem(at: directory)
     }
 }

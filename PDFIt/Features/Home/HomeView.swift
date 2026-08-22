@@ -12,6 +12,7 @@ struct HomeView: View {
     @State private var records: [StoredPDFRecord] = []
 
     private let storage = StorageManager.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ScrollView {
@@ -36,6 +37,11 @@ struct HomeView: View {
             }
         }
         .onAppear { reloadRecords() }
+        // The Share Extension writes from a separate process: refresh on
+        // every activation so its documents appear without a relaunch.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { reloadRecords() }
+        }
         .onChange(of: importer.photoSelections) { _, _ in
             importer.handlePhotoSelections()
         }

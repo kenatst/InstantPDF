@@ -5,9 +5,18 @@ import WebKit
 /// a paginated PDF. All failures are thrown as `ConversionError`s — a failed
 /// load becomes a product error state, never a PDF page full of error text.
 ///
+/// Continuation contract (audited for release):
+/// • Every continuation is wrapped in a resume-exactly-once gate, so racing
+///   completion/timeout/termination/cancel paths can never double-resume or
+///   orphan a suspended task.
+/// • Task cancellation resumes pending work immediately (no 20-second
+///   zombie waits after the user taps Cancel).
+/// • A terminated web process fails the pending navigation — or, if it dies
+///   mid-render, fails the render promptly instead of leaving conversion UI
+///   spinning forever.
+///
 /// Must be used from the main actor (WKWebView requirement); the coordinator
 /// awaits these calls like any other async work.
-/// Timing constants kept outside the actor so they work in default arguments.
 private enum WebTiming {
     /// Overall navigation timeout.
     static let navigationTimeout: TimeInterval = 20
@@ -29,8 +38,44 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
     /// Hard ceiling for captured height (infinite-scroll protection).
     private static let maxCaptureHeight: CGFloat = 30_000
 
-    private var navigationCompletion: ((Error?) -> Void)?
-    private var terminationHandler: (() -> Void)?
+    // MARK: - Resume-exactly-once gates
+
+    /// Wraps a continuation so it resolves exactly once, from any thread,
+    /// no matter how many racing paths try to finish it. This is what makes
+    /// timeout / delegate callback / cancellation / process-death mutually
+    /// exclusive without ordering assumptions.
+    private final class Gate<T>: @unchecked Sendable {
+        private let lock = NSLock()
+        private var resolved = false
+        private let resolve: (Result<T, Error>) -> Void
+
+        init(_ resolve: @escaping (Result<T, Error>) -> Void) {
+            self.resolve = resolve
+        }
+
+        func succeed(_ value: T) { finish(.success(value)) }
+        func fail(_ error: Error) { finish(.failure(error)) }
+
+        private func finish(_ result: Result<T, Error>) {
+            lock.lock()
+            guard !resolved else {
+                lock.unlock()
+                return
+            }
+            resolved = true
+            lock.unlock()
+            resolve(result)
+        }
+    }
+
+    // Pending gates — non-nil only while the corresponding async wait runs.
+    private var navigationGate: Gate<Void>?
+    private var evaluationGate: Gate<Any>?
+    private var renderGate: Gate<Data>?
+    private var navigationTimeoutTask: Task<Void, Never>?
+    /// Set when the web process died AFTER a successful navigation; every
+    /// later phase checks it and throws instead of rendering garbage.
+    private var webProcessIsDead = false
 
     // MARK: - Public API
 
@@ -78,7 +123,7 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
 
         try await stabilize(webView)
 
-        let raw = try? await webView.evaluateJavaScript(WebContentExtractor.extractionScript)
+        let raw = try? await evaluateScript(WebContentExtractor.extractionScript, in: webView)
         guard let article = WebContentExtractor.article(fromScriptResult: raw, url: url),
               article.isUsable else {
             return nil
@@ -107,6 +152,7 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
     private func loadInWebView(_ request: LoadRequest) async throws -> WKWebView {
         let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: Self.captureWidth, height: 900))
         webView.navigationDelegate = self
+        webProcessIsDead = false
         // Attach to a window so layout, media queries and lazy loading behave.
         if webViewWindow == nil {
             let host = UIWindow(frame: CGRect(x: 0, y: 0, width: Self.captureWidth, height: 900))
@@ -115,53 +161,67 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
         }
         webViewWindow?.addSubview(webView)
 
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            navigationCompletion = { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
+        do {
+            try await withTaskCancellationHandler {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    let gate = Gate<Void> { result in
+                        switch result {
+                        case .success: continuation.resume()
+                        case .failure(let error): continuation.resume(throwing: error)
+                        }
+                    }
+                    self.navigationGate = gate
+
+                    switch request {
+                    case .url(let url):
+                        webView.load(URLRequest(url: url))
+                    case .html(let html, let baseURL):
+                        webView.loadHTMLString(html, baseURL: baseURL)
+                    }
+
+                    self.navigationTimeoutTask = Task { [weak self] in
+                        try? await Task.sleep(nanoseconds: UInt64(WebTiming.navigationTimeout * 1_000_000_000))
+                        // The gate makes this race with didFinish/didFail/
+                        // termination/cancellation safe — first finish wins.
+                        self?.navigationGate?.fail(ConversionError.pageTooSlow)
+                    }
+                }
+            } onCancel: {
+                // Cancellation must not leave the load waiting out its full
+                // timeout — fail the gate immediately.
+                Task { @MainActor [weak self] in
+                    self?.navigationGate?.fail(CancellationError())
                 }
             }
-            terminationHandler = { [weak self] in
-                self?.navigationCompletion?(ConversionError.webProcessTerminated)
-                self?.navigationCompletion = nil
-            }
-
-            switch request {
-            case .url(let url):
-                webView.load(URLRequest(url: url))
-            case .html(let html, let baseURL):
-                webView.loadHTMLString(html, baseURL: baseURL)
-            }
-
-            navigationTimeoutTask = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: UInt64(WebTiming.navigationTimeout * 1_000_000_000))
-                guard let self = self, self.navigationCompletion != nil else { return }
-                self.navigationCompletion?(ConversionError.pageTooSlow)
-                self.navigationCompletion = nil
-            }
+        } catch {
+            dismantle(webView)
+            throw error
         }
 
         navigationTimeoutTask?.cancel()
         navigationTimeoutTask = nil
-        navigationCompletion = nil
+        navigationGate = nil
         loadedWebViews.append(webView)
         return webView
     }
 
     private var webViewWindow: UIWindow?
     private var loadedWebViews: [WKWebView] = []
-    private var navigationTimeoutTask: Task<Void, Never>?
 
     private func dismantle(_ webView: WKWebView) {
         webView.stopLoading()
         webView.navigationDelegate = nil
         webView.removeFromSuperview()
         loadedWebViews.removeAll { $0 === webView }
+        navigationGate = nil
+        navigationTimeoutTask?.cancel()
+        navigationTimeoutTask = nil
+        evaluationGate = nil
+        renderGate = nil
         if loadedWebViews.isEmpty {
             webViewWindow?.isHidden = true
             webViewWindow = nil
+            webProcessIsDead = false
         }
     }
 
@@ -170,8 +230,8 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
     nonisolated func webView(_ webView: WKWebView,
                              didFinish navigation: WKNavigation!) {
         Task { @MainActor in
-            self.navigationCompletion?(nil)
-            self.navigationCompletion = nil
+            guard !self.webProcessIsDead else { return }
+            self.navigationGate?.succeed(())
         }
     }
 
@@ -179,8 +239,7 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
                              didFail navigation: WKNavigation!,
                              withError error: Error) {
         Task { @MainActor in
-            self.navigationCompletion?(ConversionError.from(networkError: error))
-            self.navigationCompletion = nil
+            self.navigationGate?.fail(ConversionError.from(networkError: error))
         }
     }
 
@@ -188,14 +247,18 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
                              didFailProvisionalNavigation navigation: WKNavigation!,
                              withError error: Error) {
         Task { @MainActor in
-            self.navigationCompletion?(ConversionError.from(networkError: error))
-            self.navigationCompletion = nil
+            self.navigationGate?.fail(ConversionError.from(networkError: error))
         }
     }
 
+    /// Web process death: while a navigation is pending it fails that
+    /// navigation; after the page loaded it marks the process dead so any
+    /// later phase throws `webProcessTerminated` immediately — the gate
+    /// guarantees exactly one outcome either way.
     nonisolated func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         Task { @MainActor in
-            self.terminationHandler?()
+            self.webProcessIsDead = true
+            self.navigationGate?.fail(ConversionError.webProcessTerminated)
         }
     }
 
@@ -211,6 +274,7 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
 
         while Date() < deadline {
             try Task.checkCancellation()
+            if webProcessIsDead { throw ConversionError.webProcessTerminated }
             try? await Task.sleep(nanoseconds: step)
             let height = (try? await measuredContentHeight(webView)) ?? 0
             if abs(height - lastHeight) < 1 {
@@ -223,12 +287,44 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
         }
     }
 
+    @discardableResult
+    private func evaluateScript(_ script: String, in webView: WKWebView) async throws -> Any {
+        if webProcessIsDead { throw ConversionError.webProcessTerminated }
+        try Task.checkCancellation()
+
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Any, Error>) in
+                let gate = Gate<Any> { result in
+                    switch result {
+                    case .success(let value): continuation.resume(returning: value)
+                    case .failure(let error): continuation.resume(throwing: error)
+                    }
+                }
+                self.evaluationGate = gate
+                webView.evaluateJavaScript(script) { result, _ in
+                    Task { @MainActor in
+                        self.evaluationGate = nil
+                        if let result {
+                            gate.succeed(result)
+                        } else {
+                            gate.fail(ConversionError.generationFailed)
+                        }
+                    }
+                }
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.evaluationGate?.fail(CancellationError())
+            }
+        }
+    }
+
     private func measuredContentHeight(_ webView: WKWebView) async throws -> CGFloat {
         let script = "Math.max(document.body ? document.body.scrollHeight : 0," +
                      "document.documentElement ? document.documentElement.scrollHeight : 0," +
                      "document.body ? document.body.offsetHeight : 0," +
                      "document.documentElement ? document.documentElement.offsetHeight : 0)"
-        let result = try await webView.evaluateJavaScript(script)
+        let result = try await evaluateScript(script, in: webView)
         let height: CGFloat
         if let number = result as? NSNumber {
             height = CGFloat(truncating: number)
@@ -239,16 +335,33 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
     }
 
     private func renderToPDF(_ webView: WKWebView, height: CGFloat) async throws -> Data {
+        if webProcessIsDead { throw ConversionError.webProcessTerminated }
+        try Task.checkCancellation()
+
         let configuration = WKPDFConfiguration()
         configuration.rect = CGRect(x: 0, y: 0, width: webView.frame.width, height: height)
-        return try await withCheckedThrowingContinuation { continuation in
-            webView.createPDF(configuration: configuration) { result in
-                switch result {
-                case .success(let data):
-                    continuation.resume(returning: data)
-                case .failure:
-                    continuation.resume(throwing: ConversionError.generationFailed)
+
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
+                let gate = Gate<Data> { result in
+                    switch result {
+                    case .success(let data): continuation.resume(returning: data)
+                    case .failure(let error): continuation.resume(throwing: error)
+                    }
                 }
+                self.renderGate = gate
+                webView.createPDF(configuration: configuration) { result in
+                    switch result {
+                    case .success(let data):
+                        gate.succeed(data)
+                    case .failure:
+                        gate.fail(ConversionError.generationFailed)
+                    }
+                }
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.renderGate?.fail(CancellationError())
             }
         }
     }

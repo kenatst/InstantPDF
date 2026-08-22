@@ -24,13 +24,18 @@ final class ImportFlowModel: ObservableObject {
     private var pendingItems: [IncomingItem] = []
     private var conversionTask: Task<Void, Never>?
     private let storage = StorageManager.shared
+    /// Owns staged files for the current import. Kept alive while items may
+    /// still be read (conversion, retry); cleaned on success, cancellation,
+    /// or when a new import starts.
+    private var stagingSession: TempFileStore?
 
     func handlePhotoSelections() {
         let selections = photoSelections
         photoSelections = []
         guard !selections.isEmpty else { return }
 
-        let store = TempFileStore()
+        beginNewStagingSession()
+        guard let store = stagingSession else { return }
         Task { [weak self] in
             var items: [IncomingItem] = []
             for (index, selection) in selections.enumerated() {
@@ -50,7 +55,8 @@ final class ImportFlowModel: ObservableObject {
     func handleFileImporter(result: Result<[URL], Error>) {
         guard case .success(let urls) = result, !urls.isEmpty else { return }
 
-        let store = TempFileStore()
+        beginNewStagingSession()
+        guard let store = stagingSession else { return }
         var items: [IncomingItem] = []
         for (index, url) in urls.enumerated() {
             let secured = url.startAccessingSecurityScopedResource()
@@ -114,6 +120,8 @@ final class ImportFlowModel: ObservableObject {
             do {
                 let document = try await coordinator.convert(items: items, options: options)
                 _ = try? self?.storage.save(document: document)
+                // Success: staged files are no longer needed.
+                self?.cleanStaging()
                 self?.result = document
                 self?.isConverting = false
                 self?.showingResult = true
@@ -131,12 +139,26 @@ final class ImportFlowModel: ObservableObject {
         }
     }
 
+    /// Starts a fresh staging session, releasing whatever a previous import
+    /// left behind. Files from a FAILED conversion are kept until this point
+    /// so Retry keeps working.
+    private func beginNewStagingSession() {
+        cleanStaging()
+        stagingSession = TempFileStore()
+    }
+
+    private func cleanStaging() {
+        stagingSession?.cleanUp()
+        stagingSession = nil
+    }
+
     func retry() {
         convert(items: pendingItems)
     }
 
     func cancel() {
         conversionTask?.cancel()
+        cleanStaging()
         isConverting = false
     }
 }

@@ -4,48 +4,21 @@ import UniformTypeIdentifiers
 
 /// The Share Extension — the product's hero surface.
 ///
-/// Explicit state machine: loading → ready → converting → preview / failed.
+/// Thin UI layer over `ShareFlowModel`, which owns the state machine,
+/// the extracted items, the staging lifetime and completion semantics.
 /// The card is a vertical UIStackView; each state shows and hides arranged
 /// sections, so layout can never conflict. No fake progress, no technical
 /// failure text inside PDFs, no configuration dashboard.
 final class ShareViewController: UIViewController {
 
-    // MARK: - State
-
-    private enum State {
-        case loading
-        case ready(ReadySummary)
-        case converting(ConversionStage)
-        case preview(PreviewInfo)
-        case failed(ConversionError)
-    }
-
-    private struct ReadySummary {
-        var items: [IncomingItem] = []
-        var title: String = "Content"
-        var subtitle: String?
-        var symbolName: String = "doc"
-        var availableModes: [ConversionMode] = [.quick]
-        var paperSizeRelevant = true
-        var isPDFPassthrough = false
-        var notice: String?
-        var failingURL: URL?
-    }
-
-    private struct PreviewInfo {
-        let document: ConvertedDocument
-        let savedURL: URL?
-        let byteCount: Int
-    }
-
     // MARK: - Dependencies
 
-    private let processor = InputProcessor()
+    private var model: ShareFlowModel?
     private let storage = StorageManager.shared
-    private var conversionTask: Task<Void, Never>?
-    private var extractionTask: Task<Void, Never>?
-    private var options = ConversionOptions.fromSharedDefaults()
-    private var readySummary: ReadySummary?
+
+    /// Guarantees extensionContext is completed/cancelled exactly once, no
+    /// matter how many paths race to leave (Done, share sheet, background tap).
+    private var hasCompletedRequest = false
 
     // MARK: - UI
 
@@ -198,6 +171,7 @@ final class ShareViewController: UIViewController {
         label.font = .systemFont(ofSize: 12, weight: .medium)
         label.textColor = .secondaryLabel
         label.textAlignment = .center
+        label.numberOfLines = 0
         return label
     }()
 
@@ -240,8 +214,7 @@ final class ShareViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        apply(.loading)
-        startExtraction()
+        startFlow()
     }
 
     private func setupUI() {
@@ -291,7 +264,7 @@ final class ShareViewController: UIViewController {
         ])
 
         createButton.addAction(UIAction { [weak self] _ in
-            self?.createTapped()
+            self?.model?.createTapped()
         }, for: .touchUpInside)
         createButton.addAction(UIAction { _ in
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -303,146 +276,44 @@ final class ShareViewController: UIViewController {
 
         paperSelector.addAction(UIAction { [weak self] _ in
             guard let self else { return }
-            self.options.paperSize = PDFPaperSize.allCases[self.paperSelector.selectedSegmentIndex]
+            self.model?.options.paperSize = PDFPaperSize.allCases[self.paperSelector.selectedSegmentIndex]
         }, for: .valueChanged)
     }
 
-    private func syncModeFromSelector() {
-        guard let summary = readySummary,
-              summary.availableModes.indices.contains(modeSelector.selectedSegmentIndex) else { return }
-        options.mode = summary.availableModes[modeSelector.selectedSegmentIndex]
-    }
-
-    // MARK: - Extraction
-
-    private func startExtraction() {
+    private func startFlow() {
         guard let context = extensionContext else {
-            apply(.failed(.noUsableContent))
+            render(.failed(.noUsableContent))
+            completeRequest(cancelled: true)
             return
         }
-        extractionTask = Task { [processor] in
-            let extracted = await processor.extract(from: context)
-            await MainActor.run { self.handle(extracted: extracted) }
+
+        let flowModel = ShareFlowModel.live(storage: storage)
+        model = flowModel
+        flowModel.onStateChange = { [weak self] state in
+            self?.render(state)
         }
+        flowModel.onFinish = { [weak self] success in
+            self?.completeRequest(cancelled: !success)
+        }
+        flowModel.startExtraction(context: context)
     }
 
-    private func handle(extracted: ExtractedInput) {
-        guard !Task.isCancelled else { return }
-        guard !extracted.items.isEmpty else {
-            apply(.failed(.noUsableContent))
-            return
-        }
-        let summary = Self.summary(for: extracted)
-        readySummary = summary
-        apply(.ready(summary))
+    private func syncModeFromSelector() {
+        guard let model,
+              let summary = model.readySummary,
+              summary.availableModes.indices.contains(modeSelector.selectedSegmentIndex) else { return }
+        model.options.mode = summary.availableModes[modeSelector.selectedSegmentIndex]
     }
 
-    private static func summary(for extracted: ExtractedInput) -> ReadySummary {
-        var summary = ReadySummary()
-        let items = extracted.items
+    // MARK: - State rendering
 
-        let imageCount = items.filter(\.isImage).count
-        let textCount = items.filter {
-            if case .text = $0.kind { return true }
-            return false
-        }.count
-        let pdfCount = items.filter {
-            if case .pdf = $0.kind { return true }
-            return false
-        }.count
-
-        if items.count == 1, case .url(let url) = items[0].kind {
-            summary.title = "Webpage"
-            summary.subtitle = url.host
-            summary.symbolName = items[0].source.symbolName
-            summary.availableModes = [.quick, .clean, .reader]
-            summary.failingURL = url
-        } else if items.count == 1, case .html = items[0].kind {
-            summary.title = "Web Content"
-            summary.subtitle = items[0].sourceURL?.host
-            summary.symbolName = "safari"
-            summary.availableModes = [.quick, .clean, .reader]
-            summary.failingURL = items[0].sourceURL
-        } else if imageCount == items.count, imageCount > 0 {
-            summary.title = imageCount == 1 ? "1 Image" : "\(imageCount) Images"
-            summary.subtitle = imageCount > 1 ? "Order preserved" : nil
-            summary.symbolName = "photo.on.rectangle"
-        } else if textCount == items.count, textCount > 0 {
-            summary.title = textCount == 1 ? "Text" : "\(textCount) Text Items"
-            summary.symbolName = "note.text"
-        } else if pdfCount == 1, items.count == 1 {
-            summary.title = "PDF Ready"
-            summary.subtitle = items[0].originalFilename
-            summary.symbolName = "doc.richtext"
-            summary.isPDFPassthrough = true
-            summary.paperSizeRelevant = false
-        } else {
-            summary.title = "\(items.count) Items"
-            summary.subtitle = "Merged into one PDF"
-            summary.symbolName = "square.stack.3d.up"
-        }
-
-        if extracted.skippedCount > 0 {
-            summary.notice = extracted.skippedCount == 1
-                ? "1 video or audio item can't be converted"
-                : "\(extracted.skippedCount) video or audio items can't be converted"
-        }
-        return summary
-    }
-
-    // MARK: - Conversion
-
-    private func createTapped() {
-        guard let summary = readySummary else { return }
-        runConversion(items: summary.items)
-    }
-
-    private func runConversion(items: [IncomingItem]) {
-        let options = self.options
-        let coordinator = ConversionCoordinator()
-
-        conversionTask = Task { [weak self] in
-            await MainActor.run { self?.apply(.converting(.analyzing)) }
-            coordinator.onStageChange = { stage in
-                DispatchQueue.main.async { self?.apply(.converting(stage)) }
-            }
-            do {
-                let document = try await coordinator.convert(items: items, options: options)
-                let savedURL = await MainActor.run { () -> URL? in
-                    guard let self else { return nil }
-                    if let record = try? self.storage.save(document: document) {
-                        return self.storage.fileURL(for: record)
-                    }
-                    return nil
-                }
-                await MainActor.run {
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
-                    self?.apply(.preview(PreviewInfo(document: document,
-                                                     savedURL: savedURL,
-                                                     byteCount: document.data.count)))
-                }
-            } catch let error as ConversionError where error != .cancelled {
-                await MainActor.run { self?.apply(.failed(error)) }
-            } catch is CancellationError {
-                await MainActor.run { self?.cancelExtension() }
-            } catch {
-                await MainActor.run { self?.apply(.failed(.generationFailed)) }
-            }
-        }
-    }
-
-    // MARK: - State application
-
-    private var currentState: State = .loading
-
-    private func apply(_ state: State) {
-        currentState = state
+    private func render(_ state: ShareFlowModel.State) {
         UIView.performWithoutAnimation {
-            self.render(state)
+            self.renderState(state)
         }
     }
 
-    private func render(_ state: State) {
+    private func renderState(_ state: ShareFlowModel.State) {
         // Everything starts hidden; each state reveals its sections.
         [contentIconView, contentTitleLabel, contentSubtitleLabel, noticeLabel,
          modeSelector, paperRow, createButton, activityRow, pdfPreview,
@@ -469,13 +340,12 @@ final class ShareViewController: UIViewController {
             createButton.accessibilityLabel = summary.isPDFPassthrough ? "Share PDF" : "Create PDF"
             createButton.isHidden = false
 
-            if let index = summary.availableModes.firstIndex(of: options.mode) {
+            if let index = summary.availableModes.firstIndex(of: model?.options.mode ?? .quick) {
                 modeSelector.selectedSegmentIndex = index
             } else {
                 modeSelector.selectedSegmentIndex = 0
-                options.mode = .quick
             }
-            if let index = PDFPaperSize.allCases.firstIndex(of: options.paperSize) {
+            if let index = PDFPaperSize.allCases.firstIndex(of: model?.options.paperSize ?? .automatic) {
                 paperSelector.selectedSegmentIndex = index
             }
             [contentIconView, contentTitleLabel].forEach { $0.isHidden = false }
@@ -487,24 +357,32 @@ final class ShareViewController: UIViewController {
             actionStack.isHidden = false
             setActions([
                 ("Cancel", .secondary, { [weak self] in
-                    self?.conversionTask?.cancel()
+                    self?.model?.cancelConversion()
                 }),
             ])
 
         case .preview(let info):
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
             pdfPreview.isHidden = false
             pdfPreview.document = PDFDocument(data: info.document.data)
+
             let sizeText = ByteCountFormatter.string(fromByteCount: Int64(info.byteCount), countStyle: .file)
             let pages = info.document.pageCount
-            previewInfoLabel.text = "\(pages) page\(pages == 1 ? "" : "s") · \(sizeText)"
+            if info.savedToLibrary {
+                previewInfoLabel.text = "\(pages) page\(pages == 1 ? "" : "s") · \(sizeText)"
+            } else {
+                // Storage failed but the PDF exists: say so plainly instead
+                // of pretending everything saved, without calling it failure.
+                previewInfoLabel.text = "\(pages) page\(pages == 1 ? "" : "s") · \(sizeText)\nPDF created, but it couldn't be added to Library."
+            }
             previewInfoLabel.isHidden = false
             actionStack.isHidden = false
             setActions([
                 ("Done", .secondary, { [weak self] in
-                    self?.completeExtension()
+                    self?.model?.complete()
                 }),
                 ("Share", .primary, { [weak self] in
-                    self?.sharePreviewedPDF()
+                    self?.sharePreviewedPDF(info)
                 }),
             ])
 
@@ -515,21 +393,21 @@ final class ShareViewController: UIViewController {
             [errorIconView, errorTitleLabel, errorMessageLabel, actionStack].forEach { $0.isHidden = false }
 
             var actions: [(String, ActionStyle, () -> Void)] = []
-            if let url = readySummary?.failingURL {
+            if model?.readySummary?.failingURL != nil {
                 actions.append(("Retry", .primary, { [weak self] in
-                    guard let self, let summary = self.readySummary else { return }
-                    self.runConversion(items: summary.items)
+                    self?.model?.retryFailedWebConversion()
                 }))
                 actions.append(("Save Link as PDF", .secondary, { [weak self] in
-                    self?.convertLinkAsText(url: url)
+                    self?.model?.saveLinkAsText()
                 }))
             } else {
                 actions.append(("Try Again", .primary, { [weak self] in
-                    self?.startExtraction()
+                    guard let self, let model = self.model, let context = self.extensionContext else { return }
+                    model.startExtraction(context: context)
                 }))
             }
             actions.append(("Cancel", .secondary, { [weak self] in
-                self?.cancelExtension()
+                self?.model?.cancelConversion()
             }))
             setActions(actions)
         }
@@ -555,25 +433,14 @@ final class ShareViewController: UIViewController {
         }
     }
 
-    // MARK: - Recovery
-
-    private func convertLinkAsText(url: URL) {
-        let item = IncomingItem(kind: .text(url.absoluteString),
-                                title: "Saved Link",
-                                sourceURL: url,
-                                source: .website)
-        runConversion(items: [item])
-    }
-
     // MARK: - Sharing
 
-    private func sharePreviewedPDF() {
-        guard case .preview(let info) = currentState else { return }
-
+    private func sharePreviewedPDF(_ info: ShareFlowModel.PreviewInfo) {
         let url: URL
-        if let saved = info.savedURL {
+        if let saved = info.savedURL, FileManager.default.fileExists(atPath: saved.path) {
             url = saved
         } else {
+            // Storage failed earlier: still share the generated PDF.
             let temporary = FileManager.default.temporaryDirectory
                 .appendingPathComponent(FilenameGenerator.fileName(for: info.document))
             try? info.document.data.write(to: temporary, options: .atomic)
@@ -582,7 +449,7 @@ final class ShareViewController: UIViewController {
 
         let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         activityVC.completionWithItemsHandler = { [weak self] _, _, _, _ in
-            self?.completeExtension()
+            self?.model?.complete()
         }
         if let popover = activityVC.popoverPresentationController {
             popover.sourceView = cardView
@@ -591,23 +458,21 @@ final class ShareViewController: UIViewController {
         present(activityVC, animated: true)
     }
 
-    // MARK: - Extension lifecycle
+    // MARK: - Extension lifecycle (exactly-once)
 
-    private func completeExtension() {
-        conversionTask?.cancel()
-        extractionTask?.cancel()
-        extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
-    }
-
-    private func cancelExtension() {
-        conversionTask?.cancel()
-        extractionTask?.cancel()
-        extensionContext?.cancelRequest(withError: NSError(domain: "com.kenatst.pdfit.share",
-                                                           code: NSUserCancelledError))
+    private func completeRequest(cancelled: Bool) {
+        guard !hasCompletedRequest else { return }
+        hasCompletedRequest = true
+        if cancelled {
+            extensionContext?.cancelRequest(withError: NSError(domain: "com.kenatst.pdfit.share",
+                                                               code: NSUserCancelledError))
+        } else {
+            extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
+        }
     }
 
     @objc private func backgroundTapped() {
-        cancelExtension()
+        model?.cancelConversion()
     }
 
     // MARK: - Action buttons

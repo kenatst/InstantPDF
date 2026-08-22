@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 /// The normalized representation of one piece of incoming shared content.
 /// Heavy payloads (images, PDFs, files) are always referenced by a staged
 /// file URL so nothing large is eagerly decoded into memory.
-struct IncomingItem {
+struct IncomingItem: Equatable {
     let id: UUID
     let kind: IncomingKind
     let title: String?
@@ -29,7 +29,7 @@ struct IncomingItem {
     }
 }
 
-enum IncomingKind {
+enum IncomingKind: Equatable {
     /// Plain or attributed text, already extracted as a raw string.
     case text(String)
     /// A remote http(s) URL to load and convert.
@@ -75,6 +75,8 @@ enum ContentSource: String, Codable, CaseIterable {
     case photos
     case files
     case textEditor
+    /// A document combining several kinds of content (images + text, etc.).
+    case mixed
     case unknown
 
     var displayName: String {
@@ -89,6 +91,7 @@ enum ContentSource: String, Codable, CaseIterable {
         case .photos: return "Photos"
         case .files: return "Files"
         case .textEditor: return "Notes"
+        case .mixed: return "Mixed"
         case .unknown: return "Document"
         }
     }
@@ -103,6 +106,7 @@ enum ContentSource: String, Codable, CaseIterable {
         case .photos: return "photo.on.rectangle"
         case .files: return "folder"
         case .textEditor: return "note.text"
+        case .mixed: return "square.stack.3d.up"
         case .unknown: return "doc"
         }
     }

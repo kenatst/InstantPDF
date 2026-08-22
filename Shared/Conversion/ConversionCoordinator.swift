@@ -2,7 +2,7 @@ import Foundation
 import PDFKit
 
 /// The result of a successful conversion.
-struct ConvertedDocument {
+struct ConvertedDocument: Equatable {
     let data: Data
     let pageCount: Int
     let suggestedTitle: String
@@ -60,18 +60,17 @@ final class ConversionCoordinator {
         var chunks: [Data] = []
         var titleCandidate: String?
         var primarySourceURL: URL?
-        var primarySource: ContentSource = .unknown
 
-        // The first web item defines the document's source metadata.
+        // The first web item defines the document's source URL (for footers,
+        // metadata subject lines). The document's source *type* is inferred
+        // below from the whole collection — never just the first item.
         for item in items {
             if primarySourceURL == nil {
                 switch item.kind {
                 case .url(let url):
                     primarySourceURL = url
-                    primarySource = item.source
                 case .html(_, let url):
                     primarySourceURL = url
-                    primarySource = .website
                 default:
                     break
                 }
@@ -131,6 +130,7 @@ final class ConversionCoordinator {
         let merged = try PDFAssembly.merge(chunks)
         let fallbackTitle = Self.fallbackTitle(for: items)
         let title = (titleCandidate ?? fallbackTitle) ?? "PDF"
+        let primarySource = Self.inferredSource(for: items)
 
         let stamped = PDFAssembly.applyingMetadata(to: merged, title: title, sourceURL: primarySourceURL)
         return ConvertedDocument(data: stamped,
@@ -138,6 +138,20 @@ final class ConversionCoordinator {
                                  suggestedTitle: title,
                                  sourceURL: primarySourceURL,
                                  source: primarySource)
+    }
+
+    // MARK: - Source inference
+
+    /// The document's content source, inferred from the whole collection:
+    /// a single item keeps its own source; a homogeneous collection shares
+    /// its common source (5 photos → .photos); anything else is honestly
+    /// mixed. Never mislabels a collection by its first element.
+    static func inferredSource(for items: [IncomingItem]) -> ContentSource {
+        guard !items.isEmpty else { return .unknown }
+        if items.count == 1 { return items[0].source }
+        let common = items[0].source
+        if items.allSatisfy({ $0.source == common }) { return common }
+        return .mixed
     }
 
     // MARK: - Web routing
@@ -208,19 +222,33 @@ final class ConversionCoordinator {
             return imageCount == 1 ? "Photo" : "\(imageCount) Photos"
         }
         if items.count == textCount, textCount > 0 {
-            return textCount == 1 ? "Note" : "\(textCount) Notes"
+            // A single shared note deserves its first meaningful line as a
+            // title, not a generic label. Multi-item collections stay dated.
+            if textCount == 1, case .text(let text) = items[0].kind {
+                return Self.firstLineTitle(from: text) ?? "Note"
+            }
+            if let named = items.compactMap(\.title).first(where: { !$0.isEmpty }) {
+                return named
+            }
+            return "\(textCount) Notes"
         }
         if items.count == 1, pdfCount == 1 {
             return items[0].originalFilename?
                 .replacingOccurrences(of: ".pdf", with: "", options: .caseInsensitive)
         }
-        if items.count == 1, case .text(let text) = items[0].kind {
-            let firstLine = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                .components(separatedBy: .newlines).first ?? ""
-            let words = firstLine.split(separator: " ").prefix(6).joined(separator: " ")
-            if !words.isEmpty { return String(words) }
-            return "Note"
-        }
         return "\(items.count) Items — \(dateSuffix)"
+    }
+
+    /// First meaningful line of shared text, collapsed and capped — nil when
+    /// there is nothing worth showing (whitespace, punctuation-only).
+    static func firstLineTitle(from text: String) -> String? {
+        let firstLine = text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: .newlines)
+            .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty } ?? ""
+        let words = firstLine.split(separator: " ").prefix(8).joined(separator: " ")
+        let candidate = String(words).trimmingCharacters(in: .whitespaces)
+        guard candidate.rangeOfCharacter(from: .alphanumerics) != nil else { return nil }
+        return candidate.count > 60 ? String(candidate.prefix(60)) : candidate
     }
 }

@@ -6,6 +6,11 @@ struct ExtractedInput {
     var items: [IncomingItem] = []
     /// Attachments we refused (video/audio) — surfaced as a gentle notice.
     var skippedCount: Int = 0
+    /// Owns every staged file referenced by `items`. Extraction deliberately
+    /// does NOT clean it up: the receiving flow keeps the session alive until
+    /// conversion finishes (or is cancelled/abandoned) and then calls
+    /// `cleanUp()`. Deleting it earlier invalidates every file-backed item.
+    var staging: TempFileStore?
 
     var isEmpty: Bool { items.isEmpty }
 }
@@ -20,14 +25,15 @@ final class InputProcessor {
 
     /// Extracts every supported attachment, preserving share sheet order.
     func extract(from context: NSExtensionContext) async -> ExtractedInput {
-        guard let extensionItems = context.inputItems as? [NSExtensionItem] else {
-            return ExtractedInput()
-        }
+        await extract(extensionItems: context.inputItems as? [NSExtensionItem] ?? [])
+    }
 
+    /// Testable core: extraction from explicit extension items, so share-flow
+    /// regressions can run without a live extension host.
+    func extract(extensionItems: [NSExtensionItem]) async -> ExtractedInput {
         let store = TempFileStore()
-        defer { store.cleanUp() }
 
-        var result = ExtractedInput()
+        var result = ExtractedInput(staging: store)
         var index = 0
 
         for item in extensionItems {
@@ -65,11 +71,9 @@ final class InputProcessor {
             return nil
         }
 
-        // A file URL wins: it keeps big payloads out of RAM entirely.
-        if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
-            return await loadFileURL(provider: provider, itemTitle: itemTitle, index: index, store: store)
-        }
-
+        // Specific document types beat the generic file-URL lane: some hosts
+        // advertise public.file-url whose representation is URL metadata, not
+        // the payload itself. Loading by concrete type always yields bytes.
         if provider.hasItemConformingToTypeIdentifier(UTType.pdf.identifier) {
             return await loadAsFile(provider: provider,
                                     type: .pdf,
@@ -78,6 +82,17 @@ final class InputProcessor {
                                     store: store)
         }
 
+        if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+            return await loadImage(provider: provider, itemTitle: itemTitle, index: index, store: store)
+        }
+
+        // Remaining files arrive as a file URL — big payloads stay out of RAM.
+        if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+            return await loadFileURL(provider: provider, itemTitle: itemTitle, index: index, store: store)
+        }
+
+        // Webpage intent beats everything textual: Safari and most browsers
+        // hand over the URL first. Non-http(s) URLs fall through below.
         if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier),
            let url = await loadURL(provider: provider), isHTTPURL(url) {
             return IncomingItem(kind: .url(url),
@@ -87,8 +102,16 @@ final class InputProcessor {
                                 index: index)
         }
 
-        if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
-            return await loadImage(provider: provider, itemTitle: itemTitle, index: index, store: store)
+        // HTML before plain text: a provider advertising both is web content,
+        // and plain text would strip the structure we can still preserve.
+        if provider.hasItemConformingToTypeIdentifier(UTType.html.identifier),
+           let html = await loadHTML(provider: provider) {
+            let baseURL = await loadURL(provider: provider)
+            return IncomingItem(kind: .html(html, baseURL: baseURL),
+                                title: itemTitle,
+                                sourceURL: baseURL,
+                                source: .website,
+                                index: index)
         }
 
         if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier)
@@ -101,21 +124,21 @@ final class InputProcessor {
             }
         }
 
-        if provider.hasItemConformingToTypeIdentifier(UTType.html.identifier),
-           let html = await loadHTML(provider: provider) {
-            let baseURL = await loadURL(provider: provider)
-            return IncomingItem(kind: .html(html, baseURL: baseURL),
-                                title: itemTitle,
-                                sourceURL: baseURL,
-                                source: .website,
-                                index: index)
-        }
-
         if provider.hasItemConformingToTypeIdentifier(UTType.rtf.identifier),
            let text = await loadRTF(provider: provider) {
             return IncomingItem(kind: .text(text),
                                 title: itemTitle,
                                 source: .textEditor,
+                                index: index)
+        }
+
+        // Safari's webpage activation sometimes delivers a property list
+        // instead of a plain URL item (keys like "_webURL").
+        if let url = await loadWebPagePropertyList(provider: provider), isHTTPURL(url) {
+            return IncomingItem(kind: .url(url),
+                                title: itemTitle,
+                                sourceURL: url,
+                                source: ContentSource.detect(from: url),
                                 index: index)
         }
 
@@ -220,9 +243,58 @@ final class InputProcessor {
         guard let any = try? await provider.loadItem(forTypeIdentifier: UTType.url.identifier, options: nil) else {
             return nil
         }
+        return Self.url(fromItem: any)
+    }
+    /// Safari's webpage activation can deliver a property-list item carrying
+    /// the page address under keys like "_webURL" instead of a URL item.
+    private func loadWebPagePropertyList(provider: NSItemProvider) async -> URL? {
+        guard provider.hasItemConformingToTypeIdentifier(UTType.propertyList.identifier) else { return nil }
+        guard let any = try? await provider.loadItem(forTypeIdentifier: UTType.propertyList.identifier, options: nil),
+              let dictionary = Self.dictionary(fromPropertyListItem: any) else {
+            return nil
+        }
+        for key in ["_webURL", "webURL", "URL", "url"] {
+            if let value = dictionary[key] as? String,
+               let url = URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                return url
+            }
+        }
+        return nil
+    }
+
+    /// Property-list payloads arrive either pre-deserialized or as raw data.
+    private static func dictionary(fromPropertyListItem any: Any) -> NSDictionary? {
+        if let dictionary = any as? NSDictionary { return dictionary }
+        if let dictionary = any as? [AnyHashable: Any] { return dictionary as NSDictionary }
+        if let data = any as? Data,
+           let decoded = try? PropertyListSerialization.propertyList(from: data, format: nil),
+           let dictionary = decoded as? NSDictionary {
+            return dictionary
+        }
+        return nil
+    }
+
+    /// Accepts every representation apps actually hand over for URLs:
+    /// URL/NSURL objects, plain strings, raw data, or a property list.
+    private static func url(fromItem any: Any) -> URL? {
         if let url = any as? URL { return url }
-        if let string = any as? String { return URL(string: string.trimmingCharacters(in: .whitespacesAndNewlines)) }
         if let nsURL = any as? NSURL { return nsURL as URL }
+        if let string = any as? String { return URL(string: string.trimmingCharacters(in: .whitespacesAndNewlines)) }
+        if let nsString = any as? NSString { return URL(string: (nsString as String).trimmingCharacters(in: .whitespacesAndNewlines)) }
+        // Raw bytes: hosts deliver either serialized URLs or plain strings.
+        if let data = any as? Data,
+           let string = String(data: data, encoding: .utf8)?
+               .trimmingCharacters(in: .whitespacesAndNewlines),
+           !string.isEmpty {
+            return URL(string: string)
+        }
+        if let dictionary = any as? NSDictionary {
+            for key in ["_webURL", "webURL", "URL", "url"] {
+                if let value = dictionary[key] as? String {
+                    return URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines))
+                }
+            }
+        }
         return nil
     }
 
@@ -234,6 +306,12 @@ final class InputProcessor {
                 if let nsString = any as? NSString, nsString.length > 0 { return nsString as String }
                 if let attributed = any as? NSAttributedString, attributed.length > 0 {
                     return attributed.string
+                }
+                // Some hosts deliver UTF-8 bytes rather than a string object.
+                if let data = any as? Data,
+                   let string = String(data: data, encoding: .utf8),
+                   !string.isEmpty {
+                    return string
                 }
             }
         }

@@ -9,6 +9,7 @@ struct LibraryView: View {
     @State private var searchText = ""
     @State private var renamingRecord: StoredPDFRecord?
     @State private var newName = ""
+    @Environment(\.scenePhase) private var scenePhase
 
     private let storage = StorageManager.shared
 
@@ -29,6 +30,11 @@ struct LibraryView: View {
         }
         .navigationTitle(embedded ? "Recent" : "Library")
         .onAppear { reload() }
+        // The Share Extension writes from a separate process: refresh on
+        // every activation so its documents appear without a relaunch.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { reload() }
+        }
         .searchable(text: $searchText, prompt: "Search PDFs")
         .alert("Rename", isPresented: Binding(get: { renamingRecord != nil },
                                                set: { if !$0 { renamingRecord = nil } })) {

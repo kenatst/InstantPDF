@@ -5,19 +5,26 @@ import UIKit
 /// Local-first library storage, shared between the app and the Share
 /// Extension through the App Group container.
 ///
-/// V2 contract changes:
-/// • Rich metadata per document (pages, size, source, thumbnail).
-/// • Documents are NEVER auto-deleted — the Library keeps everything until
-///   the user explicitly deletes it. History limits are a UI concern only.
-/// • Atomic writes and collision-safe filenames; failures throw.
+/// Cross-process contract (app and extension are DIFFERENT processes):
+/// • There is no long-lived in-memory index. Every operation reads the
+///   current `metadata.json` from disk first, so records written by the
+///   other process are always visible.
+/// • Read-modify-write cycles run inside one `NSFileCoordinator` coordinated
+///   writing block, which gives inter-process mutual exclusion — the two
+///   processes can save/read/delete concurrently without losing updates.
+/// • A per-process serial queue prevents races inside one process.
+/// • All writes are atomic; filename collisions are resolved against fresh
+///   disk state, never against a cached list.
 final class StorageManager {
 
     static let shared = StorageManager(appGroupID: AppConfiguration.appGroupIdentifier)
 
     private let containerURL: URL?
     private let queue = DispatchQueue(label: "com.kenatst.pdfit.storage")
-    private var records: [StoredPDFRecord]
+    private let fileAccessQueue = DispatchQueue(label: "com.kenatst.pdfit.storage.filecoordination")
+    private let coordinator = NSFileCoordinator(filePresenter: nil)
 
+    private var containerDirectory: URL? { containerURL }
     private var documentsDirectory: URL? {
         containerURL?.appendingPathComponent("Documents/PDFs", isDirectory: true)
     }
@@ -28,68 +35,105 @@ final class StorageManager {
         containerURL?.appendingPathComponent("Library/metadata.json")
     }
 
-    /// Production initializer: uses the real App Group container.
+    /// Production initializer: uses the real App Group container. A nil
+    /// container (misconfigured entitlement/group) is a hard, surfaced
+    /// error — operations throw `containerUnavailable` instead of silently
+    /// writing somewhere the other process can't see.
     convenience init(appGroupID: String) {
-        let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID)
+        let url = AppConfiguration.appGroupContainerURL
+        if url == nil {
+            assertionFailure("PDF It: StorageManager initialized without a reachable App Group (\(appGroupID)).")
+        }
         self.init(containerURL: url)
     }
 
     /// Designated initializer — injectable for tests.
     init(containerURL: URL?) {
         self.containerURL = containerURL
-        self.records = []
-        loadRecordsSync()
     }
 
     // MARK: - Saving
 
-    /// Persists a converted document. Filename collisions get a numeric
-    /// suffix; the write is atomic; a thumbnail is generated best-effort.
+    /// Persists a converted document. The filename is uniquified against the
+    /// CURRENT on-disk state (metadata + existing files), so the app and the
+    /// extension racing to save "Article.pdf" both end up with distinct names.
     @discardableResult
     func save(document: ConvertedDocument, date: Date = Date()) throws -> StoredPDFRecord {
-        guard let documents = documentsDirectory, let metadataFile = metadataFileURL else {
+        guard let documents = documentsDirectory,
+              let metadataFile = metadataFileURL,
+              let container = containerDirectory else {
             throw StorageError.containerUnavailable
         }
-        try FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: metadataFile.deletingLastPathComponent(),
-                                                withIntermediateDirectories: true)
+        return try queue.sync {
+            try FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: metadataFile.deletingLastPathComponent(),
+                                                    withIntermediateDirectories: true)
 
-        let desired = FilenameGenerator.fileName(for: document, date: date)
-        let takenNames = Set(records.map(\.filename))
-        let uniqueName = FilenameGenerator.uniqueFileName(desired, existingNames: takenNames)
-        let relativePath = "Documents/PDFs/\(uniqueName)"
-        let fileURL = containerURL!.appendingPathComponent(relativePath)
+            let desired = FilenameGenerator.fileName(for: document, date: date)
 
-        do {
-            try document.data.write(to: fileURL, options: .atomic)
-        } catch {
-            throw StorageError.writeFailed(underlying: error.localizedDescription)
+            // Write the PDF itself first. Its name must not collide with any
+            // file already on disk, even an orphaned one.
+            let uniqueName = try coordinatedReadModifyWrite(metadataFile) { currentRecords in
+                let takenNames = Self.existingNames(records: currentRecords, documentsDirectory: documents)
+                let name = FilenameGenerator.uniqueFileName(desired, existingNames: takenNames)
+                let relativePath = "Documents/PDFs/\(name)"
+                let fileURL = container.appendingPathComponent(relativePath)
+
+                do {
+                    try document.data.write(to: fileURL, options: .atomic)
+                } catch {
+                    throw StorageError.writeFailed(underlying: error.localizedDescription)
+                }
+
+                let thumbnailPath = self.writeThumbnail(for: document.data)
+                let record = StoredPDFRecord(id: UUID(),
+                                             filename: name,
+                                             createdAt: date,
+                                             relativePath: relativePath,
+                                             pageCount: document.pageCount,
+                                             fileSize: Int64(document.data.count),
+                                             sourceType: document.source.rawValue,
+                                             sourceURL: document.sourceURL?.absoluteString,
+                                             thumbnailPath: thumbnailPath)
+                currentRecords.insert(record, at: 0)
+                return record
+            }
+            return uniqueName
         }
-
-        let thumbnailPath = writeThumbnail(for: document.data)
-        let record = StoredPDFRecord(id: UUID(),
-                                     filename: uniqueName,
-                                     createdAt: date,
-                                     relativePath: relativePath,
-                                     pageCount: document.pageCount,
-                                     fileSize: Int64(document.data.count),
-                                     sourceType: document.source.rawValue,
-                                     sourceURL: document.sourceURL?.absoluteString,
-                                     thumbnailPath: thumbnailPath)
-
-        try queue.sync {
-            records.insert(record, at: 0)
-            try persistRecords(to: metadataFile)
-        }
-        return record
     }
 
     // MARK: - Queries
 
-    /// All records, newest first. Records whose file vanished on disk are
-    /// pruned (data hygiene — not user data deletion).
+    /// All records, newest first, freshly read from disk. Reads never touch
+    /// the metadata file — they take a shared coordinated read, no write
+    /// lock, no rewrite. Records whose backing file vanished are pruned
+    /// (data hygiene — not user data deletion); pruning is the ONLY reason
+    /// a fetch ever writes, and it happens through one coordinated
+    /// read-modify-write so concurrent saves from the other process survive.
     func fetchRecords() -> [StoredPDFRecord] {
-        queue.sync { records }
+        guard let metadataFile = metadataFileURL else { return [] }
+        return queue.sync {
+            let records = coordinatedRead(metadataFile)
+            let hasGhosts = records.contains { !exists($0) }
+            guard hasGhosts else {
+                return records.sorted { $0.createdAt > $1.createdAt }
+            }
+
+            // Ghosts found: prune them. The mutation re-reads current state
+            // inside the coordination section, so any records the other
+            // process added meanwhile are kept.
+            if let pruned = try? coordinatedReadModifyWrite(metadataFile, mutation: { currentRecords in
+                let staleIDs = Set(currentRecords.filter { !self.exists($0) }.map(\.id))
+                if !staleIDs.isEmpty {
+                    currentRecords.removeAll { staleIDs.contains($0.id) }
+                }
+                return currentRecords.sorted { $0.createdAt > $1.createdAt }
+            }) {
+                return pruned
+            }
+            // Pruning couldn't persist — still return what was read.
+            return records.sorted { $0.createdAt > $1.createdAt }
+        }
     }
 
     func fileURL(for record: StoredPDFRecord) -> URL? {
@@ -107,53 +151,60 @@ final class StorageManager {
         guard let metadataFile = metadataFileURL else {
             throw StorageError.containerUnavailable
         }
-        if let url = fileURL(for: record) {
-            // Missing file is fine here — the record still must go away.
-            try? FileManager.default.removeItem(at: url)
-        }
-        if let thumbnailPath = record.thumbnailPath, let thumbURL = containerURL?.appendingPathComponent(thumbnailPath) {
-            try? FileManager.default.removeItem(at: thumbURL)
-        }
         try queue.sync {
-            records.removeAll { $0.id == record.id }
-            try persistRecords(to: metadataFile)
+            if let url = fileURL(for: record) {
+                // Missing file is fine here — the record still must go away.
+                try? FileManager.default.removeItem(at: url)
+            }
+            if let thumbnailPath = record.thumbnailPath,
+               let thumbURL = containerURL?.appendingPathComponent(thumbnailPath) {
+                try? FileManager.default.removeItem(at: thumbURL)
+            }
+            _ = try coordinatedReadModifyWrite(metadataFile) { currentRecords -> Bool in
+                currentRecords.removeAll { $0.id == record.id }
+                return true
+            }
         }
     }
 
     func rename(_ record: StoredPDFRecord, to newRawName: String) throws -> StoredPDFRecord {
-        guard let metadataFile = metadataFileURL else {
+        guard let metadataFile = metadataFileURL,
+              let documents = documentsDirectory,
+              let container = containerDirectory else {
             throw StorageError.containerUnavailable
         }
-        var newName = FilenameGenerator.sanitize(newRawName)
-        if !(newName.lowercased().hasSuffix(".pdf")) {
-            newName += ".pdf"
-        }
-        let takenNames = Set(records.filter { $0.id != record.id }.map(\.filename))
-        newName = FilenameGenerator.uniqueFileName(newName, existingNames: takenNames)
-
-        guard let oldURL = fileURL(for: record) else {
-            throw StorageError.containerUnavailable
-        }
-        let newRelativePath = "Documents/PDFs/\(newName)"
-        let newURL = containerURL!.appendingPathComponent(newRelativePath)
-
-        do {
-            try FileManager.default.moveItem(at: oldURL, to: newURL)
-        } catch {
-            throw StorageError.writeFailed(underlying: error.localizedDescription)
-        }
-
-        var updated = record
-        updated.filename = newName
-        updated.relativePath = newRelativePath
-
-        try queue.sync {
-            if let index = records.firstIndex(where: { $0.id == record.id }) {
-                records[index] = updated
+        return try queue.sync {
+            guard let oldURL = fileURL(for: record) else {
+                throw StorageError.containerUnavailable
             }
-            try persistRecords(to: metadataFile)
+
+            let sanitized = FilenameGenerator.sanitize(newRawName)
+            let desired = sanitized.lowercased().hasSuffix(".pdf") ? sanitized : sanitized + ".pdf"
+
+            let updated: StoredPDFRecord = try coordinatedReadModifyWrite(metadataFile) { currentRecords in
+                let takenNames = Self.existingNames(records: currentRecords.filter { $0.id != record.id },
+                                                    documentsDirectory: documents)
+                let newName = FilenameGenerator.uniqueFileName(desired, existingNames: takenNames)
+                let newRelativePath = "Documents/PDFs/\(newName)"
+                let newURL = container.appendingPathComponent(newRelativePath)
+
+                do {
+                    try FileManager.default.moveItem(at: oldURL, to: newURL)
+                } catch {
+                    throw StorageError.writeFailed(underlying: error.localizedDescription)
+                }
+
+                var mutated = record
+                mutated.filename = newName
+                mutated.relativePath = newRelativePath
+
+                if let index = currentRecords.firstIndex(where: { $0.id == record.id }) {
+                    currentRecords[index] = mutated
+                }
+                return mutated
+            }
+            return updated
         }
-        return updated
     }
 
     func duplicate(_ record: StoredPDFRecord) throws -> StoredPDFRecord? {
@@ -203,35 +254,88 @@ final class StorageManager {
         }
     }
 
-    // MARK: - Persistence
+    // MARK: - Coordinated persistence core
 
-    private func loadRecordsSync() {
-        guard let metadataFile = metadataFileURL,
-              let data = try? Data(contentsOf: metadataFile) else {
-            records = []
-            return
-        }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        guard let decoded = try? decoder.decode([StoredPDFRecord].self, from: data) else {
-            records = []
-            return
-        }
-        // Drop records whose backing file disappeared (e.g. user cleaned the
-        // container via Settings). This prunes ghosts; it never deletes PDFs.
-        records = decoded.sorted { $0.createdAt > $1.createdAt }
-        let staleIDs = Set(records.filter { !exists($0) }.map(\.id))
-        if !staleIDs.isEmpty {
-            records.removeAll { staleIDs.contains($0.id) }
-            try? persistRecords(to: metadataFile)
+    /// Shared coordinated read — never writes, never blocks other readers.
+    private func coordinatedRead(_ metadataFile: URL) -> [StoredPDFRecord] {
+        fileAccessQueue.sync {
+            var records: [StoredPDFRecord] = []
+            var coordinationError: NSError?
+            coordinator.coordinate(readingItemAt: metadataFile,
+                                   options: [],
+                                   error: &coordinationError) { coordinatedURL in
+                records = Self.decodeRecords(from: coordinatedURL)
+            }
+            return records
         }
     }
 
-    private func persistRecords(to file: URL) throws {
+    /// The heart of cross-process safety.
+    ///
+    /// Runs `mutation` against the CURRENT persisted records inside ONE
+    /// `NSFileCoordinator` writing section. Reading and writing share the
+    /// same coordination lock, so another process cannot slip its own update
+    /// in between our read and write — nothing is ever lost or overwritten.
+    ///
+    /// `mutation` receives the decoded array (empty when the file doesn't
+    /// exist or is unreadable), mutates it in place, and returns whatever
+    /// value the caller wants back. The merged array is always persisted
+    /// atomically before the coordination lock is released.
+    private func coordinatedReadModifyWrite<T>(_ metadataFile: URL,
+                                               mutation: (inout [StoredPDFRecord]) throws -> T) throws -> T {
+        try fileAccessQueue.sync {
+            var result: Result<T, Error>!
+            var coordinationError: NSError?
+
+            coordinator.coordinate(writingItemAt: metadataFile,
+                                   options: [],
+                                   error: &coordinationError) { coordinatedURL in
+                do {
+                    var records = Self.decodeRecords(from: coordinatedURL)
+                    let value = try mutation(&records)
+                    try Self.encodeRecords(records, to: coordinatedURL)
+                    result = .success(value)
+                } catch {
+                    result = .failure(error)
+                }
+            }
+
+            if let coordinationError {
+                throw StorageError.writeFailed(underlying: coordinationError.localizedDescription)
+            }
+            switch result {
+            case .success(let value): return value
+            case .failure(let error): throw error
+            case nil: throw StorageError.writeFailed(underlying: "File coordination did not complete.")
+            }
+        }
+    }
+
+    private static func decodeRecords(from file: URL) -> [StoredPDFRecord] {
+        guard let data = try? Data(contentsOf: file) else { return [] }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return (try? decoder.decode([StoredPDFRecord].self, from: data)) ?? []
+    }
+
+    private static func encodeRecords(_ records: [StoredPDFRecord], to file: URL) throws {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.sortedKeys]
         let data = try encoder.encode(records)
         try data.write(to: file, options: .atomic)
+    }
+
+    /// Names that must be treated as taken: everything the metadata knows
+    /// about PLUS anything actually sitting in the documents directory
+    /// (covers orphaned files left by a crashed process).
+    private static func existingNames(records: [StoredPDFRecord], documentsDirectory: URL) -> Set<String> {
+        var names = Set(records.map(\.filename))
+        let children = (try? FileManager.default.contentsOfDirectory(at: documentsDirectory,
+                                                                     includingPropertiesForKeys: nil)) ?? []
+        for child in children where child.pathExtension.lowercased() == "pdf" {
+            names.insert(child.lastPathComponent)
+        }
+        return names
     }
 }
