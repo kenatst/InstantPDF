@@ -187,6 +187,13 @@ final class ConversionCoordinator {
             }
             titleSink(capture.title)
             return capture.data
+        } catch is CancellationError {
+            // Cancellation must remain cancellation — never a misleading
+            // generation failure.
+            throw CancellationError()
+        } catch let error as ConversionError where error == .cancelled {
+            // Raced NSURLErrorCancelled arrives as .cancelled; same rule.
+            throw CancellationError()
         } catch let error as ConversionError {
             throw error
         } catch {

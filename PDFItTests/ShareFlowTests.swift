@@ -240,7 +240,7 @@ final class ShareFlowTests: XCTestCase {
         let extracted = try await extract([ShareInput.imageProvider(.systemBlue)])
         let stagingDirectory = try XCTUnwrap(extracted.staging?.directory)
 
-        let model = try await MainActor.run {
+        let model = await MainActor.run {
             ShareFlowModel(convert: { items, options, onStage in
                 onStage(.creatingPDF)
                 return try await ConversionCoordinator().convert(items: items, options: options)
@@ -274,7 +274,7 @@ final class ShareFlowTests: XCTestCase {
         let empty = ExtractedInput(items: [], skippedCount: 0, staging: TempFileStore())
         XCTAssertNil(ShareFlowModel.ReadySummary.build(for: empty))
 
-        let model = try await MainActor.run {
+        let model = await MainActor.run {
             ShareFlowModel(convert: { _, _, _ in
                 XCTFail("Conversion must not run without items")
                 throw ConversionError.noUsableContent
@@ -310,7 +310,7 @@ final class ShareFlowTests: XCTestCase {
         }
         let box = CaptureBox()
 
-        let model = try await MainActor.run {
+        let model = await MainActor.run {
             ShareFlowModel(convert: { items, _, _ in
                 box.received.append(items)
                 return ConvertedDocument(data: Data(), pageCount: 0,
@@ -432,7 +432,7 @@ final class ShareFlowTests: XCTestCase {
         let extracted = try await extract([ShareInput.textProvider("Journey body text")])
         let storage = makeStorage()
 
-        let model = try await MainActor.run {
+        let model = await MainActor.run {
             ShareFlowModel(convert: { items, options, onStage in
                 onStage(.creatingPDF)
                 return try await ConversionCoordinator().convert(items: items, options: options)
@@ -460,7 +460,7 @@ final class ShareFlowTests: XCTestCase {
     func testStorageFailureStillPreviewsCreatedPDF() async throws {
         let extracted = try await extract([ShareInput.textProvider("Survives storage loss")])
 
-        let model = try await MainActor.run {
+        let model = await MainActor.run {
             ShareFlowModel(convert: { items, options, onStage in
                 onStage(.creatingPDF)
                 return try await ConversionCoordinator().convert(items: items, options: options)
@@ -496,7 +496,7 @@ final class ShareFlowTests: XCTestCase {
         }
         let flags = FlagBox()
 
-        let model = try await MainActor.run {
+        let model = await MainActor.run {
             ShareFlowModel(convert: { _, _, _ in
                 try await Task.sleep(nanoseconds: 30_000_000_000) // far beyond the test
                 flags.fallbackAttempts += 1
@@ -545,7 +545,7 @@ final class ShareFlowTests: XCTestCase {
         final class FlagBox: @unchecked Sendable { var finished: [Bool] = [] }
         let flags = FlagBox()
 
-        let model = try await MainActor.run {
+        let model = await MainActor.run {
             ShareFlowModel(convert: { _, _, _ in
                 XCTFail("No conversion should run")
                 throw ConversionError.generationFailed
@@ -573,7 +573,7 @@ final class ShareFlowTests: XCTestCase {
         XCTAssertEqual(extracted.items.isEmpty, true)
         XCTAssertEqual(extracted.skippedCount, 1)
 
-        let model = try await MainActor.run {
+        let model = await MainActor.run {
             ShareFlowModel(convert: { _, _, _ in
                 XCTFail("Nothing to convert")
                 throw ConversionError.generationFailed
@@ -596,7 +596,7 @@ final class ShareFlowTests: XCTestCase {
         }
         let attempts = AttemptBox()
 
-        let model = try await MainActor.run {
+        let model = await MainActor.run {
             ShareFlowModel(convert: { items, _, _ in
                 attempts.attempts.append(items)
                 throw ConversionError.pageTooSlow
@@ -801,7 +801,7 @@ final class SourceMetadataTests: XCTestCase {
         ], options: options)
         XCTAssertEqual(textOnly.source, .textEditor)
 
-        let image = try ShareInput.solidImage(.systemBrown)
+        let image = ShareInput.solidImage(.systemBrown)
             .pngData() ?? Data()
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID()).png")
         try image.write(to: url)
@@ -959,5 +959,42 @@ private extension Array {
     /// Unwrapping helper for exactly-one-element arrays in tests.
     var single: Element? {
         count == 1 ? first : nil
+    }
+}
+
+// MARK: - Micro-hardening regressions
+
+/// The background-tap recognizer must only cancel for touches OUTSIDE the
+/// card. This policy is exactly what the gesture delegate calls in
+/// `ShareViewController`, so these tests cover the shipped rule: Create PDF /
+/// Share / Done / Retry / segmented controls can never trigger dismissal.
+final class CardTapPolicyTests: XCTestCase {
+
+    private let card = CGRect(x: 0, y: 0, width: 300, height: 500)
+
+    func tapCancels(_ x: CGFloat, _ y: CGFloat) -> Bool {
+        CardTapPolicy.cancels(locationInCard: CGPoint(x: x, y: y), cardBounds: card)
+    }
+
+    func testTapsInsideCardNeverCancel() {
+        XCTAssertFalse(tapCancels(150, 250), "Card center")
+        XCTAssertFalse(tapCancels(150, 470), "Create PDF button region")
+        XCTAssertFalse(tapCancels(40, 470), "Mode segmented control region")
+        XCTAssertFalse(tapCancels(150, 60), "Title area")
+    }
+
+    func testTapsOutsideCardAlwaysCancel() {
+        XCTAssertTrue(tapCancels(-1, 250), "Left of card")
+        XCTAssertTrue(tapCancels(301, 250), "Right of card")
+        XCTAssertTrue(tapCancels(150, -1), "Above card")
+        XCTAssertTrue(tapCancels(150, 501), "Below card")
+    }
+
+    func testCardEdgeMatchesUIKitHitTestingSemantics() {
+        // CGRect.contains / UIView.point(inside:) exclude the max edge;
+        // the policy deliberately matches UIKit's own hit-testing rule so
+        // recognizer decisions can never disagree with button hit areas.
+        XCTAssertFalse(tapCancels(0, 0), "Origin belongs to the card")
+        XCTAssertTrue(tapCancels(300, 500), "Max-edge corner is outside, like UIView hit-testing")
     }
 }

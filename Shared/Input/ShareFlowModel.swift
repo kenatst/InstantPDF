@@ -281,9 +281,13 @@ final class ShareFlowModel: ObservableObject {
                 guard !self.finished else { return }
                 // User cancelled: propagate as cancellation, never as a
                 // misleading fallback conversion or generic failure.
-                self.cleanStaging()
-                self.finish(success: false, notifyHost: true)
-            } catch let error as ConversionError where error != .cancelled {
+                self.handleCancellation()
+            } catch let error as ConversionError where error == .cancelled {
+                // A raced NSURLErrorCancelled can surface as .cancelled —
+                // same treatment: it IS a cancellation.
+                guard !self.finished else { return }
+                self.handleCancellation()
+            } catch let error as ConversionError {
                 guard !self.finished else { return }
                 self.enterFailure(error)
             } catch {
@@ -291,6 +295,11 @@ final class ShareFlowModel: ObservableObject {
                 self.enterFailure(.generationFailed)
             }
         }
+    }
+
+    private func handleCancellation() {
+        cleanStaging()
+        finish(success: false, notifyHost: true)
     }
 
     private func saveToLibrary(_ document: ConvertedDocument) -> URL? {

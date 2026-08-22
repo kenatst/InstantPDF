@@ -63,4 +63,34 @@ final class TempFileStore: @unchecked Sendable {
         guard !alreadyCleaned else { return }
         try? FileManager.default.removeItem(at: directory)
     }
+
+    // MARK: - One-off share exports
+
+    /// Prefix marking throwaway PDFs written ONLY so the share sheet has a
+    /// file URL (Library persistence failed, or in-app ShareLink export).
+    /// Cleanup targets this prefix alone — never App Group documents and
+    /// never staging files still owned by a live conversion.
+    private static let exportPrefix = "pdfit-export-"
+
+    static func isExportArtifact(_ url: URL) -> Bool {
+        url.lastPathComponent.hasPrefix(exportPrefix)
+    }
+
+    /// Destination for a temporary export copy in the system tmp directory.
+    static func exportURL(named fileName: String) -> URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent(exportPrefix + fileName)
+    }
+
+    /// Deletes leftover export artifacts from previous sessions. Only files
+    /// carrying the export prefix are touched; everything else — including
+    /// anything outside tmp — is ignored.
+    static func purgeExportArtifacts() {
+        let contents = (try? FileManager.default.contentsOfDirectory(
+            at: FileManager.default.temporaryDirectory,
+            includingPropertiesForKeys: nil)) ?? []
+        for item in contents where isExportArtifact(item) {
+            try? FileManager.default.removeItem(at: item)
+        }
+    }
 }

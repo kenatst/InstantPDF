@@ -125,12 +125,14 @@ final class ImportFlowModel: ObservableObject {
                 self?.result = document
                 self?.isConverting = false
                 self?.showingResult = true
-            } catch let error as ConversionError where error != .cancelled {
+            } catch is CancellationError {
+                self?.isConverting = false
+            } catch let error as ConversionError where error == .cancelled {
+                self?.isConverting = false
+            } catch let error as ConversionError {
                 self?.failure = error
                 self?.isConverting = false
                 self?.showingError = true
-            } catch is CancellationError {
-                self?.isConverting = false
             } catch {
                 self?.failure = .generationFailed
                 self?.isConverting = false
@@ -283,8 +285,10 @@ struct ConversionResultSheet: View {
                 }
             }
             .onAppear {
-                let url = FileManager.default.temporaryDirectory
-                    .appendingPathComponent(FilenameGenerator.fileName(for: document))
+                // Sweep exports left by previous sessions first — at most
+                // one live export artifact ever exists.
+                TempFileStore.purgeExportArtifacts()
+                let url = TempFileStore.exportURL(named: FilenameGenerator.fileName(for: document))
                 try? document.data.write(to: url, options: .atomic)
                 shareURL = url
             }

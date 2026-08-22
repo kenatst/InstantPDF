@@ -107,7 +107,13 @@ Human names, not timestamps: `Paris Trip — 22 Aug 2026.pdf`, `Thread — usern
 
 ## Testing
 
-58 unit tests cover input classification, attachment ordering, source detection, paper sizes, aspect fit/fill math, filename sanitization and collisions, text pagination (including empty-input safety), image pagination, existing-PDF byte preservation and page-box preservation, merge order, web-capture slicing, metadata stamping, and the storage contract (persistence, no auto-deletion, rename/duplicate/delete, collision handling, ghost pruning).
+96 tests cover input classification, attachment ordering, source detection, paper sizes, aspect fit/fill math, filename sanitization and collisions, text pagination (including empty-input safety), image pagination, existing-PDF byte preservation and page-box preservation, merge order, web-capture slicing, metadata stamping, and the storage contract (persistence, no auto-deletion, rename/duplicate/delete, collision handling, ghost pruning).
+
+Beyond those unit foundations, the suite includes lifecycle regression coverage for the release-critical paths:
+
+- **Share flow (`ShareFlowModel`)** — synthetic `NSExtensionItem` + `NSItemProvider` harness drives the real chain `NSItemProvider → InputProcessor → Ready state → ConversionCoordinator → StorageManager`. Regressions covered: Ready state retains the exact extracted items through Create; staged files survive extraction until a terminal transition; cancellation propagates as cancellation (no fallback conversion, no generic failure); storage failure still previews the created PDF; web retry reuses retained items.
+- **Cross-process App Group persistence** — two independent `StorageManager` instances over one container verify the app and the extension see each other's saves/deletes without loss, including 16-way concurrent interleaved writes, collision checks against current disk state, and visibility of late external writes by long-lived instances.
+- **WKWebView pipeline & cancellation** — offline HTML captures exercise the navigation/stabilization/evaluation/render continuations directly; a regression test proves cancelling mid-capture resumes promptly as `CancellationError` (never orphaned to the timeout, never converted into a generation failure).
 
 ```bash
 xcodebuild test -project PDFIt.xcodeproj -scheme PDFIt \

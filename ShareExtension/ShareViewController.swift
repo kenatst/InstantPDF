@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 /// The card is a vertical UIStackView; each state shows and hides arranged
 /// sections, so layout can never conflict. No fake progress, no technical
 /// failure text inside PDFs, no configuration dashboard.
-final class ShareViewController: UIViewController {
+final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
     // MARK: - Dependencies
 
@@ -19,6 +19,10 @@ final class ShareViewController: UIViewController {
     /// Guarantees extensionContext is completed/cancelled exactly once, no
     /// matter how many paths race to leave (Done, share sheet, background tap).
     private var hasCompletedRequest = false
+
+    /// The temporary export file this controller created for the share
+    /// sheet (only when Library persistence failed). Removed after sharing.
+    private var tempExportURL: URL?
 
     // MARK: - UI
 
@@ -220,7 +224,12 @@ final class ShareViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = UIColor.black.withAlphaComponent(0.45)
 
+        // Dismiss/cancel ONLY for taps outside the card. The delegate
+        // rejects touches inside cardView, so every in-card control keeps
+        // normal interaction and can never trigger background cancellation.
         let tap = UITapGestureRecognizer(target: self, action: #selector(backgroundTapped))
+        tap.delegate = self
+        tap.cancelsTouchesInView = false
         view.addGestureRecognizer(tap)
 
         view.addSubview(cardView)
@@ -438,17 +447,23 @@ final class ShareViewController: UIViewController {
     private func sharePreviewedPDF(_ info: ShareFlowModel.PreviewInfo) {
         let url: URL
         if let saved = info.savedURL, FileManager.default.fileExists(atPath: saved.path) {
+            // Prefer the persisted Library copy; it must NEVER be deleted.
             url = saved
         } else {
-            // Storage failed earlier: still share the generated PDF.
-            let temporary = FileManager.default.temporaryDirectory
-                .appendingPathComponent(FilenameGenerator.fileName(for: info.document))
+            // Storage failed earlier: still share the generated PDF via a
+            // throwaway export copy, removed once sharing completes.
+            let temporary = TempFileStore.exportURL(named: FilenameGenerator.fileName(for: info.document))
             try? info.document.data.write(to: temporary, options: .atomic)
             url = temporary
+            tempExportURL = temporary
         }
 
         let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         activityVC.completionWithItemsHandler = { [weak self] _, _, _, _ in
+            if let tempExport = self?.tempExportURL {
+                try? FileManager.default.removeItem(at: tempExport)
+                self?.tempExportURL = nil
+            }
             self?.model?.complete()
         }
         if let popover = activityVC.popoverPresentationController {
@@ -469,6 +484,16 @@ final class ShareViewController: UIViewController {
         } else {
             extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
         }
+    }
+
+    // MARK: - UIGestureRecognizerDelegate
+
+    /// Only taps genuinely outside the card may cancel the flow. Decisions
+    /// delegate to `CardTapPolicy` so the shipped rule is unit-tested.
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldReceive touch: UITouch) -> Bool {
+        CardTapPolicy.cancels(locationInCard: touch.location(in: cardView),
+                              cardBounds: cardView.bounds)
     }
 
     @objc private func backgroundTapped() {

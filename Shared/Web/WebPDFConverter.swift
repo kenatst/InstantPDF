@@ -24,6 +24,38 @@ private enum WebTiming {
     static let stabilizationBudget: TimeInterval = 4
 }
 
+/// Wraps a continuation so it resolves exactly once, from any thread, no
+/// matter how many racing paths try to finish it. This is what makes
+/// timeout / delegate callback / cancellation / process-death mutually
+/// exclusive without ordering assumptions.
+///
+/// Internal (not private) so gate semantics are directly unit-testable.
+final class WebGate<T>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var resolved = false
+    private var resolvedValue: Result<T, Error>?
+    private let resolve: (Result<T, Error>) -> Void
+
+    init(_ resolve: @escaping (Result<T, Error>) -> Void) {
+        self.resolve = resolve
+    }
+
+    func succeed(_ value: T) { finish(.success(value)) }
+    func fail(_ error: Error) { finish(.failure(error)) }
+
+    private func finish(_ result: Result<T, Error>) {
+        lock.lock()
+        guard !resolved else {
+            lock.unlock()
+            return
+        }
+        resolved = true
+        resolvedValue = result
+        lock.unlock()
+        resolve(result)
+    }
+}
+
 @MainActor
 final class WebPDFConverter: NSObject, WKNavigationDelegate {
 
@@ -40,38 +72,13 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
 
     // MARK: - Resume-exactly-once gates
 
-    /// Wraps a continuation so it resolves exactly once, from any thread,
-    /// no matter how many racing paths try to finish it. This is what makes
-    /// timeout / delegate callback / cancellation / process-death mutually
-    /// exclusive without ordering assumptions.
-    private final class Gate<T>: @unchecked Sendable {
-        private let lock = NSLock()
-        private var resolved = false
-        private let resolve: (Result<T, Error>) -> Void
-
-        init(_ resolve: @escaping (Result<T, Error>) -> Void) {
-            self.resolve = resolve
-        }
-
-        func succeed(_ value: T) { finish(.success(value)) }
-        func fail(_ error: Error) { finish(.failure(error)) }
-
-        private func finish(_ result: Result<T, Error>) {
-            lock.lock()
-            guard !resolved else {
-                lock.unlock()
-                return
-            }
-            resolved = true
-            lock.unlock()
-            resolve(result)
-        }
-    }
-
     // Pending gates — non-nil only while the corresponding async wait runs.
-    private var navigationGate: Gate<Void>?
-    private var evaluationGate: Gate<Any>?
-    private var renderGate: Gate<Data>?
+    // `webViewWebContentProcessDidTerminate` fails ALL of them at once;
+    // WebGate guarantees exactly-once resolution even if a WebKit callback
+    // arrives afterwards for the same operation.
+    private var navigationGate: WebGate<Void>?
+    private var evaluationGate: WebGate<Any>?
+    private var renderGate: WebGate<Data>?
     private var navigationTimeoutTask: Task<Void, Never>?
     /// Set when the web process died AFTER a successful navigation; every
     /// later phase checks it and throws instead of rendering garbage.
@@ -164,7 +171,7 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
         do {
             try await withTaskCancellationHandler {
                 try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                    let gate = Gate<Void> { result in
+                    let gate = WebGate<Void> { result in
                         switch result {
                         case .success: continuation.resume()
                         case .failure(let error): continuation.resume(throwing: error)
@@ -251,14 +258,19 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
         }
     }
 
-    /// Web process death: while a navigation is pending it fails that
-    /// navigation; after the page loaded it marks the process dead so any
-    /// later phase throws `webProcessTerminated` immediately — the gate
-    /// guarantees exactly one outcome either way.
+    /// Web process death: fails EVERY currently pending continuation —
+    /// navigation, JS evaluation, and PDF render alike. WebGate guarantees
+    /// exactly-once resolution, so this is safe even when a WebKit callback
+    /// arrives afterwards for an already-failed operation. No continuation
+   /// can remain suspended, none can resume twice, and no conversion UI can
+    /// keep spinning against a dead process.
     nonisolated func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         Task { @MainActor in
             self.webProcessIsDead = true
-            self.navigationGate?.fail(ConversionError.webProcessTerminated)
+            let error = ConversionError.webProcessTerminated
+            self.navigationGate?.fail(error)
+            self.evaluationGate?.fail(error)
+            self.renderGate?.fail(error)
         }
     }
 
@@ -294,7 +306,7 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
 
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Any, Error>) in
-                let gate = Gate<Any> { result in
+                let gate = WebGate<Any> { result in
                     switch result {
                     case .success(let value): continuation.resume(returning: value)
                     case .failure(let error): continuation.resume(throwing: error)
@@ -343,7 +355,7 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
 
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
-                let gate = Gate<Data> { result in
+                let gate = WebGate<Data> { result in
                     switch result {
                     case .success(let data): continuation.resume(returning: data)
                     case .failure(let error): continuation.resume(throwing: error)
