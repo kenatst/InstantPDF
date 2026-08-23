@@ -11,14 +11,19 @@ struct IncomingItem: Equatable {
     let originalFilename: String?
     let sourceURL: URL?
     let source: ContentSource
-    let index: Int
+    var index: Int
+    /// Text that accompanied a link share (post caption, title). Kept so a
+    /// failed web conversion can still produce a useful text PDF instead of
+    /// a dead end. Never rendered when the web conversion succeeds.
+    var attachedText: String?
 
     init(kind: IncomingKind,
          title: String? = nil,
          originalFilename: String? = nil,
          sourceURL: URL? = nil,
          source: ContentSource = .unknown,
-         index: Int = 0) {
+         index: Int = 0,
+         attachedText: String? = nil) {
         self.id = UUID()
         self.kind = kind
         self.title = title
@@ -26,6 +31,7 @@ struct IncomingItem: Equatable {
         self.sourceURL = sourceURL
         self.source = source
         self.index = index
+        self.attachedText = attachedText
     }
 }
 

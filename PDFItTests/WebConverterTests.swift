@@ -200,7 +200,7 @@ final class WebCancellationRoutingTests: XCTestCase {
         let flags = FlagBox()
 
         let model = await MainActor.run {
-            ShareFlowModel(convert: { _, _, _ in
+            ShareFlowModel(convert: { _, _, _, _ in
                 throw ConversionError.cancelled
             }, storage: nil)
         }

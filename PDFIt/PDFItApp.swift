@@ -4,17 +4,25 @@ import SwiftUI
 struct PDFItApp: App {
     @AppStorage(AppSettingsKeys.hasCompletedOnboarding)
     private var hasCompletedOnboarding = false
+    @StateObject private var languageSetting = LanguageSetting.shared
 
     var body: some Scene {
         WindowGroup {
             if hasCompletedOnboarding {
                 MainTabView()
+                    .environment(\.pdfItLanguage, languageSetting.language)
+                    .environmentObject(languageSetting)
+                    // Identity token: switching language rebuilds the tree so
+                    // every localized string re-resolves immediately — no
+                    // relaunch required.
+                    .id(languageSetting.refreshToken)
             } else {
                 OnboardingView {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         hasCompletedOnboarding = true
                     }
                 }
+                .id(languageSetting.refreshToken)
             }
         }
     }
@@ -25,6 +33,7 @@ struct PDFItApp: App {
 struct MainTabView: View {
     @State private var selectedTab = 0
     @State private var showingSettings = false
+    @EnvironmentObject var languageSetting: LanguageSetting
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -47,7 +56,7 @@ struct MainTabView: View {
         .tint(Theme.Colors.orangePrimary)
         .sheet(isPresented: $showingSettings) {
             NavigationStack {
-                SettingsView()
+                SettingsView(languageSetting: languageSetting)
             }
         }
     }

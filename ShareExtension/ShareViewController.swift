@@ -209,9 +209,11 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
     private let actionStack: UIStackView = {
         let stack = UIStackView()
-        stack.axis = .horizontal
+        // Vertical by design: three localized actions side-by-side clip in
+        // DE/FR/IT (real-device bug). One full-width action per row.
+        stack.axis = .vertical
         stack.spacing = 10
-        stack.distribution = .fillEqually
+        stack.distribution = .fill
         return stack
     }()
 
@@ -410,9 +412,16 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
                 actions.append((String(localized: "Retry"), .primary, { [weak self] in
                     self?.model?.retryFailedWebConversion()
                 }))
-                actions.append((String(localized: "Save Link as PDF"), .secondary, { [weak self] in
-                    self?.model?.saveLinkAsText()
-                }))
+                // Shared text exists: never dead-end — convert it instead.
+                if ShareFlowModel.textFallbackItems(from: model?.readySummary) != nil {
+                    actions.append((String(localized: "Create PDF from Shared Text"), .secondary, { [weak self] in
+                        self?.model?.convertSharedTextFallback()
+                    }))
+                } else {
+                    actions.append((String(localized: "Save Link as PDF"), .secondary, { [weak self] in
+                        self?.model?.saveLinkAsText()
+                    }))
+                }
             } else {
                 actions.append((String(localized: "Try Again"), .primary, { [weak self] in
                     guard let self, let model = self.model, let context = self.extensionContext else { return }
@@ -527,9 +536,16 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
             }
             configuration.cornerStyle = .capsule
             let button = UIButton(configuration: configuration)
+            // Title wraps instead of clipping — long DE/FR/IT strings stay
+            // fully readable at every Dynamic Type size.
             button.setTitle(spec.title, for: .normal)
             button.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
-            button.heightAnchor.constraint(equalToConstant: 46).isActive = true
+            button.titleLabel?.adjustsFontForContentSizeCategory = true
+            button.titleLabel?.numberOfLines = 0
+            button.titleLabel?.lineBreakMode = .byWordWrapping
+            NSLayoutConstraint.activate([
+                button.heightAnchor.constraint(greaterThanOrEqualToConstant: 46),
+            ])
             button.accessibilityLabel = spec.title
             button.addAction(UIAction { _ in spec.handler() }, for: .touchUpInside)
             actionStack.addArrangedSubview(button)

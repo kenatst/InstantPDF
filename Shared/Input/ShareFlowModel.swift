@@ -33,6 +33,8 @@ final class ShareFlowModel: ObservableObject {
 
     /// What the Ready card shows — and, critically, what Create PDF works on.
     /// `items` is a constant: an empty Ready state cannot be constructed.
+    /// What the Ready card shows — and, critically, what Create PDF works on.
+    /// `items` is a constant: an empty Ready state cannot be constructed.
     struct ReadySummary: Equatable {
         let items: [IncomingItem]
         let title: String
@@ -43,6 +45,9 @@ final class ShareFlowModel: ObservableObject {
         let isPDFPassthrough: Bool
         let notice: String?
         let failingURL: URL?
+        /// Generated content can offer "Customize PDF" before creation;
+        /// passthrough PDFs must never be touched.
+        var allowsCustomization: Bool
 
         /// Builds the summary for extracted content. Returns nil for empty
         /// input — callers translate that into `.failed(.noUsableContent)`.
@@ -67,6 +72,12 @@ final class ShareFlowModel: ObservableObject {
             var paperSizeRelevant = true
             var isPDFPassthrough = false
             var failingURL: URL?
+
+            // Shared text that rode along with a link share (X caption etc.)
+            // is preserved for the graceful-fallback path in enterFailure.
+            let hasAttachedText = items.contains {
+                $0.attachedText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            }
 
             if items.count == 1, case .url(let url) = items[0].kind {
                 title = String(localized: "Webpage")
@@ -99,9 +110,21 @@ final class ShareFlowModel: ObservableObject {
                 symbolName = "square.stack.3d.up"
             }
 
-            var notice: String?
+            // A customization sheet before Create PDF only makes sense for
+            // generated content — passthrough PDFs stay byte-perfect.
+            let allowsCustomization = !isPDFPassthrough
+
+            let notice: String?
             if extracted.skippedCount > 0 {
-                notice = String(localized: "plural.skipped_media_notice \(extracted.skippedCount)")
+                var base = String(localized: "plural.skipped_media_notice \(extracted.skippedCount)")
+                if hasAttachedText {
+                    base += "\n" + String(localized: "Shared text will be used if the page can't load.")
+                }
+                notice = base
+            } else if hasAttachedText {
+                notice = String(localized: "Shared text will be used if the page can't load.")
+            } else {
+                notice = nil
             }
             return ReadySummary(items: items,
                                 title: title,
@@ -111,7 +134,8 @@ final class ShareFlowModel: ObservableObject {
                                 paperSizeRelevant: paperSizeRelevant,
                                 isPDFPassthrough: isPDFPassthrough,
                                 notice: notice,
-                                failingURL: failingURL)
+                                failingURL: failingURL,
+                                allowsCustomization: allowsCustomization)
         }
     }
 
@@ -132,7 +156,7 @@ final class ShareFlowModel: ObservableObject {
     /// uses an `InputProcessor` against the extension context; tests inject
     /// synthetic providers.
     typealias Extraction = @Sendable () async -> ExtractedInput
-    typealias Conversion = ([IncomingItem], ConversionOptions, @escaping (ConversionStage) -> Void) async throws -> ConvertedDocument
+    typealias Conversion = ([IncomingItem], ConversionOptions, PDFCustomization, @escaping (ConversionStage) -> Void) async throws -> ConvertedDocument
 
     private let performExtraction: Extraction?
     private let processor = InputProcessor()
@@ -172,10 +196,12 @@ final class ShareFlowModel: ObservableObject {
     /// Production wiring: real coordinator, shared storage, real processor
     /// driven by the extension context at start time.
     static func live(storage: StorageManager? = .shared) -> ShareFlowModel {
-        ShareFlowModel(convert: { items, options, onStage in
+        ShareFlowModel(convert: { items, options, customization, onStage in
             let coordinator = ConversionCoordinator()
             coordinator.onStageChange = onStage
-            return try await coordinator.convert(items: items, options: options)
+            return try await coordinator.convert(items: items,
+                                                 options: options,
+                                                 customization: customization)
         }, storage: storage)
     }
 
@@ -228,6 +254,9 @@ final class ShareFlowModel: ObservableObject {
 
     // MARK: - Conversion
 
+    /// Customization staged by the Customize sheet (main app + extension).
+    var customization = PDFCustomization()
+
     func createTapped() {
         guard let summary = readySummary else { return }
         runConversion(items: summary.items)
@@ -251,15 +280,23 @@ final class ShareFlowModel: ObservableObject {
         runConversion(items: [item])
     }
 
+    /// Explicit user request (error card button): convert ONLY the text the
+    /// host shared alongside the link. No-op when no text exists.
+    func convertSharedTextFallback() {
+        guard let items = Self.textFallbackItems(from: readySummary), !items.isEmpty else { return }
+        runConversion(items: items)
+    }
+
     private func runConversion(items: [IncomingItem]) {
         guard !finished else { return }
         let options = self.options
+        let customization = self.customization
         state = .converting(stage: .analyzing)
 
         conversionTask = Task { [weak self] in
             guard let self, !self.finished else { return }
             do {
-                let document = try await self.performConversion(items, options) { stage in
+                let document = try await self.performConversion(items, options, customization) { stage in
                     Task { @MainActor [weak self] in
                         guard let self, !self.finished else { return }
                         self.state = .converting(stage: stage)
@@ -326,10 +363,49 @@ final class ShareFlowModel: ObservableObject {
     }
 
     private func enterFailure(_ error: ConversionError) {
+        // Graceful fallback contract: when a web conversion fails but the
+        // host handed us usable text alongside the link (the standard X /
+        // Twitter payload shape), produce a readable PDF from that shared
+        // content instead of a dead-end failure card.
+        if isRecoverableWebFailure(error), let fallbackItems = Self.textFallbackItems(from: readySummary) {
+            cleanStaging()
+            runConversion(items: fallbackItems)
+            return
+        }
         // Safe even for retryable web failures: web items reference URLs,
         // not staged files, and non-web failures restart via re-extraction.
         cleanStaging()
         state = .failed(error)
+    }
+
+    /// Web failures worth recovering from via shared text. Cancellation is
+    /// deliberately absent — cancelling must remain cancelling.
+    private func isRecoverableWebFailure(_ error: ConversionError) -> Bool {
+        switch error {
+        case .pageUnreachable, .pageTooSlow, .webProcessTerminated, .invalidURL, .generationFailed:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Builds text-only items from every link item's attached text. Nil when
+    /// nothing usable was shared — then the normal failure UI applies.
+    static func textFallbackItems(from summary: ReadySummary?) -> [IncomingItem]? {
+        guard let summary else { return nil }
+        var index = 0
+        let items: [IncomingItem] = summary.items.compactMap { item in
+            guard let text = item.attachedText?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                  !text.isEmpty else { return nil }
+            defer { index += 1 }
+            return IncomingItem(kind: .text(text),
+                                title: item.title,
+                                sourceURL: item.sourceURL,
+                                source: .website,
+                                index: index)
+        }
+        return items.isEmpty ? nil : items
     }
 
     private func finish(success: Bool, notifyHost: Bool) {

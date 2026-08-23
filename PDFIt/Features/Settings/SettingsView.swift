@@ -19,13 +19,31 @@ struct SettingsView: View {
 
     @State private var recordCount = 0
     @State private var totalBytes: Int64 = 0
+    /// nil = System Default.
+    @State private var languageOverride: AppLanguage?
 
     private let storage = StorageManager.shared
     @Environment(\.dismiss) private var dismissView
     @Environment(\.colorScheme) private var colorScheme
+    /// Injected from the app root; selecting a language refreshes all UI live.
+    var languageSetting: LanguageSetting?
 
     var body: some View {
         Form {
+            Section {
+                Picker("Language", selection: languageBinding) {
+                    Text("System Default").tag(AppLanguage?.none)
+                    Divider()
+                    ForEach(AppLanguage.allCases) { language in
+                        Text(language.displayName).tag(AppLanguage?.some(language))
+                    }
+                }
+            } header: {
+                Text("Language")
+            } footer: {
+                Text("Applies to the app and the Share Extension. The system language is used until you pick one here.")
+            }
+
             Section("Conversion") {
                 Picker("Default Mode", selection: $defaultMode) {
                     ForEach(ConversionMode.allCases) { mode in
@@ -106,13 +124,24 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.Colors.orangePrimary)
             }
         }
-        .onAppear(perform: reloadStorage)
+        .onAppear {
+            languageOverride = LanguageManager.current
+            reloadStorage()
+        }
     }
 
     private var appVersion: String {
         let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
         return "\(short) (\(build))"
+    }
+
+    private var languageBinding: Binding<AppLanguage?> {
+        Binding(get: { languageOverride },
+                set: { newValue in
+                    languageOverride = newValue
+                    languageSetting?.select(newValue)
+                })
     }
 
     private func reloadStorage() {

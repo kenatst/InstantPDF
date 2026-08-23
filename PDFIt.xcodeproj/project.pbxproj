@@ -69,6 +69,23 @@
 		A100000000000000169 /* LocalizationAndProductTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000168 /* LocalizationAndProductTests.swift */; };
 		A100000000000000171 /* ScreenshotGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000170 /* ScreenshotGeneratorTests.swift */; };
 		A100000000000000173 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000172 /* Theme.swift */; };
+		A100000000000000181 /* URLPayloadNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000180 /* URLPayloadNormalizer.swift */; };
+		A100000000000000182 /* URLPayloadNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000180 /* URLPayloadNormalizer.swift */; };
+		A100000000000000184 /* PDFLibraryFolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000183 /* PDFLibraryFolder.swift */; };
+		A100000000000000185 /* PDFLibraryFolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000183 /* PDFLibraryFolder.swift */; };
+		A100000000000000187 /* PDFCustomization.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000186 /* PDFCustomization.swift */; };
+		A100000000000000188 /* PDFCustomization.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000186 /* PDFCustomization.swift */; };
+		A100000000000000190 /* PersonalizationApplier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000189 /* PersonalizationApplier.swift */; };
+		A100000000000000191 /* PersonalizationApplier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000189 /* PersonalizationApplier.swift */; };
+		A100000000000000193 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000192 /* LanguageManager.swift */; };
+		A100000000000000194 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000192 /* LanguageManager.swift */; };
+		A100000000000000196 /* ShareFlowEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000195 /* ShareFlowEnvironment.swift */; };
+		A100000000000000197 /* ShareFlowEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000195 /* ShareFlowEnvironment.swift */; };
+		A100000000000000199 /* LanguageSetting.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000198 /* LanguageSetting.swift */; };
+		A100000000000000201 /* LibraryCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000200 /* LibraryCards.swift */; };
+		A100000000000000203 /* LibrarySheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000202 /* LibrarySheets.swift */; };
+		A100000000000000205 /* CustomizePDFSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000204 /* CustomizePDFSheet.swift */; };
+		A100000000000000207 /* ProductTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000206 /* ProductTests.swift */; };
 		A100000000000000174 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000172 /* Theme.swift */; };
 /* End PBXBuildFile section */
 
@@ -146,6 +163,17 @@
 		A100000000000000168 /* LocalizationAndProductTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationAndProductTests.swift; sourceTree = "<group>"; };
 		A100000000000000170 /* ScreenshotGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotGeneratorTests.swift; sourceTree = "<group>"; };
 		A100000000000000172 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		A100000000000000180 /* URLPayloadNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLPayloadNormalizer.swift; sourceTree = "<group>"; };
+		A100000000000000183 /* PDFLibraryFolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFLibraryFolder.swift; sourceTree = "<group>"; };
+		A100000000000000186 /* PDFCustomization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFCustomization.swift; sourceTree = "<group>"; };
+		A100000000000000189 /* PersonalizationApplier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalizationApplier.swift; sourceTree = "<group>"; };
+		A100000000000000192 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
+		A100000000000000195 /* ShareFlowEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareFlowEnvironment.swift; sourceTree = "<group>"; };
+		A100000000000000198 /* LanguageSetting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageSetting.swift; sourceTree = "<group>"; };
+		A100000000000000200 /* LibraryCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryCards.swift; sourceTree = "<group>"; };
+		A100000000000000202 /* LibrarySheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySheets.swift; sourceTree = "<group>"; };
+		A100000000000000204 /* CustomizePDFSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomizePDFSheet.swift; sourceTree = "<group>"; };
+		A100000000000000206 /* ProductTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -200,6 +228,7 @@
 			children = (
 				A100000000000000115 /* Features */,
 				A100000000000000002 /* PDFItApp.swift */,
+				A100000000000000198 /* LanguageSetting.swift */,
 				A100000000000000077 /* Assets.xcassets */,
 			);
 			path = PDFIt;
@@ -229,6 +258,7 @@
 			isa = PBXGroup;
 			children = (
 				A100000000000000006 /* ImportFlowModel.swift */,
+				A100000000000000204 /* CustomizePDFSheet.swift */,
 			);
 			path = Import;
 			sourceTree = "<group>";
@@ -238,6 +268,8 @@
 			children = (
 				A100000000000000008 /* LibraryView.swift */,
 				A100000000000000010 /* PDFViewerView.swift */,
+				A100000000000000200 /* LibraryCards.swift */,
+				A100000000000000202 /* LibrarySheets.swift */,
 			);
 			path = Library;
 			sourceTree = "<group>";
@@ -291,6 +323,7 @@
 			children = (
 				A100000000000000034 /* InputClassification.swift */,
 				A100000000000000037 /* InputProcessor.swift */,
+				A100000000000000180 /* URLPayloadNormalizer.swift */,
 				A100000000000000140 /* ShareFlowModel.swift */,
 			);
 			path = Input;
@@ -301,6 +334,7 @@
 			children = (
 				A100000000000000040 /* ConversionOptions.swift */,
 				A100000000000000043 /* IncomingItem.swift */,
+				A100000000000000186 /* PDFCustomization.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -310,6 +344,7 @@
 			children = (
 				A100000000000000046 /* AspectLayout.swift */,
 				A100000000000000049 /* PDFAssembly.swift */,
+				A100000000000000189 /* PersonalizationApplier.swift */,
 			);
 			path = PDF;
 			sourceTree = "<group>";
@@ -319,6 +354,7 @@
 			children = (
 				A100000000000000052 /* StorageManager.swift */,
 				A100000000000000055 /* StoredPDFRecord.swift */,
+				A100000000000000183 /* PDFLibraryFolder.swift */,
 			);
 			path = Storage;
 			sourceTree = "<group>";
@@ -330,6 +366,8 @@
 				A100000000000000061 /* TempFileStore.swift */,
 				A100000000000000149 /* CardTapPolicy.swift */,
 				A100000000000000172 /* Theme.swift */,
+				A100000000000000192 /* LanguageManager.swift */,
+				A100000000000000195 /* ShareFlowEnvironment.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -361,6 +399,7 @@
 				A100000000000000145 /* WebConverterTests.swift */,
 				A100000000000000168 /* LocalizationAndProductTests.swift */,
 				A100000000000000170 /* ScreenshotGeneratorTests.swift */,
+				A100000000000000206 /* ProductTests.swift */,
 			);
 			path = PDFItTests;
 			sourceTree = "<group>";
@@ -538,6 +577,16 @@
 				A100000000000000141 /* ShareFlowModel.swift in Sources */,
 				A100000000000000150 /* CardTapPolicy.swift in Sources */,
 				A100000000000000173 /* Theme.swift in Sources */,
+				A100000000000000181 /* URLPayloadNormalizer.swift in Sources */,
+				A100000000000000184 /* PDFLibraryFolder.swift in Sources */,
+				A100000000000000187 /* PDFCustomization.swift in Sources */,
+				A100000000000000190 /* PersonalizationApplier.swift in Sources */,
+				A100000000000000193 /* LanguageManager.swift in Sources */,
+				A100000000000000196 /* ShareFlowEnvironment.swift in Sources */,
+				A100000000000000199 /* LanguageSetting.swift in Sources */,
+				A100000000000000201 /* LibraryCards.swift in Sources */,
+				A100000000000000203 /* LibrarySheets.swift in Sources */,
+				A100000000000000205 /* CustomizePDFSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -567,6 +616,12 @@
 				A100000000000000142 /* ShareFlowModel.swift in Sources */,
 				A100000000000000151 /* CardTapPolicy.swift in Sources */,
 				A100000000000000174 /* Theme.swift in Sources */,
+				A100000000000000182 /* URLPayloadNormalizer.swift in Sources */,
+				A100000000000000185 /* PDFLibraryFolder.swift in Sources */,
+				A100000000000000188 /* PDFCustomization.swift in Sources */,
+				A100000000000000191 /* PersonalizationApplier.swift in Sources */,
+				A100000000000000194 /* LanguageManager.swift in Sources */,
+				A100000000000000197 /* ShareFlowEnvironment.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -581,6 +636,7 @@
 				A100000000000000146 /* WebConverterTests.swift in Sources */,
 				A100000000000000169 /* LocalizationAndProductTests.swift in Sources */,
 				A100000000000000171 /* ScreenshotGeneratorTests.swift in Sources */,
+				A100000000000000207 /* ProductTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -788,6 +844,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) EXTENSION";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -819,6 +876,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) EXTENSION";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;

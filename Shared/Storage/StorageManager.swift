@@ -34,6 +34,9 @@ final class StorageManager {
     private var metadataFileURL: URL? {
         containerURL?.appendingPathComponent("Library/metadata.json")
     }
+    private var foldersFileURL: URL? {
+        containerURL?.appendingPathComponent("Library/folders.json")
+    }
 
     /// Production initializer: uses the real App Group container. A nil
     /// container (misconfigured entitlement/group) is a hard, surfaced
@@ -254,6 +257,156 @@ final class StorageManager {
         }
     }
 
+    // MARK: - Folders
+
+    /// All folders, sorted: explicit sortOrder first, then by name. Fresh
+    /// read from disk every call — same cross-process contract as records.
+    func fetchFolders() -> [PDFLibraryFolder] {
+        guard let foldersFile = foldersFileURL else { return [] }
+        return queue.sync {
+            Self.decodeFolders(from: foldersFile).sorted {
+                switch ($0.sortOrder, $1.sortOrder) {
+                case let (l?, r?): return l == r ? $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending : l < r
+                case (_?, nil): return true
+                case (nil, _?): return false
+                default: return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+                }
+            }
+        }
+    }
+
+    func createFolder(named rawName: String, date: Date = Date()) throws -> PDFLibraryFolder {
+        guard let foldersFile = foldersFileURL else {
+            throw StorageError.containerUnavailable
+        }
+        let sanitized = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sanitized.isEmpty else { throw FolderError.invalidName }
+
+        return try queue.sync {
+            try FileManager.default.createDirectory(at: foldersFile.deletingLastPathComponent(),
+                                                    withIntermediateDirectories: true)
+            let folder = PDFLibraryFolder(id: UUID(),
+                                          name: String(sanitized.prefix(80)),
+                                          createdAt: date,
+                                          modifiedAt: date,
+                                          sortOrder: nil)
+            _ = try coordinatedFoldersReadModifyWrite(foldersFile) { folders in
+                if !folders.contains(where: { $0.name.caseInsensitiveCompare(sanitized) == .orderedSame }) {
+                    folders.append(folder)
+                }
+                return folder
+            }
+            return folder
+        }
+    }
+
+    func renameFolder(_ folder: PDFLibraryFolder, to newName: String, date: Date = Date()) throws -> PDFLibraryFolder {
+        guard let foldersFile = foldersFileURL else {
+            throw StorageError.containerUnavailable
+        }
+        let sanitized = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sanitized.isEmpty else { throw FolderError.invalidName }
+        let renamed: PDFLibraryFolder = try queue.sync {
+            try coordinatedFoldersReadModifyWrite(foldersFile) { folders -> PDFLibraryFolder in
+                guard let index = folders.firstIndex(where: { $0.id == folder.id }) else {
+                    throw FolderError.notFound
+                }
+                folders[index].name = String(sanitized.prefix(80))
+                folders[index].modifiedAt = date
+                return folders[index]
+            }
+        }
+        return renamed
+    }
+
+    func deleteFolder(_ folder: PDFLibraryFolder,
+                      deletingDocuments: Bool,
+                      date: Date = Date()) throws {
+        guard let foldersFile = foldersFileURL,
+              let metadataFile = metadataFileURL else {
+            throw StorageError.containerUnavailable
+        }
+        try queue.sync {
+            // Folder removal first; document reassignment happens inside the
+            // SAME coordinated section as the record mutation below so the
+            // two indexes can never disagree.
+            _ = try coordinatedFoldersReadModifyWrite(foldersFile) { folders -> Bool in
+                guard folders.contains(where: { $0.id == folder.id }) else {
+                    throw FolderError.notFound
+                }
+                folders.removeAll { $0.id == folder.id }
+                return true
+            }
+
+            _ = try coordinatedReadModifyWrite(metadataFile) { records -> Bool in
+                let doomed = records.filter { $0.folderID == folder.id }
+                if deletingDocuments {
+                    for record in doomed {
+                        if let url = fileURL(for: record) {
+                            try? FileManager.default.removeItem(at: url)
+                        }
+                        if let thumbPath = record.thumbnailPath,
+                           let thumbURL = containerURL?.appendingPathComponent(thumbPath) {
+                            try? FileManager.default.removeItem(at: thumbURL)
+                        }
+                    }
+                    let doomedIDs = Set(doomed.map(\.id))
+                    records.removeAll { doomedIDs.contains($0.id) }
+                } else {
+                    // Folder-only deletion: every document returns to root.
+                    for index in records.indices where records[index].folderID == folder.id {
+                        records[index].folderID = nil
+                    }
+                }
+                return true
+            }
+        }
+    }
+
+    /// Moves documents into a folder (or back to root with `folderID: nil`).
+    func move(records: [StoredPDFRecord], toFolder folderID: UUID?, date: Date = Date()) throws {
+        guard folderID != nil else {
+            // Moving to root never needs a folder existence check.
+            return try moveRecords(records, toFolder: nil)
+        }
+        // Refuse moves into a folder that no longer exists — the UI would
+        // otherwise show a count against a phantom folder.
+        guard fetchFolders().contains(where: { $0.id == folderID }) else {
+            throw FolderError.notFound
+        }
+        try moveRecords(records, toFolder: folderID)
+    }
+
+    func moveRecords(_ records: [StoredPDFRecord], toFolder folderID: UUID?) throws {
+        guard let metadataFile = metadataFileURL else {
+            throw StorageError.containerUnavailable
+        }
+        let ids = Set(records.map(\.id))
+        try queue.sync {
+            _ = try coordinatedReadModifyWrite(metadataFile) { currentRecords -> Bool in
+                var changed = false
+                for index in currentRecords.indices where ids.contains(currentRecords[index].id) {
+                    currentRecords[index].folderID = folderID
+                    changed = true
+                }
+                return changed
+            }
+        }
+    }
+
+    /// Document counts per folder ID, computed over ONE fresh disk read.
+    /// Library grids call this once per render pass — no repeated scans.
+    func folderCounts() -> [UUID: Int] {
+        guard metadataFileURL != nil else { return [:] }
+        var counts: [UUID: Int] = [:]
+        for record in fetchRecords() {
+            if let id = record.folderID {
+                counts[id, default: 0] += 1
+            }
+        }
+        return counts
+    }
+
     // MARK: - Coordinated persistence core
 
     /// Shared coordinated read — never writes, never blocks other readers.
@@ -316,6 +469,46 @@ final class StorageManager {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return (try? decoder.decode([StoredPDFRecord].self, from: data)) ?? []
+    }
+
+    private static func decodeFolders(from file: URL) -> [PDFLibraryFolder] {
+        guard let data = try? Data(contentsOf: file) else { return [] }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return (try? decoder.decode([PDFLibraryFolder].self, from: data)) ?? []
+    }
+
+    private func coordinatedFoldersReadModifyWrite<T>(_ foldersFile: URL,
+                                                      mutation: (inout [PDFLibraryFolder]) throws -> T) throws -> T {
+        try fileAccessQueue.sync {
+            var result: Result<T, Error>!
+            var coordinationError: NSError?
+
+            coordinator.coordinate(writingItemAt: foldersFile,
+                                   options: [],
+                                   error: &coordinationError) { coordinatedURL in
+                do {
+                    var folders = Self.decodeFolders(from: coordinatedURL)
+                    let value = try mutation(&folders)
+                    let encoder = JSONEncoder()
+                    encoder.dateEncodingStrategy = .iso8601
+                    encoder.outputFormatting = [.sortedKeys]
+                    try encoder.encode(folders).write(to: coordinatedURL, options: .atomic)
+                    result = .success(value)
+                } catch {
+                    result = .failure(error)
+                }
+            }
+
+            if let coordinationError {
+                throw StorageError.writeFailed(underlying: coordinationError.localizedDescription)
+            }
+            switch result {
+            case .success(let value): return value
+            case .failure(let error): throw error
+            case nil: throw StorageError.writeFailed(underlying: "File coordination did not complete.")
+            }
+        }
     }
 
     private static func encodeRecords(_ records: [StoredPDFRecord], to file: URL) throws {

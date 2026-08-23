@@ -20,6 +20,11 @@ final class ImportFlowModel: ObservableObject {
     @Published var stage: ConversionStage = .analyzing
     @Published var result: ConvertedDocument?
     @Published var failure: ConversionError?
+    /// Staged by the Customize sheet; applied to the NEXT conversion.
+    @Published var customization = PDFCustomization()
+    /// Reorderable image URLs for multi-image imports (Customize sheet).
+    @Published var pendingImageOrder: [URL] = []
+    @Published var showingCustomize = false
 
     private var pendingItems: [IncomingItem] = []
     private var conversionTask: Task<Void, Never>?
@@ -106,25 +111,52 @@ final class ImportFlowModel: ObservableObject {
             showingError = true
             return
         }
+        // Multi-image import: expose the order for reordering in Customize.
+        let imageItems = items.filter(\.isImage)
+        if imageItems.count > 1,
+           case .image = items[0].kind {
+            pendingImageOrder = imageItems.compactMap { item in
+                if case .image(let url) = item.kind { return url }
+                return nil
+            }
+        } else {
+            pendingImageOrder = []
+        }
+
+        runConversion(items: items)
+    }
+
+    /// The actual engine call, split out so Retry and post-Customize
+    /// conversion reuse the exact same path.
+    private func runConversion(items: [IncomingItem]) {
         pendingItems = items
 
-        let options = ConversionOptions.fromSharedDefaults()
+        var options = ConversionOptions.fromSharedDefaults()
+        options.includeSourceURL = options.includeSourceURL || customization.includeSourceURLFooter
+        options.includeCreationDate = options.includeCreationDate || customization.includeCreationDateFooter
         let coordinator = ConversionCoordinator()
         isConverting = true
         stage = .analyzing
+
+        // Reordered images replace the original item order.
+        let effectiveItems = orderedImageItems(original: items)
 
         conversionTask = Task { [weak self] in
             coordinator.onStageChange = { stage in
                 Task { @MainActor in self?.stage = stage }
             }
             do {
-                let document = try await coordinator.convert(items: items, options: options)
+                let document = try await coordinator.convert(items: effectiveItems,
+                                                             options: options,
+                                                             customization: self?.customization ?? PDFCustomization())
                 _ = try? self?.storage.save(document: document)
                 // Success: staged files are no longer needed.
                 self?.cleanStaging()
                 self?.result = document
                 self?.isConverting = false
                 self?.showingResult = true
+                self?.customization = PDFCustomization()
+                self?.pendingImageOrder = []
             } catch is CancellationError {
                 self?.isConverting = false
             } catch let error as ConversionError where error == .cancelled {
@@ -139,6 +171,26 @@ final class ImportFlowModel: ObservableObject {
                 self?.showingError = true
             }
         }
+    }
+
+    /// Applies the user's image ordering (if any) to the item list.
+    private func orderedImageItems(original: [IncomingItem]) -> [IncomingItem] {
+        guard !pendingImageOrder.isEmpty else { return original }
+        var result: [IncomingItem] = []
+        var usedIndices = Set<Int>()
+        for url in pendingImageOrder {
+            if let index = original.firstIndex(where: { item in
+                if case .image(let itemURL) = item.kind { return itemURL == url }
+                return false
+            }), !usedIndices.contains(index) {
+                result.append(original[index])
+                usedIndices.insert(index)
+            }
+        }
+        for (index, item) in original.enumerated() where !usedIndices.contains(index) {
+            result.append(item)
+        }
+        return result
     }
 
     /// Starts a fresh staging session, releasing whatever a previous import
@@ -163,6 +215,11 @@ final class ImportFlowModel: ObservableObject {
         cleanStaging()
         isConverting = false
     }
+
+    /// Opens the Customize sheet pre-filled for the pending items.
+    func prepareCustomization() {
+        showingCustomize = true
+    }
 }
 
 /// Paste-a-link sheet with premium card design.
@@ -170,7 +227,13 @@ struct LinkEntrySheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @State private var text = ""
+    @State private var showClipboardSuggestion = true
     let onConvert: (URL) -> Void
+    /// Optional "Customize First" path — opens the Customize sheet with the URL staged.
+    var onCustomize: ((URL) -> Void)? = nil
+
+    /// Staged for the customize flow; consumed by HomeView.
+    @State private var pendingCustomizeURL: URL?
 
     var body: some View {
         NavigationStack {
@@ -196,6 +259,12 @@ struct LinkEntrySheet: View {
                             .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Color(hex: "F2F4F7"))
                     )
 
+                    if detectedHost != nil {
+                        Text("Will load from \(detectedHost ?? "")")
+                            .font(.caption)
+                            .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.secondary)
+                    }
+
                     Text("The page loads directly from its source website on your device, then converts to PDF.")
                         .font(.caption)
                         .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.secondary)
@@ -210,10 +279,24 @@ struct LinkEntrySheet: View {
                         onConvert(url)
                     }
                 } label: {
-                    Text("Convert to PDF")
+                    Text("Create PDF")
                 }
                 .primaryOrangeButton()
                 .disabled(normalizedURL() == nil)
+
+                if let onCustomize {
+                    Button {
+                        if let url = normalizedURL() {
+                            pendingCustomizeURL = url
+                            onCustomize(url)
+                        }
+                    } label: {
+                        Text("Customize First…")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .secondaryDarkButton()
+                    .disabled(normalizedURL() == nil)
+                }
 
                 Spacer()
             }
@@ -228,7 +311,52 @@ struct LinkEntrySheet: View {
                         .foregroundStyle(Theme.Colors.orangePrimary)
                 }
             }
+            // iOS paste-privacy contract: `hasStrings` never triggers the
+            // system paste banner and reads nothing. Only the explicit
+            // Paste tap reads the pasteboard.
+            .overlay(alignment: .top) {
+                if showClipboardSuggestion, text.isEmpty,
+                   UIPasteboard.general.hasStrings {
+                    HStack(spacing: 8) {
+                        Image(systemName: "doc.on.clipboard")
+                        Text("Paste copied link?")
+                            .font(.footnote.weight(.medium))
+                        Spacer()
+                        Button("Paste") {
+                            let candidate = UIPasteboard.general.string?
+                                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                            if Self.looksLikeURL(candidate) {
+                                text = candidate
+                            }
+                            showClipboardSuggestion = false
+                        }
+                        .font(.footnote.weight(.bold))
+                        .foregroundStyle(Theme.Colors.orangePrimary)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        Capsule().fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Color(hex: "F2F4F7"))
+                    )
+                    .padding(.horizontal, 20)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
         }
+    }
+
+    private var detectedHost: String? {
+        guard let url = normalizedURL() else { return nil }
+        return url.host
+    }
+
+    static func looksLikeURL(_ candidate: String) -> Bool {
+        var value = candidate.lowercased()
+        if !value.hasPrefix("http://") && !value.hasPrefix("https://") {
+            value = "https://" + value
+        }
+        guard let url = URL(string: value), url.host != nil else { return false }
+        return url.host?.contains(".") == true
     }
 
     private func normalizedURL() -> URL? {

@@ -32,7 +32,9 @@ final class ConversionCoordinator {
     private let imageConverter = ImagePDFConverter()
     private let existingPDFConverter = ExistingPDFConverter()
 
-    func convert(items: [IncomingItem], options: ConversionOptions) async throws -> ConvertedDocument {
+    func convert(items: [IncomingItem],
+                 options: ConversionOptions,
+                 customization: PDFCustomization = PDFCustomization()) async throws -> ConvertedDocument {
         guard !items.isEmpty else { throw ConversionError.noUsableContent }
         onStageChange?(.analyzing)
         try Task.checkCancellation()
@@ -128,11 +130,16 @@ final class ConversionCoordinator {
 
         onStageChange?(.creatingPDF)
         let merged = try PDFAssembly.merge(chunks)
-        let fallbackTitle = Self.fallbackTitle(for: items)
-        let title = (titleCandidate ?? fallbackTitle) ?? "PDF"
+        var title = (titleCandidate ?? Self.fallbackTitle(for: items)) ?? "PDF"
+        if let customTitle = customization.trimmedDocumentTitle {
+            title = customTitle
+        }
         let primarySource = Self.inferredSource(for: items)
 
-        let stamped = PDFAssembly.applyingMetadata(to: merged, title: title, sourceURL: primarySourceURL)
+        let stamped = PersonalizationApplier.apply(to: merged,
+                                                   customization: customization,
+                                                   options: options,
+                                                   sourceURL: primarySourceURL)
         return ConvertedDocument(data: stamped,
                                  pageCount: PDFAssembly.pageCount(of: stamped),
                                  suggestedTitle: title,

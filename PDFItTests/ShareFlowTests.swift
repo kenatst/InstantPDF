@@ -241,7 +241,7 @@ final class ShareFlowTests: XCTestCase {
         let stagingDirectory = try XCTUnwrap(extracted.staging?.directory)
 
         let model = await MainActor.run {
-            ShareFlowModel(convert: { items, options, onStage in
+            ShareFlowModel(convert: { items, options, _, onStage in
                 onStage(.creatingPDF)
                 return try await ConversionCoordinator().convert(items: items, options: options)
             }, storage: self.makeStorage())
@@ -275,7 +275,7 @@ final class ShareFlowTests: XCTestCase {
         XCTAssertNil(ShareFlowModel.ReadySummary.build(for: empty))
 
         let model = await MainActor.run {
-            ShareFlowModel(convert: { _, _, _ in
+            ShareFlowModel(convert: { _, _, _, _ in
                 XCTFail("Conversion must not run without items")
                 throw ConversionError.noUsableContent
             }, storage: nil)
@@ -311,7 +311,7 @@ final class ShareFlowTests: XCTestCase {
         let box = CaptureBox()
 
         let model = await MainActor.run {
-            ShareFlowModel(convert: { items, _, _ in
+            ShareFlowModel(convert: { items, _, _, _ in
                 box.received.append(items)
                 return ConvertedDocument(data: Data(), pageCount: 0,
                                          suggestedTitle: "stub", sourceURL: nil, source: .mixed)
@@ -433,7 +433,7 @@ final class ShareFlowTests: XCTestCase {
         let storage = makeStorage()
 
         let model = await MainActor.run {
-            ShareFlowModel(convert: { items, options, onStage in
+            ShareFlowModel(convert: { items, options, _, onStage in
                 onStage(.creatingPDF)
                 return try await ConversionCoordinator().convert(items: items, options: options)
             }, storage: storage)
@@ -461,7 +461,7 @@ final class ShareFlowTests: XCTestCase {
         let extracted = try await extract([ShareInput.textProvider("Survives storage loss")])
 
         let model = await MainActor.run {
-            ShareFlowModel(convert: { items, options, onStage in
+            ShareFlowModel(convert: { items, options, _, onStage in
                 onStage(.creatingPDF)
                 return try await ConversionCoordinator().convert(items: items, options: options)
             }, storage: nil) // App Group unavailable
@@ -497,7 +497,7 @@ final class ShareFlowTests: XCTestCase {
         let flags = FlagBox()
 
         let model = await MainActor.run {
-            ShareFlowModel(convert: { _, _, _ in
+            ShareFlowModel(convert: { _, _, _, _ in
                 try await Task.sleep(nanoseconds: 30_000_000_000) // far beyond the test
                 flags.fallbackAttempts += 1
                 throw ConversionError.generationFailed
@@ -546,7 +546,7 @@ final class ShareFlowTests: XCTestCase {
         let flags = FlagBox()
 
         let model = await MainActor.run {
-            ShareFlowModel(convert: { _, _, _ in
+            ShareFlowModel(convert: { _, _, _, _ in
                 XCTFail("No conversion should run")
                 throw ConversionError.generationFailed
             }, storage: nil)
@@ -574,7 +574,7 @@ final class ShareFlowTests: XCTestCase {
         XCTAssertEqual(extracted.skippedCount, 1)
 
         let model = await MainActor.run {
-            ShareFlowModel(convert: { _, _, _ in
+            ShareFlowModel(convert: { _, _, _, _ in
                 XCTFail("Nothing to convert")
                 throw ConversionError.generationFailed
             }, storage: nil)
@@ -597,7 +597,7 @@ final class ShareFlowTests: XCTestCase {
         let attempts = AttemptBox()
 
         let model = await MainActor.run {
-            ShareFlowModel(convert: { items, _, _ in
+            ShareFlowModel(convert: { items, _, _, _ in
                 attempts.attempts.append(items)
                 throw ConversionError.pageTooSlow
             }, storage: nil)

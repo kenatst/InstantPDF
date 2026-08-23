@@ -13,6 +13,10 @@ struct StoredPDFRecord: Codable, Identifiable, Equatable, Hashable {
     var sourceType: String
     var sourceURL: String?
     var thumbnailPath: String?
+    /// Folder this document lives in. nil = Library root. Optional in the
+    /// Codable sense too — records written before folders existed decode
+    /// with folderID == nil, which IS the migration (no rewrite needed).
+    var folderID: UUID?
 
     var displayName: String {
         (filename as NSString).deletingPathExtension

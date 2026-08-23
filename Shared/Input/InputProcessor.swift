@@ -41,6 +41,12 @@ final class InputProcessor {
             guard let attachments = item.attachments else { continue }
 
             for provider in attachments {
+                // X/Twitter and other social hosts register link payloads
+                // under nonstandard identifiers that hide the real URL/text
+                // representations from the typed lanes below. Registering the
+                // known-good identifiers makes loadItem resolve them; the
+                // provider's own registrations stay intact.
+                URLPayloadNormalizer.registerStandardRepresentations(on: provider)
                 if let incoming = await process(provider: provider,
                                                  itemTitle: itemTitle,
                                                  index: index,
@@ -54,6 +60,10 @@ final class InputProcessor {
         }
 
         result.items.sort { $0.index < $1.index }
+        // Provider normalization: any resolvable http(s) URL — including one
+        // embedded in shared text or recovered from an opaque payload —
+        // becomes real web content, with companion text kept as fallback.
+        result.items = URLPayloadNormalizer.normalize(result.items)
         return result
     }
 
@@ -142,6 +152,105 @@ final class InputProcessor {
                                 index: index)
         }
 
+        // Last chance for hosts like X that expose only opaque/text-ish
+        // payloads — resolve whatever URL or prose is actually in there.
+        if let recovered = await recoverFromOpaquePayload(provider: provider,
+                                                          itemTitle: itemTitle,
+                                                          index: index) {
+            return recovered
+        }
+
+        return nil
+    }
+
+    /// Second-chance lane for hosts like X that advertise only opaque or
+    /// text-ish representations. Runs after every typed lane failed; any
+    /// resolvable http(s) URL is treated as real web content, with leftover
+    /// prose retained as the item's attached-text fallback.
+    private func recoverFromOpaquePayload(provider: NSItemProvider,
+                                          itemTitle: String?,
+                                          index: Int) async -> IncomingItem? {
+        let registered = provider.registeredTypeIdentifiers
+
+        // 1) Any identifier whose raw bytes decode to something containing
+        //    an http(s) URL — covers UTF-8 data under odd type identifiers.
+        for identifier in registered where !InputClassification.isUnsupported(identifier) {
+            guard let any = try? await provider.loadItem(forTypeIdentifier: identifier, options: nil),
+                  let text = Self.stringPayload(from: any),
+                  let link = URLPayloadNormalizer.firstURL(in: text) else { continue }
+            let url = URLPayloadNormalizer.canonical(link.url)
+            let leftover = String(text[link.range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            return IncomingItem(kind: .url(url),
+                                title: itemTitle,
+                                sourceURL: url,
+                                source: ContentSource.detect(from: url),
+                                index: index,
+                                attachedText: leftover.isEmpty ? nil : leftover)
+        }
+
+        // 2) Plain text without its own typed lane (some hosts register only
+        //    public.data). Text WITH a URL becomes web content; pure prose
+        //    still converts as text instead of being dropped.
+        if let text = await loadTextFromAnyRepresentation(provider: provider) {
+            if let link = URLPayloadNormalizer.firstURL(in: text) {
+                let url = URLPayloadNormalizer.canonical(link.url)
+                let leftover = String(text[link.range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                return IncomingItem(kind: .url(url),
+                                    title: itemTitle,
+                                    sourceURL: url,
+                                    source: ContentSource.detect(from: url),
+                                    index: index,
+                                    attachedText: leftover.isEmpty ? nil : leftover)
+            }
+            if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return IncomingItem(kind: .text(text),
+                                    title: itemTitle,
+                                    source: .textEditor,
+                                    index: index)
+            }
+        }
+        return nil
+    }
+
+    /// Coerces a loaded representation into a string: String/NSString,
+    /// attributed strings, UTF-8 (and common legacy encodings) data.
+    static func stringPayload(from any: Any) -> String? {
+        if let string = any as? String { return string }
+        if let nsString = any as? NSString { return nsString as String }
+        if let attributed = any as? NSAttributedString { return attributed.string }
+        if let url = any as? URL { return url.absoluteString }
+        if let nsURL = any as? NSURL { return nsURL.absoluteString }
+        if let data = any as? Data {
+            for encoding in [String.Encoding.utf8,
+                             .isoLatin1,
+                             .windowsCP1252,
+                             .macOSRoman] {
+                if let string = String(data: data, encoding: encoding), !string.isEmpty {
+                    return string
+                }
+            }
+        }
+        if let number = any as? NSNumber { return number.stringValue }
+        return nil
+    }
+
+    /// Loads plain text from any registered textual/data representation.
+    private func loadTextFromAnyRepresentation(provider: NSItemProvider) async -> String? {
+        var candidates = provider.registeredTypeIdentifiers.filter { identifier in
+            identifier == UTType.plainText.identifier
+                || identifier == UTType.utf8PlainText.identifier
+                || identifier == UTType.text.identifier
+                || identifier == UTType.data.identifier
+                || identifier == "public.data"
+        }
+        if candidates.isEmpty {
+            candidates = provider.registeredTypeIdentifiers.filter { !InputClassification.isUnsupported($0) }
+        }
+        for identifier in candidates {
+            guard let any = try? await provider.loadItem(forTypeIdentifier: identifier, options: nil),
+                  let text = Self.stringPayload(from: any) else { continue }
+            if !text.isEmpty { return text }
+        }
         return nil
     }
 

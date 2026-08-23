@@ -20,8 +20,14 @@ import WebKit
 private enum WebTiming {
     /// Overall navigation timeout.
     static let navigationTimeout: TimeInterval = 20
-    /// Budget for waiting on lazy content to settle.
-    static let stabilizationBudget: TimeInterval = 4
+    /// Budget for waiting on lazy content to settle. Generous on purpose:
+    /// full-page capture must include below-the-fold lazy content.
+    static let stabilizationBudget: TimeInterval = 6
+    /// Budget for the bounded scroll pass that triggers lazy loading.
+    static let scrollPassBudget: TimeInterval = 8
+    /// Hard ceiling for the scroll pass regardless of page length — infinite
+    /// scroll pages must terminate.
+    static let maxScrollScreens: Int = 40
 }
 
 /// Wraps a continuation so it resolves exactly once, from any thread, no
@@ -86,13 +92,15 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
 
     // MARK: - Public API
 
-    /// Quick capture: the page as loaded, sliced into sensible pages.
-    /// Auto paper size keeps a single full-height page; fixed sizes paginate.
+    /// Quick capture: the WHOLE page as loaded — including lazy content —
+    /// sliced into sensible pages. Auto paper size keeps a single full-height
+    /// page; fixed sizes paginate. Never a viewport-only screenshot.
     func captureWebPage(url: URL, options: ConversionOptions) async throws -> Capture {
         let webView = try await loadInWebView(.url(url))
         defer { dismantle(webView) }
 
         try await stabilize(webView)
+        try await triggerLazyContent(webView)
         let height = try await measuredContentHeight(webView)
         let capture = try await renderToPDF(webView, height: height)
         let title = webView.title
@@ -110,6 +118,7 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
         defer { dismantle(webView) }
 
         try await stabilize(webView)
+        try await triggerLazyContent(webView)
         let height = try await measuredContentHeight(webView)
         let capture = try await renderToPDF(webView, height: height)
         let title = webView.title
@@ -329,6 +338,74 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
                 self?.evaluationGate?.fail(CancellationError())
             }
         }
+    }
+
+    // MARK: - Full-page lazy-content pass
+
+    /// Bounded scroll walk that triggers below-the-fold lazy loading before
+    /// the full-page render. Walks at most `maxScrollScreens` viewport-heights
+    /// within a time budget, then returns to the top. Infinite-scroll pages
+    /// therefore terminate by design; static pages finish early because the
+    /// scroll position reaches the measured bottom.
+    func triggerLazyContent(_ webView: WKWebView) async throws {
+        let deadline = Date().addingTimeInterval(WebTiming.scrollPassBudget)
+        var lastHeight: CGFloat = 0
+
+        for _ in 0..<WebTiming.maxScrollScreens {
+            try Task.checkCancellation()
+            if webProcessIsDead { throw ConversionError.webProcessTerminated }
+            guard Date() < deadline else { break }
+
+            let state = try await evaluateScrollState(webView)
+            // Page stopped growing AND we've reached its end → done.
+            if abs(state.height - lastHeight) < 1, state.isAtBottom { break }
+            lastHeight = state.height
+            if state.isAtBottom && state.height <= lastHeight {
+                break
+            }
+
+            _ = try? await evaluateScript(
+                "window.scrollTo(0, document.documentElement.scrollHeight);",
+                in: webView)
+            try? await Task.sleep(nanoseconds: 350_000_000)
+        }
+
+        // Settle any images the pass triggered, then restore the top.
+        _ = try? await evaluateScript("window.scrollTo(0, 0);", in: webView)
+        var settleHeight: CGFloat = -1
+        for _ in 0..<8 where Date() < deadline + 2 {
+            try Task.checkCancellation()
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            let height = (try? await measuredContentHeight(webView)) ?? 0
+            if abs(height - settleHeight) < 1 { break }
+            settleHeight = height
+        }
+    }
+
+    private struct ScrollState {
+        let height: CGFloat
+        let isAtBottom: Bool
+    }
+
+    private func evaluateScrollState(_ webView: WKWebView) async throws -> ScrollState {
+        let script = """
+        (function() {
+            var doc = document.documentElement;
+            var body = document.body;
+            var h = Math.max(doc ? doc.scrollHeight : 0,
+                             body ? body.scrollHeight : 0);
+            var y = window.pageYOffset || (doc ? doc.scrollTop : 0) || 0;
+            var view = window.innerHeight || 0;
+            return { height: h, y: y, atBottom: (y + view) >= (h - 40) };
+        })();
+        """
+        let raw = try await evaluateScript(script, in: webView)
+        guard let dict = raw as? [String: Any] else {
+            return ScrollState(height: .greatestFiniteMagnitude / 2, isAtBottom: false)
+        }
+        let height = (dict["height"] as? NSNumber).map { CGFloat(truncating: $0) } ?? 0
+        let atBottom = (dict["atBottom"] as? NSNumber)?.boolValue ?? false
+        return ScrollState(height: height, isAtBottom: atBottom)
     }
 
     private func measuredContentHeight(_ webView: WKWebView) async throws -> CGFloat {
