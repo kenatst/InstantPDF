@@ -25,6 +25,9 @@ final class ImportFlowModel: ObservableObject {
     /// Reorderable image URLs for multi-image imports (Customize sheet).
     @Published var pendingImageOrder: [URL] = []
     @Published var showingCustomize = false
+    /// Free user tapped a Pro-only conversion (link/web).
+    @Published var requiresPro: ProFeature?
+    @Published var showingPaywall = false
 
     private var pendingItems: [IncomingItem] = []
     private var conversionTask: Task<Void, Never>?
@@ -109,6 +112,18 @@ final class ImportFlowModel: ObservableObject {
         guard !items.isEmpty else {
             failure = .noUsableContent
             showingError = true
+            return
+        }
+        // FREE/PRO GATE: link & webpage conversion is a Pro feature
+        // (FeaturePolicy). Free users get the contextual paywall.
+        let containsWeb = items.contains { item in
+            if case .url = item.kind { return true }
+            if case .html = item.kind { return true }
+            return false
+        }
+        if containsWeb && !EntitlementCenter.shared.isPro {
+            requiresPro = .webConversion
+            showingPaywall = true
             return
         }
         // Multi-image import: expose the order for reordering in Customize.

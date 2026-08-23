@@ -101,6 +101,7 @@
 		A100000000000000231 /* OCRRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000229 /* OCRRouter.swift */; };
 		A100000000000000233 /* OCRRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000232 /* OCRRouterTests.swift */; };
 		A100000000000000236 /* ShareExtensionGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000235 /* ShareExtensionGuideView.swift */; };
+		A100000000000000238 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000237 /* PaywallView.swift */; };
 		A100000000000000174 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000172 /* Theme.swift */; };
 /* End PBXBuildFile section */
 
@@ -200,6 +201,7 @@
 		A100000000000000229 /* OCRRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRRouter.swift; sourceTree = "<group>"; };
 		A100000000000000232 /* OCRRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRRouterTests.swift; sourceTree = "<group>"; };
 		A100000000000000235 /* ShareExtensionGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionGuideView.swift; sourceTree = "<group>"; };
+		A100000000000000237 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -263,6 +265,7 @@
 		A100000000000000115 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				A100000000000000239 /* Paywall */,
 				A100000000000000223 /* Scan */,
 				A100000000000000116 /* Home */,
 				A100000000000000117 /* Import */,
@@ -271,6 +274,14 @@
 				A100000000000000120 /* Settings */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		A100000000000000239 /* Paywall */ = {
+			isa = PBXGroup;
+			children = (
+				A100000000000000237 /* PaywallView.swift */,
+			);
+			path = Paywall;
 			sourceTree = "<group>";
 		};
 		A100000000000000223 /* Scan */ = {
@@ -656,6 +667,7 @@
 				A100000000000000225 /* PDFTools.swift in Sources */,
 				A100000000000000230 /* OCRRouter.swift in Sources */,
 				A100000000000000236 /* ShareExtensionGuideView.swift in Sources */,
+				A100000000000000238 /* PaywallView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

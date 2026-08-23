@@ -54,6 +54,9 @@ struct HomeView: View {
             }
             .interactiveDismissDisabled(scanModel.isConvertingForUI)
         }
+        .sheet(isPresented: $importer.showingPaywall) {
+            PaywallView(feature: importer.requiresPro ?? .webConversion)
+        }
         .fileImporter(isPresented: $importer.showingFileImporter,
                       allowedContentTypes: [.image, .pdf, .text, .plainText, .html, .rtf],
                       allowsMultipleSelection: true) { result in
