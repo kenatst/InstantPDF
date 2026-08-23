@@ -110,6 +110,7 @@ enum Theme {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
+                .contentShape(Rectangle())
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(isEnabled ? Colors.orangeGradient : LinearGradient(colors: [Color.gray.opacity(0.5)], startPoint: .top, endPoint: .bottom))
@@ -131,6 +132,7 @@ enum Theme {
                 .foregroundStyle(colorScheme == .dark ? Color.white : Color(hex: "111215"))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
+                .contentShape(Rectangle())
                 .background(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(colorScheme == .dark ? Colors.darkCardSecondary : Color(hex: "EAECEF"))

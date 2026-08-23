@@ -2,13 +2,15 @@ import SwiftUI
 
 /// Three cinematic onboarding screens with character interaction and native SwiftUI compositions.
 struct OnboardingView: View {
-    @AppStorage(AppSettingsKeys.hasCompletedOnboarding, store: AppConfiguration.sharedDefaults)
+    @AppStorage(AppSettingsKeys.hasCompletedOnboarding)
     private var hasCompletedOnboarding = false
 
     @State private var page: Int
+    var onComplete: (() -> Void)?
 
-    init(initialPage: Int = 0) {
+    init(initialPage: Int = 0, onComplete: (() -> Void)? = nil) {
         _page = State(initialValue: initialPage)
+        self.onComplete = onComplete
     }
 
     var body: some View {
@@ -37,12 +39,12 @@ struct OnboardingView: View {
 
                     // Bottom Action Button
                     Button {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            if page < 2 {
+                        if page < 2 {
+                            withAnimation(.easeInOut(duration: 0.3)) {
                                 page += 1
-                            } else {
-                                hasCompletedOnboarding = true
                             }
+                        } else {
+                            completeOnboarding()
                         }
                     } label: {
                         Text(page < 2 ? "Continue" : "Get Started")
@@ -56,7 +58,7 @@ struct OnboardingView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Skip") {
-                        hasCompletedOnboarding = true
+                        completeOnboarding()
                     }
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Color.white.opacity(0.6))
@@ -67,6 +69,13 @@ struct OnboardingView: View {
             }
             .preferredColorScheme(.dark)
         }
+    }
+
+    private func completeOnboarding() {
+        hasCompletedOnboarding = true
+        UserDefaults.standard.set(true, forKey: AppSettingsKeys.hasCompletedOnboarding)
+        AppConfiguration.sharedDefaults.set(true, forKey: AppSettingsKeys.hasCompletedOnboarding)
+        onComplete?()
     }
 
     // MARK: - Screen 1: Anything to PDF + Floating Vector Tiles

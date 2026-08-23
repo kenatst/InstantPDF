@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct PDFItApp: App {
-    @AppStorage(AppSettingsKeys.hasCompletedOnboarding, store: AppConfiguration.sharedDefaults)
+    @AppStorage(AppSettingsKeys.hasCompletedOnboarding)
     private var hasCompletedOnboarding = false
 
     var body: some Scene {
@@ -10,7 +10,11 @@ struct PDFItApp: App {
             if hasCompletedOnboarding {
                 MainTabView()
             } else {
-                OnboardingView()
+                OnboardingView {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        hasCompletedOnboarding = true
+                    }
+                }
             }
         }
     }
