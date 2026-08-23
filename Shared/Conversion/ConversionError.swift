@@ -29,16 +29,16 @@ extension ConversionError {
     /// Short, human sentence for titles.
     var headline: String {
         switch self {
-        case .noUsableContent: return "Nothing to convert"
-        case .someContentSkipped: return "Some items were skipped"
-        case .fileTooLarge: return "This file is too large"
-        case .unreadableFile: return "This file couldn't be read"
-        case .invalidURL: return "This link isn't valid"
-        case .pageUnreachable: return "We couldn't load this page"
-        case .pageTooSlow: return "This page took too long to load"
-        case .webProcessTerminated: return "The page couldn't be rendered"
-        case .generationFailed: return "We couldn't create the PDF"
-        case .cancelled: return "Cancelled"
+        case .noUsableContent: return String(localized: "Nothing to convert")
+        case .someContentSkipped: return String(localized: "Some items were skipped")
+        case .fileTooLarge: return String(localized: "This file is too large")
+        case .unreadableFile: return String(localized: "This file couldn't be read")
+        case .invalidURL: return String(localized: "This link isn't valid")
+        case .pageUnreachable: return String(localized: "We couldn't load this page")
+        case .pageTooSlow: return String(localized: "This page took too long to load")
+        case .webProcessTerminated: return String(localized: "The page couldn't be rendered")
+        case .generationFailed: return String(localized: "We couldn't create the PDF")
+        case .cancelled: return String(localized: "Cancelled")
         }
     }
 
@@ -46,25 +46,33 @@ extension ConversionError {
     var message: String {
         switch self {
         case .noUsableContent:
-            return "The app didn't share content PDF It can work with."
+            return String(localized: "The app didn't share content PDF It can work with.")
         case .someContentSkipped:
-            return "Videos and audio aren't supported — everything else was converted."
+            return String(localized: "Videos and audio aren't supported — everything else was converted.")
         case .fileTooLarge(let name):
-            return name.map { "\($0) is over the 100 MB limit." } ?? "Files over 100 MB can't be converted safely."
+            if let name {
+                return String(localized: "error.file_too_large.named \(name)")
+            } else {
+                return String(localized: "Files over 100 MB can't be converted safely.")
+            }
         case .unreadableFile(let name):
-            return name.map { "We couldn't read \($0)." } ?? "The file couldn't be read."
+            if let name {
+                return String(localized: "error.unreadable_file.named \(name)")
+            } else {
+                return String(localized: "The file couldn't be read.")
+            }
         case .invalidURL:
-            return "Check the link and try again."
+            return String(localized: "Check the link and try again.")
         case .pageUnreachable:
-            return "Check your connection, then retry."
+            return String(localized: "Check your connection, then retry.")
         case .pageTooSlow:
-            return "The site never finished loading. Retry, or save the link as text."
+            return String(localized: "The site never finished loading. Retry, or save the link as text.")
         case .webProcessTerminated:
-            return "The site used too much memory to render. Try again, or save the link as text."
+            return String(localized: "The site used too much memory to render. Try again, or save the link as text.")
         case .generationFailed:
-            return "Something went wrong while creating the PDF. Please try again."
+            return String(localized: "Something went wrong while creating the PDF. Please try again.")
         case .cancelled:
-            return "The conversion was cancelled."
+            return String(localized: "The conversion was cancelled.")
         }
     }
 
@@ -88,9 +96,9 @@ extension ConversionError {
 
         var title: String {
             switch self {
-            case .retry: return "Retry"
-            case .saveLinkAsText: return "Save Link as PDF"
-            case .cancel: return "Cancel"
+            case .retry: return String(localized: "Retry")
+            case .saveLinkAsText: return String(localized: "Save Link as PDF")
+            case .cancel: return String(localized: "Cancel")
             }
         }
     }

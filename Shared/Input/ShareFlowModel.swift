@@ -60,7 +60,7 @@ final class ShareFlowModel: ObservableObject {
                 return false
             }.count
 
-            var title = "Content"
+            var title = String(localized: "Content")
             var subtitle: String?
             var symbolName = "doc"
             var availableModes: [ConversionMode] = [.quick]
@@ -69,41 +69,39 @@ final class ShareFlowModel: ObservableObject {
             var failingURL: URL?
 
             if items.count == 1, case .url(let url) = items[0].kind {
-                title = "Webpage"
+                title = String(localized: "Webpage")
                 subtitle = url.host
                 symbolName = items[0].source.symbolName
                 availableModes = [.quick, .clean, .reader]
                 failingURL = url
             } else if items.count == 1, case .html = items[0].kind {
-                title = "Web Content"
+                title = String(localized: "Web Content")
                 subtitle = items[0].sourceURL?.host
                 symbolName = "safari"
                 availableModes = [.quick, .clean, .reader]
                 failingURL = items[0].sourceURL
             } else if imageCount == items.count, imageCount > 0 {
-                title = imageCount == 1 ? "1 Image" : "\(imageCount) Images"
-                subtitle = imageCount > 1 ? "Order preserved" : nil
+                title = String(localized: "plural.images \(imageCount)")
+                subtitle = imageCount > 1 ? String(localized: "Order preserved") : nil
                 symbolName = "photo.on.rectangle"
             } else if textCount == items.count, textCount > 0 {
-                title = textCount == 1 ? "Text" : "\(textCount) Text Items"
+                title = textCount == 1 ? String(localized: "Text") : String(localized: "plural.text_items \(textCount)")
                 symbolName = "note.text"
             } else if pdfCount == 1, items.count == 1 {
-                title = "PDF Ready"
+                title = String(localized: "PDF Ready")
                 subtitle = items[0].originalFilename
                 symbolName = "doc.richtext"
                 isPDFPassthrough = true
                 paperSizeRelevant = false
             } else {
-                title = "\(items.count) Items"
-                subtitle = "Merged into one PDF"
+                title = String(localized: "plural.items \(items.count)")
+                subtitle = String(localized: "Merged into one PDF")
                 symbolName = "square.stack.3d.up"
             }
 
             var notice: String?
             if extracted.skippedCount > 0 {
-                notice = extracted.skippedCount == 1
-                    ? "1 video or audio item can't be converted"
-                    : "\(extracted.skippedCount) video or audio items can't be converted"
+                notice = String(localized: "plural.skipped_media_notice \(extracted.skippedCount)")
             }
             return ReadySummary(items: items,
                                 title: title,
@@ -247,7 +245,7 @@ final class ShareFlowModel: ObservableObject {
     func saveLinkAsText() {
         guard let url = readySummary?.failingURL else { return }
         let item = IncomingItem(kind: .text(url.absoluteString),
-                                title: "Saved Link",
+                                title: String(localized: "Saved Link"),
                                 sourceURL: url,
                                 source: .website)
         runConversion(items: [item])

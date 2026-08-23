@@ -52,3 +52,39 @@ enum AppConfiguration {
         return url
     }
 }
+
+/// Centralized external URLs used for support and legal UI.
+enum ExternalLinks {
+    /// Public Privacy Policy URL.
+    static let privacyPolicyURLString = "https://kenatst.github.io/InstantPDF/privacy"
+
+    /// Public Terms of Use URL.
+    static let termsOfUseURLString = "https://kenatst.github.io/InstantPDF/terms"
+
+    /// Public Support & feedback URL.
+    static let supportURLString = "https://github.com/kenatst/InstantPDF/issues"
+
+    /// Validated Privacy Policy URL.
+    static var privacyPolicy: URL {
+        guard let url = URL(string: privacyPolicyURLString), url.scheme == "https", url.host != nil else {
+            fatalError("PDF It: Invalid Privacy Policy URL configuration: '\(privacyPolicyURLString)'")
+        }
+        return url
+    }
+
+    /// Validated Terms of Use URL.
+    static var termsOfUse: URL {
+        guard let url = URL(string: termsOfUseURLString), url.scheme == "https", url.host != nil else {
+            fatalError("PDF It: Invalid Terms of Use URL configuration: '\(termsOfUseURLString)'")
+        }
+        return url
+    }
+
+    /// Validated Support URL.
+    static var support: URL {
+        guard let url = URL(string: supportURLString), url.scheme == "https", url.host != nil else {
+            fatalError("PDF It: Invalid Support URL configuration: '\(supportURLString)'")
+        }
+        return url
+    }
+}

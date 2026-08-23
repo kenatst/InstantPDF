@@ -16,11 +16,8 @@ enum FilenameGenerator {
     }
 
     /// The basename without extension, dated where it helps.
-    static func baseName(for document: ConvertedDocument, date: Date = Date()) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d MMM yyyy"
-        let dateSuffix = formatter.string(from: date)
-
+    static func baseName(for document: ConvertedDocument, date: Date = Date(), locale: Locale = .current) -> String {
+        let dateSuffix = date.formatted(.dateTime.day().month(.abbreviated).year().locale(locale))
         let title = sanitize(document.suggestedTitle)
 
         switch document.source {

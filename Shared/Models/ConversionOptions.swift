@@ -14,17 +14,17 @@ enum ConversionMode: String, Codable, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .quick: return "Quick"
-        case .clean: return "Clean"
-        case .reader: return "Reader"
+        case .quick: return String(localized: "Quick")
+        case .clean: return String(localized: "Clean")
+        case .reader: return String(localized: "Reader")
         }
     }
 
     var description: String {
         switch self {
-        case .quick: return "Faithful to the original"
-        case .clean: return "Webpage without the clutter"
-        case .reader: return "Just the text, beautifully laid out"
+        case .quick: return String(localized: "Faithful to the original")
+        case .clean: return String(localized: "Webpage without the clutter")
+        case .reader: return String(localized: "Just the text, beautifully laid out")
         }
     }
 }
@@ -40,9 +40,9 @@ enum PDFPaperSize: String, Codable, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .automatic: return "Auto"
+        case .automatic: return String(localized: "Auto")
         case .a4: return "A4"
-        case .letter: return "Letter"
+        case .letter: return String(localized: "Letter")
         }
     }
 
@@ -74,9 +74,9 @@ enum ImageQuality: String, Codable, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .standard: return "Smaller files"
-        case .balanced: return "Balanced"
-        case .high: return "Highest quality"
+        case .standard: return String(localized: "Smaller files")
+        case .balanced: return String(localized: "Balanced")
+        case .high: return String(localized: "Highest quality")
         }
     }
 

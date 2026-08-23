@@ -32,9 +32,9 @@ enum StorageError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .containerUnavailable:
-            return "Shared storage isn't available on this device."
+            return String(localized: "Shared storage isn't available on this device.")
         case .writeFailed(let underlying):
-            return "We couldn't save the PDF (\(underlying))."
+            return String(localized: "error.storage.write_failed \(underlying)")
         }
     }
 }

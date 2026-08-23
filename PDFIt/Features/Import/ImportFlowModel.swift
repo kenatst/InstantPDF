@@ -264,7 +264,7 @@ struct ConversionResultSheet: View {
                 PDFKitView(data: document.data)
                 let sizeText = ByteCountFormatter.string(fromByteCount: Int64(document.data.count),
                                                          countStyle: .file)
-                Text("\(document.pageCount) page\(document.pageCount == 1 ? "" : "s") · \(sizeText)")
+                Text(String(localized: "preview.pages_and_size \(document.pageCount) \(sizeText)"))
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 10)

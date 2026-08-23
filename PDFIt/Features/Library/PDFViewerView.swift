@@ -81,7 +81,7 @@ struct PDFViewerView: View {
                 dismiss()
             }
         } message: {
-            Text("This permanently removes \(record.displayName).pdf from your Library.")
+            Text(String(localized: "viewer.delete_message \(record.displayName)"))
         }
         .fileExporter(isPresented: $showingExporter,
                       document: fileURL.map { TemporaryPDFFile(url: $0) },

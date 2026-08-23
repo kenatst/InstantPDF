@@ -381,7 +381,7 @@ final class ShareFlowTests: XCTestCase {
     func testTextFlowFromProviderToValidPDF() async throws {
         let extracted = try await extract([ShareInput.textProvider("Hello from Notes")])
         let summary = try XCTUnwrap(ShareFlowModel.ReadySummary.build(for: extracted))
-        XCTAssertEqual(summary.title, "Text")
+        XCTAssertEqual(summary.title, String(localized: "Text"))
         XCTAssertEqual(summary.availableModes, [.quick])
 
         let document = try await ConversionCoordinator().convert(items: summary.items,
@@ -414,8 +414,8 @@ final class ShareFlowTests: XCTestCase {
         }
 
         let summary = try XCTUnwrap(ShareFlowModel.ReadySummary.build(for: extracted))
-        XCTAssertEqual(summary.title, "3 Images")
-        XCTAssertEqual(summary.subtitle, "Order preserved")
+        XCTAssertEqual(summary.title, String(localized: "plural.images \(3)"))
+        XCTAssertEqual(summary.subtitle, String(localized: "Order preserved"))
 
         let document = try await ConversionCoordinator().convert(items: summary.items,
                                                                  options: ConversionOptions())

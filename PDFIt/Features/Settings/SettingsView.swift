@@ -53,7 +53,7 @@ struct SettingsView: View {
             }
 
             Section {
-                LabeledContent("PDFs", value: "\(recordCount)")
+                LabeledContent("Saved PDFs", value: "\(recordCount)")
                 LabeledContent("Total size",
                                value: ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file))
             } header: {
@@ -63,17 +63,21 @@ struct SettingsView: View {
             }
 
             Section {
-                LabeledContent("Works offline", value: "Yes")
-                LabeledContent("Account required", value: "No")
+                LabeledContent("Local processing", value: String(localized: "On device"))
+                LabeledContent("No accounts or tracking", value: String(localized: "Yes"))
+                Link("Privacy Policy", destination: ExternalLinks.privacyPolicy)
+                Link("Terms of Use", destination: ExternalLinks.termsOfUse)
+                Link("Support & Feedback", destination: ExternalLinks.support)
             } header: {
-                Text("Privacy")
+                Text("Privacy & Support")
             } footer: {
-                Text("Conversions happen on your device whenever possible. Nothing is uploaded, tracked, or shared.")
+                Text("Your documents aren't uploaded to PDF It. Conversions run on your device. When you convert a webpage, PDF It loads the page directly from its website.")
             }
 
             Section("About") {
+                LabeledContent("App Name", value: "PDF It")
                 LabeledContent("Version", value: appVersion)
-                LabeledContent("Creator tag", value: "PDFs are tagged “PDF It” in their metadata")
+                LabeledContent("Creator tag", value: String(localized: "PDFs are tagged “PDF It” in their metadata"))
             }
         }
         .navigationTitle("Settings")

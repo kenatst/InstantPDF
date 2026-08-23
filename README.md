@@ -43,6 +43,27 @@ Both targets compile the same `Shared/` engine — there is exactly one conversi
 
 Both the app and the extension carry the App Group entitlement `group.com.kenatst.pdfit` (see `Config/*.entitlements`), used for the shared document Library and shared preferences. The identifier is defined once in `Shared/AppConfiguration.swift`.
 
+## Localization
+
+PDF It ships with full native localization in **5 locales** via Apple String Catalogs (`Localizable.xcstrings`):
+
+* 🇺🇸 **English** (`en`) — Primary Development Language
+* 🇫🇷 **French** (`fr`)
+* 🇪🇸 **Spanish** (`es`)
+* 🇩🇪 **German** (`de`)
+* 🇮🇹 **Italian** (`it`)
+
+All user-facing strings, plurals (pages, items, files, images, skipped media notices), formatting (locale-aware dates and byte counts), error headlines, and recovery actions are fully localized.
+
+## Privacy & App Store Compliance
+
+* **Privacy Manifest**: `Config/PrivacyInfo.xcprivacy` declares all Required Reason APIs (`NSPrivacyAccessedAPICategoryUserDefaults`, `NSPrivacyAccessedAPICategoryFileTimestamp`, `NSPrivacyAccessedAPICategoryDiskSpace`) with `NSPrivacyTracking: false` and zero data collection.
+* **App Store Documentation**:
+  * `APP_STORE_METADATA.md` — Multi-language store listings for EN, FR, ES, DE, IT with validated character and byte constraints.
+  * `APP_STORE_PRIVACY.md` — App Store Connect questionnaire answers and local-processing disclosures.
+  * `APP_REVIEW_NOTES.md` — Step-by-step test guide for Apple App Review.
+* **External Links**: Centralized in `Shared/AppConfiguration.swift` (`privacyPolicy`, `termsOfUse`, `support`).
+
 ## Building
 
 ```bash
@@ -55,10 +76,10 @@ Command line:
 
 ```bash
 xcodebuild build -project PDFIt.xcodeproj -scheme PDFIt \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+  -destination 'platform=iOS Simulator,name=iPhone 16e'
 
 xcodebuild test -project PDFIt.xcodeproj -scheme PDFIt \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+  -destination 'platform=iOS Simulator,name=iPhone 16e'
 ```
 
 - No CocoaPods / SPM / Tuist dependencies.
@@ -107,17 +128,16 @@ Human names, not timestamps: `Paris Trip — 22 Aug 2026.pdf`, `Thread — usern
 
 ## Testing
 
-96 tests cover input classification, attachment ordering, source detection, paper sizes, aspect fit/fill math, filename sanitization and collisions, text pagination (including empty-input safety), image pagination, existing-PDF byte preservation and page-box preservation, merge order, web-capture slicing, metadata stamping, and the storage contract (persistence, no auto-deletion, rename/duplicate/delete, collision handling, ghost pruning).
+Over 110 automated tests cover input classification, attachment ordering, source detection, paper sizes, aspect fit/fill math, filename sanitization and collisions, text pagination (including empty-input safety), image pagination, existing-PDF byte preservation and page-box preservation, merge order, web-capture slicing, metadata stamping, storage contracts, and comprehensive localization / privacy manifest verification.
 
-Beyond those unit foundations, the suite includes lifecycle regression coverage for the release-critical paths:
-
-- **Share flow (`ShareFlowModel`)** — synthetic `NSExtensionItem` + `NSItemProvider` harness drives the real chain `NSItemProvider → InputProcessor → Ready state → ConversionCoordinator → StorageManager`. Regressions covered: Ready state retains the exact extracted items through Create; staged files survive extraction until a terminal transition; cancellation propagates as cancellation (no fallback conversion, no generic failure); storage failure still previews the created PDF; web retry reuses retained items.
-- **Cross-process App Group persistence** — two independent `StorageManager` instances over one container verify the app and the extension see each other's saves/deletes without loss, including 16-way concurrent interleaved writes, collision checks against current disk state, and visibility of late external writes by long-lived instances.
-- **WKWebView pipeline & cancellation** — offline HTML captures exercise the navigation/stabilization/evaluation/render continuations directly; a regression test proves cancelling mid-capture resumes promptly as `CancellationError` (never orphaned to the timeout, never converted into a generation failure).
+- **Share flow (`ShareFlowModel`)** — synthetic `NSExtensionItem` + `NSItemProvider` harness drives the real chain `NSItemProvider → InputProcessor → Ready state → ConversionCoordinator → StorageManager`.
+- **Cross-process App Group persistence** — two independent `StorageManager` instances over one container verify the app and the extension see each other's saves/deletes without loss.
+- **WKWebView pipeline & cancellation** — offline HTML captures exercise the navigation/stabilization/evaluation/render continuations directly.
+- **Localization & Privacy (`LocalizationAndProductTests`)** — validates `PrivacyInfo.xcprivacy` schema, `Localizable.xcstrings` JSON and 5-locale completeness, pluralization rules, and external links.
 
 ```bash
 xcodebuild test -project PDFIt.xcodeproj -scheme PDFIt \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+  -destination 'platform=iOS Simulator,name=iPhone 16e'
 ```
 
 ## Known limitations
