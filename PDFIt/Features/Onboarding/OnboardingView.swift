@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Three screens, then out of the way.
 struct OnboardingView: View {
-    @AppStorage(AppSettingsKeys.hasCompletedOnboarding)
+    @AppStorage(AppSettingsKeys.hasCompletedOnboarding, store: AppConfiguration.sharedDefaults)
     private var hasCompletedOnboarding = false
 
     @State private var page = 0

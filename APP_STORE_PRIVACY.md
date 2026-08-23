@@ -38,50 +38,41 @@ PDF It ships with an official Apple Privacy Manifest (`PrivacyInfo.xcprivacy`) a
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>NSPrivacyTracking</key>
-    <false/>
-    <key>NSPrivacyTrackingDomains</key>
-    <array/>
-    <key>NSPrivacyCollectedDataTypes</key>
-    <array/>
-    <key>NSPrivacyAccessedAPITypes</key>
-    <array>
-        <!-- UserDefaults API -->
-        <dict>
-            <key>NSPrivacyAccessedAPIType</key>
-            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
-            <key>NSPrivacyAccessedAPITypeReasons</key>
-            <array>
-                <string>CA92.1</string>
-            </array>
-        </dict>
-        <!-- File Timestamp API -->
-        <dict>
-            <key>NSPrivacyAccessedAPIType</key>
-            <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
-            <key>NSPrivacyAccessedAPITypeReasons</key>
-            <array>
-                <string>C617.1</string>
-            </array>
-        </dict>
-        <!-- Disk Space API -->
-        <dict>
-            <key>NSPrivacyAccessedAPIType</key>
-            <string>NSPrivacyAccessedAPICategoryDiskSpace</string>
-            <key>NSPrivacyAccessedAPITypeReasons</key>
-            <array>
-                <string>E174.1</string>
-            </array>
-        </dict>
-    </array>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<!-- UserDefaults API -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>1C8F.1</string>
+			</array>
+		</dict>
+		<!-- File Timestamp API -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+				<string>3B52.1</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
 ```
 
 ### API Reasons Breakdown
-1. **`NSPrivacyAccessedAPICategoryUserDefaults` (`CA92.1`)**:
-   - Used to store user preferences (conversion mode, default paper size, image quality, footer toggles, onboarding completion flag) inside standard and App Group `UserDefaults`.
-2. **`NSPrivacyAccessedAPICategoryFileTimestamp` (`C617.1`)**:
-   - Used to read file creation/modification dates for local PDF records in the App Group storage library and manage temporary file lifecycle in the cache directory.
-3. **`NSPrivacyAccessedAPICategoryDiskSpace` (`E174.1`)**:
-   - Used to check available local disk space to safeguard against disk exhaustion when generating and saving large multi-page PDF documents.
+1. **`NSPrivacyAccessedAPICategoryUserDefaults` (`1C8F.1`)**:
+   - Used to store and synchronize user preferences (conversion mode, default paper size, image quality, footer toggles, onboarding completion flag) between the main application and the Share Extension within the `group.com.kenatst.pdfit` App Group container.
+2. **`NSPrivacyAccessedAPICategoryFileTimestamp` (`C617.1`, `3B52.1`)**:
+   - `C617.1`: Used to manage local cache files and temporary staging directories inside the app and App Group containers.
+   - `3B52.1`: Used to inspect file size and metadata of files explicitly selected by the user via the system Document Picker or received through the iOS Share Sheet.

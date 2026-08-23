@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct PDFItApp: App {
-    @AppStorage(AppSettingsKeys.hasCompletedOnboarding)
+    @AppStorage(AppSettingsKeys.hasCompletedOnboarding, store: AppConfiguration.sharedDefaults)
     private var hasCompletedOnboarding = false
 
     var body: some Scene {

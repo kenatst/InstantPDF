@@ -57,7 +57,7 @@ All user-facing strings, plurals (pages, items, files, images, skipped media not
 
 ## Privacy & App Store Compliance
 
-* **Privacy Manifest**: `Config/PrivacyInfo.xcprivacy` declares all Required Reason APIs (`NSPrivacyAccessedAPICategoryUserDefaults`, `NSPrivacyAccessedAPICategoryFileTimestamp`, `NSPrivacyAccessedAPICategoryDiskSpace`) with `NSPrivacyTracking: false` and zero data collection.
+* **Privacy Manifest**: `Config/PrivacyInfo.xcprivacy` declares Apple Required Reason APIs (`NSPrivacyAccessedAPICategoryUserDefaults`, `NSPrivacyAccessedAPICategoryFileTimestamp`) with `NSPrivacyTracking: false` and zero data collection.
 * **App Store Documentation**:
   * `APP_STORE_METADATA.md` — Multi-language store listings for EN, FR, ES, DE, IT with validated character and byte constraints.
   * `APP_STORE_PRIVACY.md` — App Store Connect questionnaire answers and local-processing disclosures.
@@ -148,5 +148,8 @@ xcodebuild test -project PDFIt.xcodeproj -scheme PDFIt \
 - App Groups on device require a matching provisioning profile; the simulator works without one.
 
 ## Privacy
-
-Conversions run on device whenever possible. No account, no analytics SDK, no advertising SDK, no content-upload backend, no trackers. The only network traffic is the webpage you explicitly ask to convert.
+ 
+PDF It processes and stores documents locally.
+Your documents are not uploaded to PDF It.
+When you explicitly convert a webpage, the app loads that page directly from its source website.
+No analytics, advertising, tracking, account system, or document backend is included.

@@ -10,17 +10,22 @@ final class LocalizationAndProductTests: XCTestCase {
         let terms = ExternalLinks.termsOfUse
         let support = ExternalLinks.support
 
-        XCTAssertEqual(privacy.scheme, "https")
-        XCTAssertEqual(terms.scheme, "https")
-        XCTAssertEqual(support.scheme, "https")
+        for (name, url) in [("Privacy Policy", privacy), ("Terms of Use", terms), ("Support", support)] {
+            XCTAssertEqual(url.scheme, "https", "\(name) scheme must be https")
+            guard let host = url.host else {
+                XCTFail("\(name) host must exist")
+                return
+            }
+            XCTAssertFalse(host.isEmpty, "\(name) host must not be empty")
+            XCTAssertFalse(host.contains("localhost"), "\(name) host must not be localhost")
+            XCTAssertFalse(host.contains("example.com"), "\(name) host must not be an example domain")
+            XCTAssertFalse(url.absoluteString.contains("PLACEHOLDER"), "\(name) must not be a placeholder")
+            XCTAssertFalse(url.absoluteString.isEmpty, "\(name) string must not be empty")
+        }
 
-        XCTAssertFalse(privacy.host?.isEmpty ?? true)
-        XCTAssertFalse(terms.host?.isEmpty ?? true)
-        XCTAssertFalse(support.host?.isEmpty ?? true)
-
-        XCTAssertTrue(privacy.absoluteString.contains("privacy"))
-        XCTAssertTrue(terms.absoluteString.contains("terms"))
-        XCTAssertTrue(support.absoluteString.contains("issues") || support.absoluteString.contains("support"))
+        XCTAssertTrue(privacy.path.contains("privacy"), "Privacy policy URL path should reflect privacy")
+        XCTAssertTrue(terms.path.contains("terms"), "Terms of use URL path should reflect terms")
+        XCTAssertTrue(support.path.contains("issues") || support.path.contains("support"), "Support URL path should reflect support destination")
     }
 
     // MARK: - Privacy Manifest Tests
@@ -55,22 +60,30 @@ final class LocalizationAndProductTests: XCTestCase {
         let collectedTypes = plist["NSPrivacyCollectedDataTypes"] as? [[String: Any]]
         XCTAssertEqual(collectedTypes?.count, 0, "NSPrivacyCollectedDataTypes must be empty")
 
-        // Accessed API Types must declare UserDefaults, FileTimestamp, DiskSpace
+        // Accessed API Types must declare ONLY audited categories
         guard let accessedTypes = plist["NSPrivacyAccessedAPITypes"] as? [[String: Any]] else {
             XCTFail("NSPrivacyAccessedAPITypes must be present")
             return
         }
 
         let typeCategories = accessedTypes.compactMap { $0["NSPrivacyAccessedAPIType"] as? String }
+        XCTAssertEqual(typeCategories.count, 2, "Must declare exactly 2 API categories (UserDefaults and FileTimestamp)")
         XCTAssertTrue(typeCategories.contains("NSPrivacyAccessedAPICategoryUserDefaults"), "Must declare UserDefaults API")
         XCTAssertTrue(typeCategories.contains("NSPrivacyAccessedAPICategoryFileTimestamp"), "Must declare FileTimestamp API")
-        XCTAssertTrue(typeCategories.contains("NSPrivacyAccessedAPICategoryDiskSpace"), "Must declare DiskSpace API")
+        XCTAssertFalse(typeCategories.contains("NSPrivacyAccessedAPICategoryDiskSpace"), "DiskSpace category must NOT be declared as no disk space API is called")
 
-        // Verify reason codes
+        // Verify exact audited reason codes
         for item in accessedTypes {
-            let reasons = item["NSPrivacyAccessedAPITypeReasons"] as? [String]
-            XCTAssertNotNil(reasons)
-            XCTAssertFalse(reasons?.isEmpty ?? true)
+            let category = item["NSPrivacyAccessedAPIType"] as? String
+            let reasons = item["NSPrivacyAccessedAPITypeReasons"] as? [String] ?? []
+            XCTAssertFalse(reasons.isEmpty, "Reasons for \(category ?? "") must not be empty")
+
+            if category == "NSPrivacyAccessedAPICategoryUserDefaults" {
+                XCTAssertEqual(reasons, ["1C8F.1"], "UserDefaults reason must be 1C8F.1 for App Group shared defaults")
+            } else if category == "NSPrivacyAccessedAPICategoryFileTimestamp" {
+                XCTAssertTrue(reasons.contains("C617.1"), "FileTimestamp must declare C617.1 for app/app group container files")
+                XCTAssertTrue(reasons.contains("3B52.1"), "FileTimestamp must declare 3B52.1 for user-selected/granted files")
+            }
         }
     }
 
