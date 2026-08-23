@@ -44,6 +44,16 @@ struct SettingsView: View {
                 Text("Applies to the app and the Share Extension. The system language is used until you pick one here.")
             }
 
+            Section {
+                NavigationLink {
+                    ShareExtensionGuideView()
+                } label: {
+                    Label("Use PDF It from any app", systemImage: "square.and.arrow.up")
+                }
+            } footer: {
+                Text("How to turn shared content into PDFs from Safari, X, Photos and more.")
+            }
+
             Section("Conversion") {
                 Picker("Default Mode", selection: $defaultMode) {
                     ForEach(ConversionMode.allCases) { mode in

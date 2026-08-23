@@ -300,6 +300,13 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
             return
         }
 
+        // PRO GATING: the extension never touches StoreKit. It reads the
+        // App Group entitlement snapshot published by the main app.
+        if !ExtensionEntitlement.isPro {
+            renderRequiresPro()
+            return
+        }
+
         let flowModel = ShareFlowModel.live(storage: storage)
         model = flowModel
         flowModel.onStateChange = { [weak self] state in
@@ -316,6 +323,48 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
               let summary = model.readySummary,
               summary.availableModes.indices.contains(modeSelector.selectedSegmentIndex) else { return }
         model.options.mode = summary.availableModes[modeSelector.selectedSegmentIndex]
+    }
+
+    // MARK: - Free-tier informational state
+
+    /// Rendered when the App Group snapshot says Free. Purely educational:
+    /// explains Pro, offers "Open PDF It" (deep link) and Cancel. No
+    /// StoreKit checkout ever happens here.
+    private func renderRequiresPro() {
+        [contentIconView, contentTitleLabel, contentSubtitleLabel, noticeLabel,
+         modeSelector, paperRow, createButton, activityRow, pdfPreview,
+         previewInfoLabel, errorIconView, errorTitleLabel, errorMessageLabel,
+         actionStack].forEach { $0.isHidden = true }
+        activityIndicator.stopAnimating()
+
+        contentIconView.image = UIImage(systemName: "crown.fill")
+        contentIconView.tintColor = UIColor(red: 1.0, green: 0.478, blue: 0.102, alpha: 1.0)
+        contentTitleLabel.text = String(localized: "Share Extension is part of PDF It Pro")
+        contentSubtitleLabel.text = String(localized: "Convert content directly from any app with PDF It Pro.")
+        contentSubtitleLabel.numberOfLines = 0
+        [contentIconView, contentTitleLabel, contentSubtitleLabel].forEach { $0.isHidden = false }
+
+        setActions([
+            (String(localized: "Open PDF It"), .primary, { [weak self] in
+                self?.openHostApp()
+            }),
+            (String(localized: "Cancel"), .secondary, { [weak self] in
+                self?.model?.cancelConversion()
+                self?.completeRequest(cancelled: true)
+            }),
+        ])
+        actionStack.isHidden = false
+    }
+
+    /// Deep links into the host app (paywall/tutorial entry).
+    private func openHostApp() {
+        guard let url = URL(string: "pdfit://open") else {
+            completeRequest(cancelled: true)
+            return
+        }
+        extensionContext?.open(url, completionHandler: { _ in
+            self.completeRequest(cancelled: true)
+        })
     }
 
     // MARK: - State rendering

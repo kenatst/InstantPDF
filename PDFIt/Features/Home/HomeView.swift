@@ -40,10 +40,10 @@ struct HomeView: View {
         .toolbar(.hidden, for: .navigationBar)
         .toolbar { homeToolbar }
         .onAppear { reloadRecords() }
-        .onChange(of: scenePhase) { newPhase in
+        .onChange(of: scenePhase, initial: false) { _, newPhase in
             if newPhase == .active { reloadRecords() }
         }
-        .onChange(of: importer.photoSelections) { _ in
+        .onChange(of: importer.photoSelections, initial: false) { _, _ in
             importer.handlePhotoSelections()
         }
         .sheet(isPresented: $showingScanner) {

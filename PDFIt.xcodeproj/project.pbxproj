@@ -94,6 +94,13 @@
 		A100000000000000217 /* ScanFlowModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000216 /* ScanFlowModel.swift */; };
 		A100000000000000219 /* ScanViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000218 /* ScanViews.swift */; };
 		A100000000000000221 /* ScanFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000220 /* ScanFlowTests.swift */; };
+		A100000000000000225 /* PDFTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000224 /* PDFTools.swift */; };
+		A100000000000000226 /* PDFTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000224 /* PDFTools.swift */; };
+		A100000000000000228 /* PDFToolsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000227 /* PDFToolsTests.swift */; };
+		A100000000000000230 /* OCRRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000229 /* OCRRouter.swift */; };
+		A100000000000000231 /* OCRRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000229 /* OCRRouter.swift */; };
+		A100000000000000233 /* OCRRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000232 /* OCRRouterTests.swift */; };
+		A100000000000000236 /* ShareExtensionGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000235 /* ShareExtensionGuideView.swift */; };
 		A100000000000000174 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000172 /* Theme.swift */; };
 /* End PBXBuildFile section */
 
@@ -188,6 +195,11 @@
 		A100000000000000216 /* ScanFlowModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanFlowModel.swift; sourceTree = "<group>"; };
 		A100000000000000218 /* ScanViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanViews.swift; sourceTree = "<group>"; };
 		A100000000000000220 /* ScanFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanFlowTests.swift; sourceTree = "<group>"; };
+		A100000000000000224 /* PDFTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFTools.swift; sourceTree = "<group>"; };
+		A100000000000000227 /* PDFToolsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFToolsTests.swift; sourceTree = "<group>"; };
+		A100000000000000229 /* OCRRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRRouter.swift; sourceTree = "<group>"; };
+		A100000000000000232 /* OCRRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRRouterTests.swift; sourceTree = "<group>"; };
+		A100000000000000235 /* ShareExtensionGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionGuideView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -310,6 +322,7 @@
 		A100000000000000120 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				A100000000000000235 /* ShareExtensionGuideView.swift */,
 				A100000000000000014 /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -318,6 +331,7 @@
 		A100000000000000121 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				A100000000000000234 /* Vision */,
 				A100000000000000222 /* Entitlements */,
 				A100000000000000122 /* Conversion */,
 				A100000000000000123 /* Input */,
@@ -368,6 +382,7 @@
 		A100000000000000125 /* PDF */ = {
 			isa = PBXGroup;
 			children = (
+				A100000000000000224 /* PDFTools.swift */,
 				A100000000000000046 /* AspectLayout.swift */,
 				A100000000000000049 /* PDFAssembly.swift */,
 				A100000000000000189 /* PersonalizationApplier.swift */,
@@ -383,6 +398,14 @@
 				A100000000000000183 /* PDFLibraryFolder.swift */,
 			);
 			path = Storage;
+			sourceTree = "<group>";
+		};
+		A100000000000000234 /* Vision */ = {
+			isa = PBXGroup;
+			children = (
+				A100000000000000229 /* OCRRouter.swift */,
+			);
+			path = Vision;
 			sourceTree = "<group>";
 		};
 		A100000000000000222 /* Entitlements */ = {
@@ -436,6 +459,8 @@
 				A100000000000000170 /* ScreenshotGeneratorTests.swift */,
 				A100000000000000206 /* ProductTests.swift */,
 				A100000000000000220 /* ScanFlowTests.swift */,
+				A100000000000000227 /* PDFToolsTests.swift */,
+				A100000000000000232 /* OCRRouterTests.swift */,
 			);
 			path = PDFItTests;
 			sourceTree = "<group>";
@@ -628,6 +653,9 @@
 				A100000000000000215 /* ScanSessionModel.swift in Sources */,
 				A100000000000000217 /* ScanFlowModel.swift in Sources */,
 				A100000000000000219 /* ScanViews.swift in Sources */,
+				A100000000000000225 /* PDFTools.swift in Sources */,
+				A100000000000000230 /* OCRRouter.swift in Sources */,
+				A100000000000000236 /* ShareExtensionGuideView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -665,6 +693,8 @@
 				A100000000000000197 /* ShareFlowEnvironment.swift in Sources */,
 				A100000000000000210 /* FeaturePolicy.swift in Sources */,
 				A100000000000000213 /* EntitlementCenter.swift in Sources */,
+				A100000000000000226 /* PDFTools.swift in Sources */,
+				A100000000000000231 /* OCRRouter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -681,6 +711,8 @@
 				A100000000000000171 /* ScreenshotGeneratorTests.swift in Sources */,
 				A100000000000000207 /* ProductTests.swift in Sources */,
 				A100000000000000221 /* ScanFlowTests.swift in Sources */,
+				A100000000000000228 /* PDFToolsTests.swift in Sources */,
+				A100000000000000233 /* OCRRouterTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
