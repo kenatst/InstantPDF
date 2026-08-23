@@ -173,21 +173,24 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: - Empty State
+    // MARK: - Empty State (Mascot only shown when library is empty)
 
     private var emptyState: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 18) {
             Spacer(minLength: 60)
-            MascotView(type: .hero, size: 160)
-            Text("No PDFs yet")
-                .font(.title2.weight(.bold))
-                .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
+            MascotView(type: .hero, size: 140)
 
-            Text("Share a webpage, photo, or document from any app and choose PDF It.")
-                .font(.subheadline)
-                .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 36)
+            VStack(spacing: 6) {
+                Text("Your PDFs will appear here.")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
+
+                Text("Share a webpage, photo, or document from any app and choose PDF It.")
+                    .font(.subheadline)
+                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 36)
+            }
             Spacer()
         }
     }

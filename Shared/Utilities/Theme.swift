@@ -54,7 +54,7 @@ enum Theme {
         static let darkCard = Color(hex: "18191E")
         static let darkCardSecondary = Color(hex: "22242B")
         
-        static let glow = Color(hex: "FF7A1A").opacity(0.3)
+        static let glow = Color(hex: "FF7A1A").opacity(0.25)
     }
 
     // Dynamic background for Light & Dark mode
@@ -165,7 +165,7 @@ extension View {
     }
 }
 
-// MARK: - Animated Mascot View
+// MARK: - Transparent Living Mascot View (No Clipping, Organic Shadow)
 
 struct MascotView: View {
     enum MascotType {
@@ -192,6 +192,7 @@ struct MascotView: View {
     var size: CGFloat = 180
     var enableFloatingAnimation: Bool = true
     
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isFloating = false
 
     private var image: UIImage? {
@@ -210,24 +211,52 @@ struct MascotView: View {
                     .resizable()
                     .scaledToFit()
             } else {
-                Image(systemName: "cloud.sun.fill")
+                Image(systemName: "cloud.fill")
                     .resizable()
                     .scaledToFit()
                     .foregroundStyle(Theme.Colors.orangePrimary)
             }
         }
         .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: size * 0.2, style: .continuous))
-        .shadow(color: Theme.Colors.orangePrimary.opacity(0.3), radius: 16, x: 0, y: 8)
-        .offset(y: (enableFloatingAnimation && isFloating) ? -6 : 0)
+        .shadow(color: Theme.Colors.orangePrimary.opacity(0.22), radius: 14, x: 0, y: 6)
+        .offset(y: (!reduceMotion && enableFloatingAnimation && isFloating) ? -4 : 0)
         .onAppear {
-            if enableFloatingAnimation {
+            if !reduceMotion && enableFloatingAnimation {
                 withAnimation(
-                    .easeInOut(duration: 2.2)
+                    .easeInOut(duration: 2.8)
                     .repeatForever(autoreverses: true)
                 ) {
                     isFloating = true
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Spark Particle Effect for Success State
+
+struct AmberSparkParticles: View {
+    @State private var animate = false
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<12) { i in
+                let angle = Double(i) * (360.0 / 12.0)
+                let radius: CGFloat = (i % 2 == 0) ? 80 : 105
+                Circle()
+                    .fill(i % 3 == 0 ? Color.white : Theme.Colors.orangeLight)
+                    .frame(width: (i % 3 == 0) ? 5 : 4, height: (i % 3 == 0) ? 5 : 4)
+                    .offset(
+                        x: cos(angle * .pi / 180) * (animate ? radius : radius * 0.4),
+                        y: sin(angle * .pi / 180) * (animate ? radius : radius * 0.4)
+                    )
+                    .opacity(animate ? 0.85 : 0.2)
+                    .scaleEffect(animate ? 1.0 : 0.4)
+            }
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                animate = true
             }
         }
     }

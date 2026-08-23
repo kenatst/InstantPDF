@@ -321,11 +321,15 @@ struct ConversionResultSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
+            VStack(spacing: 16) {
                 Spacer(minLength: 10)
 
-                // Mascot Celebratory Hero
-                MascotView(type: .success, size: 140)
+                // Mascot Celebratory Hero with Particle Sparks
+                ZStack {
+                    AmberSparkParticles()
+                    MascotView(type: .success, size: 145)
+                }
+                .frame(height: 155)
 
                 VStack(spacing: 6) {
                     Text("PDF Created! 🎉")
@@ -337,7 +341,7 @@ struct ConversionResultSheet: View {
                         .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.7) : Color.secondary)
                 }
 
-                // Document Metadata Card
+                // Document Metadata Card (slight overlap with mascot)
                 HStack(spacing: 14) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -411,7 +415,8 @@ struct ConversionErrorSheet: View {
         VStack(spacing: 20) {
             Spacer(minLength: 10)
 
-            MascotView(type: .error, size: 130)
+            // Empathetic Mascot with no looping motion for error state
+            MascotView(type: .error, size: 135, enableFloatingAnimation: false)
 
             VStack(spacing: 6) {
                 Text(error.headline)

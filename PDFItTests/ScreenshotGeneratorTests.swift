@@ -128,8 +128,14 @@ final class ScreenshotGeneratorTests: XCTestCase {
                                           source: .website)
         snapshotView(ConversionResultSheet(document: sampleDoc), name: "08_conversion_preview_sheet")
 
-        // 5. Seed Library with rich realistic documents for Home & Library Views
+        // 5. Empty Library State (Purge all records first to test pristine empty state)
         let storage = StorageManager.shared
+        for record in storage.fetchRecords() {
+            try? storage.delete(record)
+        }
+        snapshotView(NavigationStack { LibraryView() }.preferredColorScheme(.dark), name: "03_library_screen_empty_dark")
+
+        // 6. Seed Library with rich realistic documents for Home & Library Views
         let doc1 = ConvertedDocument(data: makeSamplePDFData(title: "Paris Trip Photos", pages: 5),
                                      pageCount: 5,
                                      suggestedTitle: "Paris Trip Photos",
@@ -156,15 +162,15 @@ final class ScreenshotGeneratorTests: XCTestCase {
         _ = try? storage.save(document: doc3)
         let record4 = try? storage.save(document: doc4)
 
-        // 6. Home Screen with Recent PDFs (Light & Dark)
+        // 7. Home Screen with Recent PDFs (Light & Dark)
         snapshotView(NavigationStack { HomeView(showingSettings: .constant(false)) }, name: "02_home_screen_light")
         snapshotView(NavigationStack { HomeView(showingSettings: .constant(false)) }.preferredColorScheme(.dark), name: "02_home_screen_dark")
 
-        // 7. Library Screen (Light & Dark)
+        // 8. Library Screen with Documents (Light & Dark)
         snapshotView(NavigationStack { LibraryView() }, name: "03_library_screen_light")
         snapshotView(NavigationStack { LibraryView() }.preferredColorScheme(.dark), name: "03_library_screen_dark")
 
-        // 8. PDF Viewer Screen (Light & Dark)
+        // 9. PDF Viewer Screen (Light & Dark)
         if let record = record4 ?? storage.fetchRecords().first {
             snapshotView(NavigationStack { PDFViewerView(record: record) }, name: "04_pdf_viewer_light")
             snapshotView(NavigationStack { PDFViewerView(record: record) }.preferredColorScheme(.dark), name: "04_pdf_viewer_dark")

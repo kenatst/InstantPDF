@@ -2,7 +2,7 @@ import SwiftUI
 import PhotosUI
 import UniformTypeIdentifiers
 
-/// Home: Premium character-led dashboard with quick action grid and recent documents.
+/// Home: Premium character-led dashboard with overlapping mascot hero and quick action grid.
 struct HomeView: View {
     @Binding var showingSettings: Bool
 
@@ -15,13 +15,14 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: 26) {
                 heroCard
+                    .padding(.top, 14)
+
                 actionGrid
                 recentSection
             }
             .padding(.horizontal, 20)
-            .padding(.top, 8)
             .padding(.bottom, 32)
         }
         .themeBackground()
@@ -82,35 +83,41 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Hero Card
+    // MARK: - Hero Card with Overlapping Living Character
 
     private var heroCard: some View {
         Button {
             importer.showingFileImporter = true
         } label: {
-            HStack(alignment: .center, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Create PDF")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+            ZStack(alignment: .trailing) {
+                // Main Gradient Card Background
+                HStack(alignment: .center, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Create PDF")
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
 
-                    Text("Convert anything into a PDF instantly.")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.white.opacity(0.9))
-                        .lineLimit(2)
+                        Text("Photos, webpages, text and files.")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Color.white.opacity(0.92))
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 24)
+                    .padding(.leading, 20)
+                    .padding(.trailing, 110) // Reserve room for overlapping mascot
                 }
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(Theme.Colors.heroCardGradient)
+                        .shadow(color: Theme.Colors.orangePrimary.opacity(0.35), radius: 14, x: 0, y: 6)
+                )
 
-                Spacer()
-
-                MascotView(type: .hero, size: 84, enableFloatingAnimation: false)
+                // Overlapping Mascot protruding from top/right edge
+                MascotView(type: .hero, size: 134, enableFloatingAnimation: true)
+                    .offset(x: 8, y: -20)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 18)
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Theme.Colors.heroCardGradient)
-                    .shadow(color: Theme.Colors.orangePrimary.opacity(0.35), radius: 14, x: 0, y: 6)
-            )
         }
         .buttonStyle(.plain)
     }
