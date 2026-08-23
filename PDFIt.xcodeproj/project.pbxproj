@@ -86,6 +86,14 @@
 		A100000000000000203 /* LibrarySheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000202 /* LibrarySheets.swift */; };
 		A100000000000000205 /* CustomizePDFSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000204 /* CustomizePDFSheet.swift */; };
 		A100000000000000207 /* ProductTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000206 /* ProductTests.swift */; };
+		A100000000000000209 /* FeaturePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000208 /* FeaturePolicy.swift */; };
+		A100000000000000210 /* FeaturePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000208 /* FeaturePolicy.swift */; };
+		A100000000000000212 /* EntitlementCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000211 /* EntitlementCenter.swift */; };
+		A100000000000000213 /* EntitlementCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000211 /* EntitlementCenter.swift */; };
+		A100000000000000215 /* ScanSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000214 /* ScanSessionModel.swift */; };
+		A100000000000000217 /* ScanFlowModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000216 /* ScanFlowModel.swift */; };
+		A100000000000000219 /* ScanViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000218 /* ScanViews.swift */; };
+		A100000000000000221 /* ScanFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000220 /* ScanFlowTests.swift */; };
 		A100000000000000174 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000172 /* Theme.swift */; };
 /* End PBXBuildFile section */
 
@@ -174,6 +182,12 @@
 		A100000000000000202 /* LibrarySheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySheets.swift; sourceTree = "<group>"; };
 		A100000000000000204 /* CustomizePDFSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomizePDFSheet.swift; sourceTree = "<group>"; };
 		A100000000000000206 /* ProductTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductTests.swift; sourceTree = "<group>"; };
+		A100000000000000208 /* FeaturePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeaturePolicy.swift; sourceTree = "<group>"; };
+		A100000000000000211 /* EntitlementCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntitlementCenter.swift; sourceTree = "<group>"; };
+		A100000000000000214 /* ScanSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanSessionModel.swift; sourceTree = "<group>"; };
+		A100000000000000216 /* ScanFlowModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanFlowModel.swift; sourceTree = "<group>"; };
+		A100000000000000218 /* ScanViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanViews.swift; sourceTree = "<group>"; };
+		A100000000000000220 /* ScanFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanFlowTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -237,6 +251,7 @@
 		A100000000000000115 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				A100000000000000223 /* Scan */,
 				A100000000000000116 /* Home */,
 				A100000000000000117 /* Import */,
 				A100000000000000118 /* Library */,
@@ -244,6 +259,16 @@
 				A100000000000000120 /* Settings */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		A100000000000000223 /* Scan */ = {
+			isa = PBXGroup;
+			children = (
+				A100000000000000214 /* ScanSessionModel.swift */,
+				A100000000000000216 /* ScanFlowModel.swift */,
+				A100000000000000218 /* ScanViews.swift */,
+			);
+			path = Scan;
 			sourceTree = "<group>";
 		};
 		A100000000000000116 /* Home */ = {
@@ -293,6 +318,7 @@
 		A100000000000000121 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				A100000000000000222 /* Entitlements */,
 				A100000000000000122 /* Conversion */,
 				A100000000000000123 /* Input */,
 				A100000000000000124 /* Models */,
@@ -359,6 +385,15 @@
 			path = Storage;
 			sourceTree = "<group>";
 		};
+		A100000000000000222 /* Entitlements */ = {
+			isa = PBXGroup;
+			children = (
+				A100000000000000208 /* FeaturePolicy.swift */,
+				A100000000000000211 /* EntitlementCenter.swift */,
+			);
+			path = Entitlements;
+			sourceTree = "<group>";
+		};
 		A100000000000000127 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
@@ -400,6 +435,7 @@
 				A100000000000000168 /* LocalizationAndProductTests.swift */,
 				A100000000000000170 /* ScreenshotGeneratorTests.swift */,
 				A100000000000000206 /* ProductTests.swift */,
+				A100000000000000220 /* ScanFlowTests.swift */,
 			);
 			path = PDFItTests;
 			sourceTree = "<group>";
@@ -587,6 +623,11 @@
 				A100000000000000201 /* LibraryCards.swift in Sources */,
 				A100000000000000203 /* LibrarySheets.swift in Sources */,
 				A100000000000000205 /* CustomizePDFSheet.swift in Sources */,
+				A100000000000000209 /* FeaturePolicy.swift in Sources */,
+				A100000000000000212 /* EntitlementCenter.swift in Sources */,
+				A100000000000000215 /* ScanSessionModel.swift in Sources */,
+				A100000000000000217 /* ScanFlowModel.swift in Sources */,
+				A100000000000000219 /* ScanViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -622,6 +663,8 @@
 				A100000000000000191 /* PersonalizationApplier.swift in Sources */,
 				A100000000000000194 /* LanguageManager.swift in Sources */,
 				A100000000000000197 /* ShareFlowEnvironment.swift in Sources */,
+				A100000000000000210 /* FeaturePolicy.swift in Sources */,
+				A100000000000000213 /* EntitlementCenter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -637,6 +680,7 @@
 				A100000000000000169 /* LocalizationAndProductTests.swift in Sources */,
 				A100000000000000171 /* ScreenshotGeneratorTests.swift in Sources */,
 				A100000000000000207 /* ProductTests.swift in Sources */,
+				A100000000000000221 /* ScanFlowTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

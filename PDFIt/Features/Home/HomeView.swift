@@ -9,9 +9,11 @@ struct HomeView: View {
     @Binding var showingSettings: Bool
 
     @StateObject private var importer = ImportFlowModel()
+    @StateObject private var scanModel = ScanFlowModel()
     @State private var records: [StoredPDFRecord] = []
     /// Hero tap opens the polished source chooser instead of guessing.
     @State private var showingSourceChooser = false
+    @State private var showingScanner = false
 
     private let storage = StorageManager.shared
     @Environment(\.scenePhase) private var scenePhase
@@ -25,6 +27,8 @@ struct HomeView: View {
 
                 heroCard
 
+                scanCard
+
                 actionGrid
 
                 recentSection
@@ -34,26 +38,21 @@ struct HomeView: View {
         }
         .themeBackground()
         .toolbar(.hidden, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showingSettings = true
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.subheadline)
-                        .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.8) : Color(hex: "1C1D22"))
-                        .padding(8)
-                        .background(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05), in: Circle())
-                }
-                .accessibilityLabel("Settings")
-            }
-        }
+        .toolbar { homeToolbar }
         .onAppear { reloadRecords() }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { reloadRecords() }
+        .onChange(of: scenePhase) { newPhase in
+            if newPhase == .active { reloadRecords() }
         }
-        .onChange(of: importer.photoSelections) { _, _ in
+        .onChange(of: importer.photoSelections) { _ in
             importer.handlePhotoSelections()
+        }
+        .sheet(isPresented: $showingScanner) {
+            ScanReviewView(model: scanModel) { documents in
+                for document in documents {
+                    _ = try? storage.save(document: document)
+                }
+            }
+            .interactiveDismissDisabled(scanModel.isConvertingForUI)
         }
         .fileImporter(isPresented: $importer.showingFileImporter,
                       allowedContentTypes: [.image, .pdf, .text, .plainText, .html, .rtf],
@@ -130,6 +129,56 @@ struct HomeView: View {
         .accessibilityElement(children: .combine)
     }
 
+    // MARK: - Scan hero (primary Free action)
+
+    private var scanCard: some View {
+        Button {
+            scanModel.showingCamera = true
+        } label: {
+            HStack(spacing: 14) {
+                ZStack(alignment: .bottomTrailing) {
+                    MascotView(type: .hero, size: 56, enableFloatingAnimation: false)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "doc.viewfinder")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.Colors.orangePrimary)
+                        .padding(7)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(colorScheme == .dark ? Theme.Colors.darkCard : Color.white)
+                        )
+                }
+                .frame(width: 64, height: 58)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Scan Document")
+                        .font(.subheadline.weight(.bold))
+                    Text("Turn paper into a clean PDF in seconds.")
+                        .font(.caption2)
+                        .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.5) : Color.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.4) : Color(hex: "9AA0AA"))
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Color(hex: "FFF3E8"))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .strokeBorder(Theme.Colors.orangePrimary.opacity(0.35), lineWidth: 1.5)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(!ScanCameraView.isSupported)
+        .accessibilityLabel("Scan Document")
+    }
+
     // MARK: - Hero card with mascot escaping the boundary
 
     private var heroCard: some View {
@@ -194,6 +243,12 @@ struct HomeView: View {
                 MascotActionCard(category: .link)
             }
             .buttonStyle(.plain)
+            .overlay(alignment: .topTrailing) {
+                if !EntitlementCenter.shared.isPro {
+                    ProBadge()
+                        .padding(8)
+                }
+            }
 
             Button {
                 importer.showingTextEntry = true
@@ -254,12 +309,46 @@ struct HomeView: View {
     private func reloadRecords() {
         records = storage.fetchRecords()
     }
+
+    // MARK: - Toolbar (extracted to keep body type-checkable)
+
+    @ToolbarContentBuilder
+    private var homeToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                showingSettings = true
+            } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.8) : Color(hex: "1C1D22"))
+                    .padding(8)
+                    .background(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05), in: Circle())
+            }
+            .accessibilityLabel("Settings")
+        }
+    }
 }
 
 /// Navigation routes shared by Home and Library.
 enum LibraryRoute: Hashable {
     case library
     case viewer(StoredPDFRecord)
+}
+
+// MARK: - Restrained Pro badge
+
+struct ProBadge: View {
+    var body: some View {
+        Text("PRO")
+            .font(.system(size: 9, weight: .black, design: .rounded))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(
+                Capsule().fill(Theme.Colors.orangeGradient)
+            )
+            .accessibilityLabel("Pro feature")
+    }
 }
 
 // MARK: - Source chooser (hero CTA target)
