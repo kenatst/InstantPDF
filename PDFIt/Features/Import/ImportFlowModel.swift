@@ -165,38 +165,67 @@ final class ImportFlowModel: ObservableObject {
     }
 }
 
-/// Paste-a-link sheet.
+/// Paste-a-link sheet with premium card design.
 struct LinkEntrySheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @State private var text = ""
     let onConvert: (URL) -> Void
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("https://example.com/article", text: $text)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                } footer: {
-                    Text("The page loads on your device, then becomes a PDF.")
+            VStack(spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Enter Web URL")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
+
+                    HStack(spacing: 12) {
+                        Image(systemName: "link")
+                            .font(.system(size: 18))
+                            .foregroundStyle(Theme.Colors.orangePrimary)
+
+                        TextField("https://example.com/article", text: $text)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Color(hex: "F2F4F7"))
+                    )
+
+                    Text("The page loads directly from its source website on your device, then converts to PDF.")
+                        .font(.caption)
+                        .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.secondary)
+                        .padding(.horizontal, 4)
+                        .padding(.top, 4)
                 }
+                .premiumCard()
+
+                Button {
+                    if let url = normalizedURL() {
+                        dismiss()
+                        onConvert(url)
+                    }
+                } label: {
+                    Text("Convert to PDF")
+                }
+                .primaryOrangeButton()
+                .disabled(normalizedURL() == nil)
+
+                Spacer()
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 24)
+            .themeBackground()
             .navigationTitle("Paste Link")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Convert") {
-                        if let url = normalizedURL() {
-                            dismiss()
-                            onConvert(url)
-                        }
-                    }
-                    .disabled(normalizedURL() == nil)
+                        .foregroundStyle(Theme.Colors.orangePrimary)
                 }
             }
         }
@@ -215,78 +244,151 @@ struct LinkEntrySheet: View {
     }
 }
 
-/// Paste-text sheet.
+/// Paste-text sheet with dark editor card.
 struct TextEntrySheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @State private var title = ""
     @State private var text = ""
     let onConvert: (String, String?) -> Void
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Title (optional)") {
-                    TextField("Notes", text: $title)
+            VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Title (Optional)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.secondary)
+
+                        TextField("Meeting Notes", text: $title)
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Color(hex: "F2F4F7"))
+                            )
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Content")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.secondary)
+
+                        TextEditor(text: $text)
+                            .frame(minHeight: 160)
+                            .padding(8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Color(hex: "F2F4F7"))
+                            )
+                    }
                 }
-                Section("Text") {
-                    TextEditor(text: $text)
-                        .frame(minHeight: 180)
+                .premiumCard()
+
+                Button {
+                    dismiss()
+                    onConvert(text, title.isEmpty ? nil : title)
+                } label: {
+                    Text("Convert to PDF")
                 }
+                .primaryOrangeButton()
+                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                Spacer()
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .themeBackground()
             .navigationTitle("Paste Text")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Convert") {
-                        dismiss()
-                        onConvert(text, title.isEmpty ? nil : title)
-                    }
-                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .foregroundStyle(Theme.Colors.orangePrimary)
                 }
             }
         }
     }
 }
 
-/// Success sheet after an in-app conversion: preview, share, done.
+/// Celebratory Success sheet featuring the mascot and finished document card.
 struct ConversionResultSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     let document: ConvertedDocument
 
     @State private var shareURL: URL?
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                PDFKitView(data: document.data)
-                let sizeText = ByteCountFormatter.string(fromByteCount: Int64(document.data.count),
-                                                         countStyle: .file)
-                Text(String(localized: "preview.pages_and_size \(document.pageCount) \(sizeText)"))
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 10)
-            }
-            .navigationTitle(FilenameGenerator.baseName(for: document))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+            VStack(spacing: 20) {
+                Spacer(minLength: 10)
+
+                // Mascot Celebratory Hero
+                MascotView(type: .success, size: 140)
+
+                VStack(spacing: 6) {
+                    Text("PDF Created! 🎉")
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
+
+                    Text("Your PDF is ready and saved to your library.")
+                        .font(.subheadline)
+                        .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.7) : Color.secondary)
                 }
-                ToolbarItem(placement: .confirmationAction) {
+
+                // Document Metadata Card
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Theme.Colors.orangePrimary.opacity(0.15))
+                            .frame(width: 48, height: 60)
+                        Image(systemName: "doc.text.fill")
+                            .font(.system(size: 24))
+                            .foregroundStyle(Theme.Colors.orangePrimary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(FilenameGenerator.baseName(for: document))
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
+                            .lineLimit(1)
+
+                        let sizeText = ByteCountFormatter.string(fromByteCount: Int64(document.data.count), countStyle: .file)
+                        Text(String(localized: "preview.pages_and_size \(document.pageCount) \(sizeText)"))
+                            .font(.caption)
+                            .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.secondary)
+                    }
+
+                    Spacer()
+                }
+                .premiumCard()
+
+                Spacer()
+
+                // Actions
+                VStack(spacing: 12) {
                     if let shareURL {
                         ShareLink(item: shareURL) {
-                            Image(systemName: "square.and.arrow.up")
+                            HStack {
+                                Image(systemName: "square.and.arrow.up")
+                                Text("Share PDF")
+                            }
                         }
-                        .accessibilityLabel("Share PDF")
+                        .primaryOrangeButton()
                     }
+
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .secondaryDarkButton()
                 }
             }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+            .themeBackground()
+            .navigationBarTitleDisplayMode(.inline)
             .onAppear {
-                // Sweep exports left by previous sessions first — at most
-                // one live export artifact ever exists.
                 TempFileStore.purgeExportArtifacts()
                 let url = TempFileStore.exportURL(named: FilenameGenerator.fileName(for: document))
                 try? document.data.write(to: url, options: .atomic)
@@ -296,54 +398,60 @@ struct ConversionResultSheet: View {
     }
 }
 
-/// Human error sheet with optional recovery actions.
+/// Human error sheet with empathetic mascot and clear recovery paths.
 struct ConversionErrorSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     let error: ConversionError
     let onRetry: () -> Void
     let offerLinkAsPDF: Bool
     let onSaveLinkAsPDF: (() -> Void)?
 
     var body: some View {
-        VStack(spacing: 18) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 36))
-                .foregroundStyle(.secondary)
-            Text(error.headline)
-                .font(.title3.weight(.bold))
-                .multilineTextAlignment(.center)
-            Text(error.message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+        VStack(spacing: 20) {
+            Spacer(minLength: 10)
 
-            VStack(spacing: 10) {
+            MascotView(type: .error, size: 130)
+
+            VStack(spacing: 6) {
+                Text(error.headline)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
+                    .multilineTextAlignment(.center)
+
+                Text(error.message)
+                    .font(.subheadline)
+                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.7) : Color.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+            }
+
+            Spacer()
+
+            VStack(spacing: 12) {
                 Button("Retry") {
                     dismiss()
                     onRetry()
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .primaryOrangeButton()
 
                 if offerLinkAsPDF, let onSaveLinkAsPDF {
                     Button("Save Link as PDF") {
                         dismiss()
                         onSaveLinkAsPDF()
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
+                    .secondaryDarkButton()
                 }
 
-                Button("Cancel", role: .cancel) {
+                Button("Cancel") {
                     dismiss()
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
+                .secondaryDarkButton()
             }
-            .padding(.top, 6)
         }
         .padding(24)
-        .presentationDetents([.medium])
+        .themeBackground()
+        .presentationDetents([.medium, .large])
     }
 }
 

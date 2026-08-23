@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// Minimal settings, stored in the shared defaults suite so the Share
-/// Extension starts from the same preferences.
+/// Refined dark-card Settings view matching PDF It's premium identity.
 struct SettingsView: View {
     @AppStorage(AppSettingsKeys.defaultMode, store: AppConfiguration.sharedDefaults)
     private var defaultMode: ConversionMode = .quick
@@ -22,21 +21,23 @@ struct SettingsView: View {
     @State private var totalBytes: Int64 = 0
 
     private let storage = StorageManager.shared
+    @Environment(\.dismiss) private var dismissView
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Form {
-            Section("Defaults") {
-                Picker("Mode", selection: $defaultMode) {
+            Section("Conversion") {
+                Picker("Default Mode", selection: $defaultMode) {
                     ForEach(ConversionMode.allCases) { mode in
                         Text(mode.displayName).tag(mode)
                     }
                 }
-                Picker("Paper size", selection: $defaultPaperSize) {
+                Picker("Default Page Size", selection: $defaultPaperSize) {
                     ForEach(PDFPaperSize.allCases) { size in
                         Text(size.displayName).tag(size)
                     }
                 }
-                Picker("Image quality", selection: $imageQuality) {
+                Picker("Image Quality", selection: $imageQuality) {
                     ForEach(ImageQuality.allCases) { quality in
                         Text(quality.displayName).tag(quality)
                     }
@@ -44,47 +45,65 @@ struct SettingsView: View {
             }
 
             Section {
-                Toggle("Include source link", isOn: $includeSourceURL)
-                Toggle("Include creation date", isOn: $includeCreationDate)
+                Toggle("Include Source Link", isOn: $includeSourceURL)
+                    .tint(Theme.Colors.orangePrimary)
+                Toggle("Include Creation Date", isOn: $includeCreationDate)
+                    .tint(Theme.Colors.orangePrimary)
             } header: {
-                Text("Documents")
+                Text("PDF Options")
             } footer: {
-                Text("Adds a small footer to generated text and article PDFs. Existing PDFs are never modified.")
+                Text("Adds a subtle footer to generated text and article PDFs. Existing PDFs are never modified.")
             }
 
             Section {
                 LabeledContent("Saved PDFs", value: "\(recordCount)")
-                LabeledContent("Total size",
+                LabeledContent("Total Size",
                                value: ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file))
             } header: {
                 Text("Storage")
             } footer: {
-                Text("Your PDFs stay on this device until you delete them.")
+                Text("Your PDFs stay securely on this device until you delete them.")
             }
 
             Section {
-                LabeledContent("Local processing", value: String(localized: "On device"))
-                LabeledContent("No accounts or tracking", value: String(localized: "Yes"))
+                HStack {
+                    Label("Local Processing Only", systemImage: "lock.shield.fill")
+                        .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
+                    Spacer()
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Theme.Colors.orangePrimary)
+                }
+                HStack {
+                    Label("No Accounts or Tracking", systemImage: "person.crop.circle.badge.xmark")
+                        .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
+                    Spacer()
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Theme.Colors.orangePrimary)
+                }
                 Link("Privacy Policy", destination: ExternalLinks.privacyPolicy)
                 Link("Terms of Use", destination: ExternalLinks.termsOfUse)
                 Link("Support & Feedback", destination: ExternalLinks.support)
             } header: {
-                Text("Privacy & Support")
+                Text("Privacy & Security")
             } footer: {
-                Text("Your documents aren't uploaded to PDF It. Conversions run on your device. When you convert a webpage, PDF It loads the page directly from its website.")
+                Text("PDF It processes and stores documents locally. Your documents are not uploaded to PDF It. When you convert a webpage, PDF It loads the page directly from its source website.")
             }
 
             Section("About") {
                 LabeledContent("App Name", value: "PDF It")
                 LabeledContent("Version", value: appVersion)
-                LabeledContent("Creator tag", value: String(localized: "PDFs are tagged “PDF It” in their metadata"))
+                LabeledContent("Creator Tag", value: String(localized: "PDFs are tagged “PDF It” in their metadata"))
             }
         }
+        .scrollContentBackground(colorScheme == .dark ? .hidden : .visible)
+        .background(colorScheme == .dark ? Theme.Colors.darkBackground.ignoresSafeArea() : Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
+        .tint(Theme.Colors.orangePrimary)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Done") { dismissView() }
+                    .foregroundStyle(Theme.Colors.orangePrimary)
             }
         }
         .onAppear(perform: reloadStorage)
@@ -95,8 +114,6 @@ struct SettingsView: View {
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
         return "\(short) (\(build))"
     }
-
-    @Environment(\.dismiss) private var dismissView
 
     private func reloadStorage() {
         let records = storage.fetchRecords()

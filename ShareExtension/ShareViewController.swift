@@ -127,6 +127,8 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         configuration.title = String(localized: "Create PDF")
         configuration.cornerStyle = .capsule
         configuration.buttonSize = .large
+        configuration.baseBackgroundColor = UIColor(red: 1.0, green: 0.478, blue: 0.102, alpha: 1.0)
+        configuration.baseForegroundColor = .white
         let button = UIButton(configuration: configuration)
         button.accessibilityLabel = String(localized: "Create PDF")
         return button
@@ -518,6 +520,8 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
             switch spec.style {
             case .primary:
                 configuration = .filled()
+                configuration.baseBackgroundColor = UIColor(red: 1.0, green: 0.478, blue: 0.102, alpha: 1.0)
+                configuration.baseForegroundColor = .white
             case .secondary:
                 configuration = .gray()
             }

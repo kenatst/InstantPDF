@@ -40,6 +40,7 @@ struct MainTabView: View {
             }
             .tag(1)
         }
+        .tint(Theme.Colors.orangePrimary)
         .sheet(isPresented: $showingSettings) {
             NavigationStack {
                 SettingsView()
