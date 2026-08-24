@@ -5944,7 +5944,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sans compte"
+            "value": "Aucun compte"
           }
         },
         "it": {
@@ -6080,13 +6080,13 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun envoi PDFIT"
+            "value": "Aucun envoi vers PDFIT"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun upload su PDFIT"
+            "value": "Nessun caricamento su PDFIT"
           }
         }
       }
@@ -6270,7 +6270,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "On-Device-OCR"
+            "value": "OCR auf dem Gerät"
           }
         },
         "en": {
@@ -6288,13 +6288,13 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "OCR sur l'appareil"
+            "value": "OCR sur l’appareil"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "OCR on-device"
+            "value": "OCR sul dispositivo"
           }
         }
       }
@@ -16163,6 +16163,216 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uso di PDFIT"
+          }
+        }
+      }
+    },
+    "Sign contracts & forms anywhere on the page. On-device OCR extracts selectable text with no PDFIT uploads.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign contracts & forms anywhere on the page. On-device OCR extracts selectable text with no PDFIT uploads."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signez contrats et formulaires où vous le souhaitez. L’OCR sur l’appareil extrait du texte sélectionnable sans aucun envoi vers PDFIT."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firma contratos y formularios en cualquier lugar. El OCR en el dispositivo extrae texto seleccionable sin subidas a PDFIT."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unterschreiben Sie Verträge und Formulare an beliebiger Stelle. OCR auf dem Gerät extrahiert auswählbaren Text ohne PDFIT-Uploads."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firma contratti e moduli dove vuoi sulla pagina. L’OCR sul dispositivo estrae testo selezionabile senza caricamenti su PDFIT."
+          }
+        }
+      }
+    },
+    "Sign contracts & forms anywhere on page. On-device OCR extracts selectable text with no PDFIT uploads.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign contracts & forms anywhere on page. On-device OCR extracts selectable text with no PDFIT uploads."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signez contrats et formulaires où vous le souhaitez. L’OCR sur l’appareil extrait du texte sélectionnable sans aucun envoi vers PDFIT."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firma contratos y formularios en cualquier lugar. El OCR en el dispositivo extrae texto seleccionable sin subidas a PDFIT."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unterschreiben Sie Verträge und Formulare an beliebiger Stelle. OCR auf dem Gerät extrahiert auswählbaren Text ohne PDFIT-Uploads."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firma contratti e moduli dove vuoi sulla pagina. L’OCR sul dispositivo estrae testo selezionabile senza caricamenti su PDFIT."
+          }
+        }
+      }
+    },
+    "Shrink heavy PDFs while keeping crisp quality. Continuous batch scanning to group and save multiple documents.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shrink heavy PDFs while keeping crisp quality. Continuous batch scanning to group and save multiple documents."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réduisez le poids des PDF lourds tout en gardant une qualité nette. Numérisation par lot continue pour regrouper et enregistrer plusieurs documents."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reduce PDFs pesados manteniendo la nitidez. Escaneo por lotes continuo para agrupar y guardar múltiples documentos."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schrumpfen Sie schwere PDFs bei gestochen scharfer Qualität. Kontinuierlicher Batch-Scan zum Gruppieren und Speichern mehrerer Dokumente."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riduci i PDF pesanti mantenendo una qualità nitida. Scansione batch continua per raggruppare e salvare più documenti."
+          }
+        }
+      }
+    },
+    "Extract selected pages into a new PDF. Unlimited folders, advanced merge and custom formatting.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extract selected pages into a new PDF. Unlimited folders, advanced merge and custom formatting."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extrayez des pages sélectionnées dans un nouveau PDF. Dossiers illimités, fusion avancée et mise en page personnalisée."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extrae páginas seleccionadas en un nuevo PDF. Carpetas ilimitadas, combinación avanzada y formato personalizado."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extrahieren Sie ausgewählte Seiten in ein neues PDF. Unbegrenzte Ordner, erweiterte Zusammenführung und individuelle Formatierung."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estrai le pagine selezionate in un nuovo PDF. Cartelle illimitate, unione avanzata e formattazione personalizzata."
+          }
+        }
+      }
+    },
+    "Extract Pages into New PDF": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extract Pages into New PDF"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extraire des pages dans un nouveau PDF"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extraer páginas en un nuevo PDF"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seiten in neues PDF extrahieren"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estrai pagine in un nuovo PDF"
+          }
+        }
+      }
+    },
+    "PDFIT processes and stores documents locally. Your documents are not uploaded to PDFIT. When you convert a webpage, PDFIT loads the page directly from its source website.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT processes and stores documents locally. Your documents are not uploaded to PDFIT. When you convert a webpage, PDFIT loads the page directly from its source website."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT traite et stocke les documents localement. Vos documents ne sont pas envoyés à PDFIT. Lorsque vous convertissez une page web, PDFIT charge la page directement depuis son site source."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT procesa y almacena documentos localmente. Tus documentos no se suben a PDFIT. Cuando conviertes una página web, PDFIT carga la página directamente desde su sitio web de origen."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT verarbeitet und speichert Dokumente lokal. Ihre Dokumente werden nicht zu PDFIT hochgeladen. Wenn Sie eine Webseite konvertieren, lädt PDFIT die Seite direkt von ihrer Quell-Website."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT elabora e memorizza i documenti localmente. I tuoi documenti non vengono caricati su PDFIT. Quando converti una pagina web, PDFIT carica la pagina direttamente dal sito web di origine."
           }
         }
       }

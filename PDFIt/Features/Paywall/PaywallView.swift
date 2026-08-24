@@ -126,22 +126,22 @@ struct PaywallView: View {
         VStack(alignment: .leading, spacing: 0) {
             outcomeRow(symbol: "square.and.arrow.up",
                        title: "Share Sheet & Web Conversion",
-                       copy: "Convert directly from Safari, Photos, Files or any app without opening PDFIT. Strip ads with Clean & Reader modes.")
+                       copy: "Convert directly from Safari, Photos, Files or any app without opening PDFIT. Clean & Reader modes strip ads.")
             Divider().overlay(Color.white.opacity(0.08))
                 .padding(.leading, 54)
             outcomeRow(symbol: "signature",
                        title: "Sign & Search on Device",
-                       copy: "Sign contracts & forms anywhere on the page. On-device OCR extracts selectable text without cloud uploads.")
+                       copy: "Sign contracts & forms anywhere on the page. On-device OCR extracts selectable text with no PDFIT uploads.")
             Divider().overlay(Color.white.opacity(0.08))
                 .padding(.leading, 54)
             outcomeRow(symbol: "arrow.down.doc",
                        title: "Compress & Batch Scan",
-                       copy: "Shrink heavy PDFs while keeping crisp quality. Continuous batch scanning with automatic document separation.")
+                       copy: "Shrink heavy PDFs while keeping crisp quality. Continuous batch scanning to group and save multiple documents.")
             Divider().overlay(Color.white.opacity(0.08))
                 .padding(.leading, 54)
             outcomeRow(symbol: "square.stack.3d.up",
                        title: "Extract Pages & Unlimited Organization",
-                       copy: "Reorder, rotate, delete and extract pages. Unlimited folders, advanced merge and custom formatting.")
+                       copy: "Extract selected pages into a new PDF. Unlimited folders, advanced merge and custom formatting.")
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.xs)
@@ -178,7 +178,7 @@ struct PaywallView: View {
                 comparisonRow(name: "PDF Signatures", free: false, pro: true)
                 comparisonRow(name: "Searchable On-Device OCR", free: false, pro: true)
                 comparisonRow(name: "PDF Compression", free: false, pro: true)
-                comparisonRow(name: "Extract, Rotate & Reorder Pages", free: false, pro: true)
+                comparisonRow(name: "Extract Pages into New PDF", free: false, pro: true)
                 comparisonRow(name: "Batch Scan (Multi-doc)", free: false, pro: true)
                 comparisonRow(name: "Unlimited Folders & Merging", free: false, pro: true)
             }

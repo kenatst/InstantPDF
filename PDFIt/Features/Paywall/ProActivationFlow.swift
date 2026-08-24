@@ -337,17 +337,17 @@ struct ProFeaturesGuideView: View {
                             .padding(.leading, 54)
                         guideRow(symbol: "signature",
                                  title: "Sign & Search on Device",
-                                 copy: "Sign contracts & forms anywhere on page. On-device OCR extracts selectable text with zero cloud uploads.")
+                                 copy: "Sign contracts & forms anywhere on page. On-device OCR extracts selectable text with no PDFIT uploads.")
                         Divider().overlay(Color.white.opacity(0.08))
                             .padding(.leading, 54)
                         guideRow(symbol: "arrow.down.doc",
                                  title: "Compress & Batch Scan",
-                                 copy: "Shrink heavy PDFs while keeping crisp quality. Continuous batch scanning with automatic document separation.")
+                                 copy: "Shrink heavy PDFs while keeping crisp quality. Continuous batch scanning to group and save multiple documents.")
                         Divider().overlay(Color.white.opacity(0.08))
                             .padding(.leading, 54)
                         guideRow(symbol: "square.stack.3d.up",
                                  title: "Extract Pages & Unlimited Organization",
-                                 copy: "Reorder, rotate, delete and extract pages. Unlimited folders, advanced merge and custom formatting.")
+                                 copy: "Extract selected pages into a new PDF. Unlimited folders, advanced merge and custom formatting.")
                     }
                     .padding(.horizontal, Theme.Spacing.md)
                     .padding(.vertical, Theme.Spacing.xs)
@@ -380,7 +380,7 @@ struct ProFeaturesGuideView: View {
                             featureCheckRow(name: "PDF Signatures", free: false, pro: true)
                             featureCheckRow(name: "Searchable On-Device OCR", free: false, pro: true)
                             featureCheckRow(name: "PDF Compression", free: false, pro: true)
-                            featureCheckRow(name: "Extract, Rotate & Reorder Pages", free: false, pro: true)
+                            featureCheckRow(name: "Extract Pages into New PDF", free: false, pro: true)
                             featureCheckRow(name: "Batch Scan (Multi-doc)", free: false, pro: true)
                             featureCheckRow(name: "Unlimited Folders & Merging", free: false, pro: true)
                         }
@@ -395,14 +395,33 @@ struct ProFeaturesGuideView: View {
                             )
                     )
 
-                    // Privacy Assurance
+                    // Privacy Proof Strip (Exact, truthful claims)
                     HStack(spacing: 14) {
-                        Label("100% On-Device", systemImage: "cpu")
-                        Label("No Account", systemImage: "person.crop.circle.badge.xmark")
-                        Label("No Cloud Uploads", systemImage: "icloud.slash")
+                        Label {
+                            Text("No account")
+                        } icon: {
+                            Image(systemName: "person.crop.circle.badge.xmark")
+                        }
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.72))
+
+                        Label {
+                            Text("No PDFIT uploads")
+                        } icon: {
+                            Image(systemName: "icloud.slash")
+                        }
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.72))
+
+                        Label {
+                            Text("On-device OCR")
+                        } icon: {
+                            Image(systemName: "cpu")
+                        }
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.72))
                     }
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(Color.white.opacity(0.72))
+                    .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                 }
                 .padding(20)

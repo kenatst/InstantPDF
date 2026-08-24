@@ -137,7 +137,7 @@ struct SettingsView: View {
             } header: {
                 SettingsSectionHeader("Privacy & Support", symbol: "lock.shield")
             } footer: {
-                Text("PDF It processes and stores documents locally. Your documents are not uploaded to PDF It. When you convert a webpage, PDF It loads the page directly from its source website.")
+                Text("PDFIT processes and stores documents locally. Your documents are not uploaded to PDFIT. When you convert a webpage, PDFIT loads the page directly from its source website.")
             }
 
             Section {
