@@ -112,7 +112,7 @@ final class ScreenshotGeneratorTests: XCTestCase {
         snapshotView(NavigationStack { SettingsView() }.preferredColorScheme(.dark), name: "05_settings_dark")
 
         // 3. Import Sheets
-        snapshotView(LinkEntrySheet(onConvert: { _ in }), name: "06_paste_link_sheet")
+        snapshotView(LinkEntrySheet(onConvert: { _, _, _ in }), name: "06_paste_link_sheet")
         snapshotView(TextEntrySheet(onConvert: { _, _ in }), name: "07_paste_text_sheet")
         snapshotView(ConversionErrorSheet(error: .pageUnreachable(reason: "Server returned 404"),
                                           onRetry: {},
@@ -172,8 +172,8 @@ final class ScreenshotGeneratorTests: XCTestCase {
 
         // 9. PDF Viewer Screen (Light & Dark)
         if let record = record4 ?? storage.fetchRecords().first {
-            snapshotView(NavigationStack { PDFViewerView(record: record) }, name: "04_pdf_viewer_light")
-            snapshotView(NavigationStack { PDFViewerView(record: record) }.preferredColorScheme(.dark), name: "04_pdf_viewer_dark")
+            snapshotView(NavigationStack { PDFViewerView(recordID: record.id) }, name: "04_pdf_viewer_light")
+            snapshotView(NavigationStack { PDFViewerView(recordID: record.id) }.preferredColorScheme(.dark), name: "04_pdf_viewer_dark")
         }
     }
 }

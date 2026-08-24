@@ -8,6 +8,9 @@ struct CustomizePDFSheet: View {
     @Binding var customization: PDFCustomization
     /// Multi-image imports can reorder before creation.
     var imageOrder: Binding<[URL]>? = nil
+    /// Present for a staged "Customize First" web conversion: shows the
+    /// Create button that consumes URL + mode + paper + customization.
+    var onCreateStaged: (() -> Void)? = nil
 
     @State private var showAdvanced = false
 
@@ -80,8 +83,16 @@ struct CustomizePDFSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    if onCreateStaged != nil {
+                        Button("Create PDF") {
+                            dismiss()
+                            onCreateStaged?()
+                        }
                         .fontWeight(.semibold)
+                    } else {
+                        Button("Done") { dismiss() }
+                            .fontWeight(.semibold)
+                    }
                 }
             }
         }

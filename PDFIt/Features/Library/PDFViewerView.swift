@@ -4,111 +4,75 @@ import UIKit
 import UniformTypeIdentifiers
 
 /// Refined dark-chrome PDF Viewer with floating action bar and native document controls.
+/// Identity contract: constructed with a persistent record ID, the viewer
+/// re-resolves the CURRENT record from storage — rename/move elsewhere can
+/// never make this screen show a different document than the one tapped.
 struct PDFViewerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
-    @State var record: StoredPDFRecord
+    /// Persistent identity of the document to display.
+    let recordID: UUID
+    @State private var record: StoredPDFRecord?
+    @State private var resolved = false
     @State private var showingRename = false
     @State private var showingDeleteConfirmation = false
     @State private var newName = ""
     @State private var showingExporter = false
+    @State private var activeTool: PDFToolKind?
 
     private let storage = StorageManager.shared
 
+    init(recordID: UUID) {
+        self.recordID = recordID
+        // Eagerly resolve so first frame already has content when possible.
+        _record = State(initialValue: StorageManager.shared.record(withID: recordID))
+    }
+
     private var fileURL: URL? {
-        storage.fileURL(for: record)
+        guard let record else { return nil }
+        return storage.fileURL(for: record)
+    }
+
+    /// True when the resolved record's file exists on disk.
+    private var fileIsAvailable: Bool {
+        guard let url = fileURL else { return false }
+        return FileManager.default.fileExists(atPath: url.path)
+    }
+
+    @ViewBuilder
+    private var documentArea: some View {
+        if let url = fileURL, fileIsAvailable {
+            PDFFileView(url: url)
+                .ignoresSafeArea(edges: .bottom)
+        } else if resolved {
+            ContentUnavailableView("PDF missing",
+                                   systemImage: "questionmark.folder",
+                                   description: Text("This document is no longer on this device."))
+        } else {
+            ProgressView()
+        }
     }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Group {
-                if let url = fileURL, FileManager.default.fileExists(atPath: url.path) {
-                    PDFFileView(url: url)
-                        .ignoresSafeArea(edges: .bottom)
-                } else {
-                    ContentUnavailableView("PDF missing",
-                                           systemImage: "questionmark.folder",
-                                           description: Text("This document is no longer on this device."))
-                }
-            }
+            documentArea
 
             // Bottom Floating Action Capsule
-            if let url = fileURL, FileManager.default.fileExists(atPath: url.path) {
-                HStack(spacing: 24) {
-                    ShareLink(item: url) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 18, weight: .semibold))
-                            Text("Share")
-                                .font(.caption2.weight(.medium))
-                        }
-                        .foregroundStyle(Theme.Colors.orangePrimary)
-                    }
-
-                    Button {
-                        showingExporter = true
-                    } label: {
-                        VStack(spacing: 4) {
-                            Image(systemName: "folder")
-                                .font(.system(size: 18, weight: .semibold))
-                            Text("Save")
-                                .font(.caption2.weight(.medium))
-                        }
-                        .foregroundStyle(colorScheme == .dark ? Color.white : Color(hex: "111215"))
-                    }
-
-                    Button {
-                        printDocument()
-                    } label: {
-                        VStack(spacing: 4) {
-                            Image(systemName: "printer")
-                                .font(.system(size: 18, weight: .semibold))
-                            Text("Print")
-                                .font(.caption2.weight(.medium))
-                        }
-                        .foregroundStyle(colorScheme == .dark ? Color.white : Color(hex: "111215"))
-                    }
-
-                    Menu {
-                        Button {
-                            newName = record.displayName
-                            showingRename = true
-                        } label: {
-                            Label("Rename", systemImage: "pencil")
-                        }
-                        Button(role: .destructive) {
-                            showingDeleteConfirmation = true
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    } label: {
-                        VStack(spacing: 4) {
-                            Image(systemName: "ellipsis")
-                                .font(.system(size: 18, weight: .semibold))
-                            Text("More")
-                                .font(.caption2.weight(.medium))
-                        }
-                        .foregroundStyle(colorScheme == .dark ? Color.white : Color(hex: "111215"))
-                    }
-                }
-                .padding(.horizontal, 28)
-                .padding(.vertical, 12)
-                .background(
-                    Capsule()
-                        .fill(colorScheme == .dark ? Theme.Colors.darkCard.opacity(0.95) : Color.white.opacity(0.95))
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.08), lineWidth: 1)
-                        )
-                        .shadow(color: colorScheme == .dark ? Color.black.opacity(0.4) : Color.black.opacity(0.1), radius: 14, x: 0, y: 6)
-                )
-                .padding(.bottom, 20)
+            if fileIsAvailable, record != nil {
+                actionCapsule
             }
         }
-        .navigationTitle(record.displayName)
+        .navigationTitle(record?.displayName ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.visible, for: .navigationBar)
+        .onAppear { resolve() }
+        .sheet(item: $activeTool) { tool in
+            PDFToolsHostView(recordID: recordID) {
+                // A tool produced a new document — refresh title/state.
+                resolve()
+            }
+        }
         .alert("Rename", isPresented: $showingRename) {
             TextField("Name", text: $newName)
             Button("Save") { performRename() }
@@ -117,21 +81,108 @@ struct PDFViewerView: View {
         .confirmationDialog("Delete this PDF?", isPresented: $showingDeleteConfirmation,
                             titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
-                try? storage.delete(record)
+                if let record {
+                    try? storage.delete(record)
+                }
                 dismiss()
             }
         } message: {
-            Text(String(localized: "viewer.delete_message \(record.displayName)"))
+            if let record {
+                Text(String(localized: "viewer.delete_message \(record.displayName)"))
+            }
         }
         .fileExporter(isPresented: $showingExporter,
                       document: fileURL.map { TemporaryPDFFile(url: $0) },
                       contentType: .pdf,
-                      defaultFilename: record.filename) { _ in }
+                      defaultFilename: record?.filename ?? "Document.pdf") { _ in }
+    }
+
+    /// The bottom toolbar capsule, extracted to keep body type-checkable.
+    private var actionCapsule: some View {
+        HStack(spacing: 24) {
+            ShareLink(item: fileURL!) {
+                VStack(spacing: 4) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 18, weight: .semibold))
+                    Text("Share")
+                        .font(.caption2.weight(.medium))
+                }
+                .foregroundStyle(Theme.Colors.orangePrimary)
+            }
+
+            toolButton(symbol: "slider.horizontal.3", title: "PDF Tools") {
+                activeTool = .tools
+            }
+
+            toolButton(symbol: "folder", title: "Save") {
+                showingExporter = true
+            }
+
+            Menu {
+                Button {
+                    newName = record?.displayName ?? ""
+                    showingRename = true
+                } label: {
+                    Label("Rename", systemImage: "pencil")
+                }
+                Button {
+                    printDocument()
+                } label: {
+                    Label("Print", systemImage: "printer")
+                }
+                Button(role: .destructive) {
+                    showingDeleteConfirmation = true
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            } label: {
+                VStack(spacing: 4) {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 18, weight: .semibold))
+                    Text("More")
+                        .font(.caption2.weight(.medium))
+                }
+                .foregroundStyle(colorScheme == .dark ? Color.white : Color(hex: "111215"))
+            }
+        }
+        .padding(.horizontal, 28)
+        .padding(.vertical, 12)
+        .background(
+            Capsule()
+                .fill(colorScheme == .dark ? Theme.Colors.darkCard.opacity(0.95) : Color.white.opacity(0.95))
+                .overlay(
+                    Capsule()
+                        .strokeBorder(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.08), lineWidth: 1)
+                )
+                .shadow(color: colorScheme == .dark ? Color.black.opacity(0.4) : Color.black.opacity(0.1), radius: 14, x: 0, y: 6)
+        )
+        .padding(.bottom, 20)
+    }
+
+    private func toolButton(symbol: String, title: String,
+                            action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: symbol)
+                    .font(.system(size: 18, weight: .semibold))
+                Text(title)
+                    .font(.caption2.weight(.medium))
+            }
+            .foregroundStyle(colorScheme == .dark ? Color.white : Color(hex: "111215"))
+        }
+        .accessibilityLabel(title)
+    }
+
+    /// Re-resolves the record from storage by persistent ID.
+    private func resolve() {
+        record = storage.record(withID: recordID)
+        resolved = true
     }
 
     private func performRename() {
+        guard let record else { return }
         if let updated = try? storage.rename(record, to: newName) {
-            record = updated
+            self.record = updated
         }
     }
 

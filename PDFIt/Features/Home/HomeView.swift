@@ -47,7 +47,7 @@ struct HomeView: View {
             importer.handlePhotoSelections()
         }
         .sheet(isPresented: $showingScanner) {
-            ScanReviewView(model: scanModel) { documents in
+            ScanFlowSheet(model: scanModel) { documents in
                 for document in documents {
                     _ = try? storage.save(document: document)
                 }
@@ -95,17 +95,28 @@ struct HomeView: View {
                               imageOrder: importer.pendingImageOrder.count > 1
                                 ? Binding(get: { importer.pendingImageOrder },
                                           set: { importer.pendingImageOrder = $0 })
+                                : nil,
+                              onCreateStaged: importer.stagedWebConversion != nil
+                                ? { importer.convertStagedWebConversion() }
                                 : nil)
         }
         .sheet(isPresented: $importer.showingLinkEntry) {
-            LinkEntrySheet { url in
+            LinkEntrySheet { url, mode, paperSize in
+                var options = ConversionOptions.fromSharedDefaults()
+                options.mode = mode
+                options.paperSize = paperSize
                 importer.convert(items: [IncomingItem(kind: .url(url),
                                                       sourceURL: url,
-                                                      source: ContentSource.detect(from: url))])
-            } onCustomize: { url in
+                                                      source: ContentSource.detect(from: url))],
+                                 optionsOverride: options)
+            } onCustomize: { url, mode, paperSize in
+                // Carry EVERYTHING forward: URL + mode + paper survive the
+                // Customize transition and are used at creation time.
+                importer.stageWebConversion(url: url,
+                                            mode: mode,
+                                            paperSize: paperSize)
                 importer.showingLinkEntry = false
                 importer.showingCustomize = true
-                _ = url
             }
         }
         .sheet(isPresented: $importer.showingTextEntry) {
@@ -136,7 +147,10 @@ struct HomeView: View {
 
     private var scanCard: some View {
         Button {
-            scanModel.showingCamera = true
+            // THE entry point: opens the scanner flow. The camera sheet is
+            // presented INSIDE ScanReviewView (bound to model.showingCamera);
+            // this outer sheet shows the review UI around it.
+            showingScanner = true
         } label: {
             HStack(spacing: 14) {
                 ZStack(alignment: .bottomTrailing) {
@@ -291,7 +305,7 @@ struct HomeView: View {
 
                 VStack(spacing: 8) {
                     ForEach(records.prefix(5)) { record in
-                        NavigationLink(value: LibraryRoute.viewer(record)) {
+                        NavigationLink(value: LibraryRoute.viewer(recordID: record.id)) {
                             RecentPDFRow(record: record)
                         }
                         .buttonStyle(.plain)
@@ -302,8 +316,8 @@ struct HomeView: View {
                 switch route {
                 case .library:
                     LibraryView(embedded: true)
-                case .viewer(let record):
-                    PDFViewerView(record: record)
+                case .viewer(let recordID):
+                    PDFViewerView(recordID: recordID)
                 }
             }
         }
@@ -332,10 +346,12 @@ struct HomeView: View {
     }
 }
 
-/// Navigation routes shared by Home and Library.
+/// Navigation routes shared by Home and Library. Viewer routes carry the
+/// persistent record ID — the destination re-resolves fresh state from
+/// storage, so rename/move can never desynchronize identity.
 enum LibraryRoute: Hashable {
     case library
-    case viewer(StoredPDFRecord)
+    case viewer(recordID: UUID)
 }
 
 // MARK: - Restrained Pro badge

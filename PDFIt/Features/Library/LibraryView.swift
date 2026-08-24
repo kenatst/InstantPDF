@@ -152,8 +152,8 @@ struct LibraryView: View {
             switch route {
             case .library:
                 LibraryView(embedded: true)
-            case .viewer(let record):
-                PDFViewerView(record: record)
+            case .viewer(let recordID):
+                PDFViewerView(recordID: recordID)
             }
         }
     }
@@ -342,7 +342,7 @@ struct LibraryView: View {
                         }
                         .buttonStyle(.plain)
                     } else {
-                        NavigationLink(value: LibraryRoute.viewer(record)) {
+                        NavigationLink(value: LibraryRoute.viewer(recordID: record.id)) {
                             LibraryGridCard(record: record)
                         }
                         .buttonStyle(.plain)

@@ -143,6 +143,38 @@ final class StorageManager {
         containerURL?.appendingPathComponent(record.relativePath)
     }
 
+    /// Resolves the CURRENT record for a persistent ID. Navigation must pass
+    /// IDs, never stale value copies — this is the single re-resolve point
+    /// so a renamed/moved document still opens its exact file.
+    ///
+    /// Deliberately does NOT prune ghost records (unlike `fetchRecords`):
+    /// resolution is a pure metadata read, so a record whose file vanished
+    /// still resolves and the viewer can show the missing-document state
+    /// instead of silently pretending nothing was there.
+    func record(withID id: UUID) -> StoredPDFRecord? {
+        guard let metadataFile = metadataFileURL else { return nil }
+        return queue.sync {
+            coordinatedRead(metadataFile).first { $0.id == id }
+        }
+    }
+
+    /// Stable presentation wrapper: the ONLY thing navigation carries.
+    struct ResolvedDocument: Identifiable, Equatable {
+        let id: UUID
+        let record: StoredPDFRecord
+
+        init?(id: UUID, from storage: StorageManager) {
+            guard let record = storage.record(withID: id) else { return nil }
+            self.id = id
+            self.record = record
+        }
+
+        init(record: StoredPDFRecord) {
+            self.id = record.id
+            self.record = record
+        }
+    }
+
     func exists(_ record: StoredPDFRecord) -> Bool {
         guard let url = fileURL(for: record) else { return false }
         return FileManager.default.fileExists(atPath: url.path)

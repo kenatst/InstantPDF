@@ -28,8 +28,13 @@ final class ImportFlowModel: ObservableObject {
     /// Free user tapped a Pro-only conversion (link/web).
     @Published var requiresPro: ProFeature?
     @Published var showingPaywall = false
+    /// Staged web conversion from "Customize First": URL + explicit options
+    /// survive the Customize transition and are used at creation time.
+    @Published var stagedWebConversion: (url: URL, options: ConversionOptions)?
 
     private var pendingItems: [IncomingItem] = []
+    /// Explicit per-conversion options (Link sheet). nil = shared defaults.
+    private var optionsOverride: ConversionOptions?
     private var conversionTask: Task<Void, Never>?
     private let storage = StorageManager.shared
     /// Owns staged files for the current import. Kept alive while items may
@@ -108,6 +113,36 @@ final class ImportFlowModel: ObservableObject {
         return type.conforms(to: .text) || type.conforms(to: .plainText)
     }
 
+    /// Converts with an explicit options override (from Link sheet params).
+    func convert(items: [IncomingItem], optionsOverride: ConversionOptions? = nil) {
+        self.optionsOverride = optionsOverride
+        convert(items: items)
+    }
+
+    /// Stages a web conversion for the "Customize First" flow.
+    func stageWebConversion(url: URL, mode: ConversionMode, paperSize: PDFPaperSize) {
+        var options = ConversionOptions.fromSharedDefaults()
+        options.mode = mode
+        options.paperSize = paperSize
+        stagedWebConversion = (url: url, options: options)
+        pendingItems = [IncomingItem(kind: .url(url),
+                                     sourceURL: url,
+                                     source: ContentSource.detect(from: url))]
+    }
+
+    /// Creates the PDF for a STAGED "Customize First" conversion. Called by
+    /// the Customize sheet's Create button — uses the exact URL/mode/paper
+    /// chosen in the Link sheet plus whatever customization was applied.
+    func convertStagedWebConversion() {
+        guard let staged = stagedWebConversion else { return }
+        optionsOverride = staged.options
+        let items: [IncomingItem] = [IncomingItem(kind: .url(staged.url),
+                                                  sourceURL: staged.url,
+                                                  source: ContentSource.detect(from: staged.url))]
+        showingCustomize = false
+        runConversion(items: items)
+    }
+
     func convert(items: [IncomingItem]) {
         guard !items.isEmpty else {
             failure = .noUsableContent
@@ -146,7 +181,7 @@ final class ImportFlowModel: ObservableObject {
     private func runConversion(items: [IncomingItem]) {
         pendingItems = items
 
-        var options = ConversionOptions.fromSharedDefaults()
+        var options = optionsOverride ?? ConversionOptions.fromSharedDefaults()
         options.includeSourceURL = options.includeSourceURL || customization.includeSourceURLFooter
         options.includeCreationDate = options.includeCreationDate || customization.includeCreationDateFooter
         let coordinator = ConversionCoordinator()
@@ -243,9 +278,12 @@ struct LinkEntrySheet: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var text = ""
     @State private var showClipboardSuggestion = true
-    let onConvert: (URL) -> Void
-    /// Optional "Customize First" path — opens the Customize sheet with the URL staged.
-    var onCustomize: ((URL) -> Void)? = nil
+    /// Conversion parameters — restored as first-class options in this sheet.
+    @State private var mode: ConversionMode = .quick
+    @State private var paperSize: PDFPaperSize = .automatic
+    let onConvert: (URL, ConversionMode, PDFPaperSize) -> Void
+    /// Optional "Customize First" path — carries URL + current parameters.
+    var onCustomize: ((URL, ConversionMode, PDFPaperSize) -> Void)? = nil
 
     /// Staged for the customize flow; consumed by HomeView.
     @State private var pendingCustomizeURL: URL?
@@ -288,10 +326,28 @@ struct LinkEntrySheet: View {
                 }
                 .premiumCard()
 
+                // CONVERSION PARAMETERS (restored — were missing entirely).
+                VStack(alignment: .leading, spacing: 12) {
+                    Picker("Mode", selection: $mode) {
+                        ForEach(ConversionMode.allCases) { m in
+                            Text(m.displayName).tag(m)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Picker("Page", selection: $paperSize) {
+                        ForEach(PDFPaperSize.allCases) { size in
+                            Text(size.displayName).tag(size)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                .padding(.horizontal, 4)
+
                 Button {
                     if let url = normalizedURL() {
                         dismiss()
-                        onConvert(url)
+                        onConvert(url, mode, paperSize)
                     }
                 } label: {
                     Text("Create PDF")
@@ -303,7 +359,7 @@ struct LinkEntrySheet: View {
                     Button {
                         if let url = normalizedURL() {
                             pendingCustomizeURL = url
-                            onCustomize(url)
+                            onCustomize(url, mode, paperSize)
                         }
                     } label: {
                         Text("Customize First…")

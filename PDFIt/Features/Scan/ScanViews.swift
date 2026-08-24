@@ -57,16 +57,22 @@ struct ScanCameraView: UIViewControllerRepresentable {
     }
 }
 
-/// Review screen: reorder, rotate, delete, enhance presets, batch groups.
-struct ScanReviewView: View {
+/// THE scan entry sheet. Flow:
+///   tap Scan Document → this sheet opens → camera presented automatically
+///   (with graceful simulator/unavailability fallback) → capture lands in
+///   the review screen → Create PDF → documents returned via onFinish.
+struct ScanFlowSheet: View {
     @StateObject private var model: ScanFlowModel
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var selectedPaper: PDFPaperSize = .automatic
-    @State private var renamingGroupID: UUID?
-    @State private var newGroupName = ""
-    /// Saved documents awaiting Library persistence by HomeView.
+    /// Documents produced by the flow; HomeView persists them.
     var onFinish: ([ConvertedDocument]) -> Void
+
+    @State private var phase: Phase = .launching
+    @State private var unavailabilityMessage: String?
+    @ObservedObject private var entitlements = EntitlementCenter.shared
+    @State private var showingBatchPaywall = false
+
+    enum Phase { case launching, camera, review, batchGate }
 
     init(model: ScanFlowModel, onFinish: @escaping ([ConvertedDocument]) -> Void) {
         _model = StateObject(wrappedValue: model)
@@ -74,9 +80,110 @@ struct ScanReviewView: View {
     }
 
     var body: some View {
+        Group {
+            switch phase {
+            case .launching:
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .themeBackground()
+            case .camera:
+                ScanCameraView { images in
+                    if images.isEmpty {
+                        // User cancelled inside the camera — close everything.
+                        dismiss()
+                    } else {
+                        model.ingest(images: images)
+                        withAnimation { phase = .review }
+                    }
+                } onError: { message in
+                    unavailabilityMessage = message
+                    phase = .review // review still reachable for context/cancel
+                }
+                .ignoresSafeArea()
+            case .review:
+                ScanReviewView(model: model,
+                               batchEnabled: model.advancedBatchEnabled && entitlements.isPro,
+                               onFinish: { documents in
+                                   onFinish(documents)
+                                   dismiss()
+                               },
+                               onClose: { dismiss() })
+            case .batchGate:
+                PaywallView(feature: .advancedBatch)
+            }
+        }
+        .onAppear(perform: begin)
+        .alert("Scanning unavailable", isPresented: Binding(
+            get: { unavailabilityMessage != nil },
+            set: { if !$0 { unavailabilityMessage = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(unavailabilityMessage ?? "Document scanning requires a real iPhone or iPad with a camera.")
+        }
+    }
+
+    private func begin() {
+        guard phase == .launching else { return }
+        guard ScanCameraView.isSupported else {
+            unavailabilityMessage = String(localized: "This device doesn't support document scanning. Scanning requires a camera.")
+            return
+        }
+        phase = .camera
+    }
+}
+
+/// Review screen: reorder, rotate, delete, enhance presets, batch groups,
+/// smart name suggestion, and the Create PDF path through the shared engine.
+struct ScanReviewView: View {
+    @StateObject private var model: ScanFlowModel
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var selectedPaper: PDFPaperSize = .automatic
+    @State private var renamingGroupID: UUID?
+    @State private var newGroupName = ""
+    /// Whether the Pro batch workflow is unlocked for this session.
+    var batchEnabled: Bool = true
+    /// Documents produced by the flow; caller persists them.
+    var onFinish: ([ConvertedDocument]) -> Void
+    var onClose: (() -> Void)? = nil
+
+    @State private var documentName = ""
+    @State private var showingNameField = false
+
+    init(model: ScanFlowModel,
+         batchEnabled: Bool = true,
+         onFinish: @escaping ([ConvertedDocument]) -> Void,
+         onClose: (() -> Void)? = nil) {
+        _model = StateObject(wrappedValue: model)
+        self.batchEnabled = batchEnabled
+        self.onFinish = onFinish
+        self.onClose = onClose
+        // Seed the smart suggestion once, from the group/document name.
+        _documentName = State(initialValue: OCRRouter.suggestedName(ocrText: nil,
+                                                                    fallbackTitle: nil))
+    }
+
+    private func finishCreating(_ documents: [ConvertedDocument]) {
+        // Apply the user-edited smart name when creating a single document.
+        if documents.count == 1, !documentName.trimmingCharacters(in: .whitespaces).isEmpty {
+            let original = documents[0]
+            let renamed = ConvertedDocument(data: original.data,
+                                            pageCount: original.pageCount,
+                                            suggestedTitle: documentName,
+                                            sourceURL: original.sourceURL,
+                                            source: original.source)
+            onFinish([renamed])
+        } else {
+            onFinish(documents)
+        }
+        model.cleanUp()
+        onClose?()
+    }
+
+    var body: some View {
         NavigationStack {
             Group {
-                if model.session.groups.count > 1 && model.advancedBatchEnabled {
+                if model.session.groups.count > 1 && batchEnabled {
                     batchList
                 } else {
                     pageGrid
@@ -113,13 +220,23 @@ struct ScanReviewView: View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
                 ForEach($model.session.pages) { $page in
-                    ScanPageCard(page: $page)
+                    ScanPageCard(page: $page,
+                                 onDelete: { model.session.removePage(id: page.id) })
                 }
                 .onMove { offsets, destination in
                     model.session.move(fromOffsets: offsets, toOffset: destination)
                 }
             }
             .padding(16)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Suggested name")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                TextField("Scan — date", text: $documentName)
+                    .textFieldStyle(.roundedBorder)
+            }
+            .padding(.horizontal, 16)
 
             enhancementPicker
             paperPicker
@@ -257,8 +374,7 @@ struct ScanReviewView: View {
         defer { model.isConvertingForUI = false }
         do {
             let document = try await model.createPDF(for: group, paperSize: selectedPaper)
-            onFinish([document])
-            dismiss()
+            finishCreating([document])
         } catch {
             model.isConvertingForUI = false
         }
@@ -275,8 +391,7 @@ struct ScanReviewView: View {
                 continue
             }
         }
-        onFinish(documents)
-        dismiss()
+        finishCreating(documents)
     }
 
     // MARK: - Toolbar
@@ -286,7 +401,7 @@ struct ScanReviewView: View {
         ToolbarItem(placement: .cancellationAction) {
             Button("Cancel") {
                 model.cleanUp()
-                dismiss()
+                onClose?()
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
@@ -304,6 +419,7 @@ struct ScanReviewView: View {
 
 struct ScanPageCard: View {
     @Binding var page: ScannedPage
+    var onDelete: (() -> Void)? = nil
     @State private var showingPreview = false
 
     var body: some View {
@@ -323,9 +439,7 @@ struct ScanPageCard: View {
                 .accessibilityLabel("Rotate page")
 
                 Button(role: .destructive) {
-                    // Deletion handled by parent through session; binding-only
-                    // card cannot remove from array — expose via notification.
-                    NotificationCenter.default.post(name: .scanDeletePage, object: page.id)
+                    onDelete?()
                 } label: {
                     Image(systemName: "trash")
                         .font(.footnote.weight(.semibold))
@@ -338,10 +452,6 @@ struct ScanPageCard: View {
             ScanPagePreview(url: page.imageURL)
         }
     }
-}
-
-extension Notification.Name {
-    static let scanDeletePage = Notification.Name("pdfit.scan.deletePage")
 }
 
 /// Downsampled thumbnail — never decodes full resolution in grid.
