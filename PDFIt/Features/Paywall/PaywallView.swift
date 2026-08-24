@@ -12,6 +12,10 @@ struct PaywallView: View {
     var feature: ProFeature = .webConversion
     /// Post-onboarding presentation gets an explicit "Continue with Free".
     var showsContinueFree = false
+    /// Called ONLY on a verified successful purchase (never on cancel,
+    /// failure or pending). The host decides what happens next — typically
+    /// the Pro activation flow, then resuming the original intent.
+    var onVerifiedPurchase: ((ProFeature) -> Void)? = nil
 
     @ObservedObject private var entitlements = EntitlementCenter.shared
     @State private var busyProductID: String?
@@ -271,12 +275,18 @@ struct PaywallView: View {
     private func purchase(_ product: Product) {
         busyProductID = product.id
         message = nil
+        // Preserve WHY the user opened this paywall across purchase +
+        // activation; cleared when the activation flow finishes.
+        PendingProIntent.stage(feature)
         Task {
             let outcome = await entitlements.purchase(product)
             busyProductID = nil
             switch outcome {
             case .success:
+                // VERIFIED transition only. Cancelled/pending/failed never
+                // reach this path and never trigger celebration.
                 dismiss()
+                onVerifiedPurchase?(feature)
             case .userCancelled:
                 break
             case .pending:

@@ -22,6 +22,8 @@ struct HomeView: View {
     @AppStorage(AppSettingsKeys.hasPresentedInitialProOffer)
     private var hasPresentedInitialProOffer = false
     @State private var showingOnboardingPaywall = false
+    /// Post-purchase celebration + tutorial + feature guide.
+    @State private var showingProActivation = false
 
     private let storage = StorageManager.shared
     @ObservedObject private var entitlements = EntitlementCenter.shared
@@ -47,7 +49,6 @@ struct HomeView: View {
         }
         .themeBackground()
         .toolbar(.hidden, for: .navigationBar)
-        .toolbar { homeToolbar }
         .onAppear { reloadRecords() }
         .onChange(of: scenePhase, initial: false) { _, newPhase in
             if newPhase == .active { reloadRecords() }
@@ -96,7 +97,17 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showingOnboardingPaywall) {
             PaywallView(feature: .webConversion,
-                        showsContinueFree: true)
+                        showsContinueFree: true) { _ in
+                // Verified purchase from the onboarding paywall: celebrate,
+                // teach, then land on Home. No pending intent to resume —
+                // the flow's finish clears it anyway.
+                showingProActivation = true
+            }
+        }
+        .sheet(isPresented: $showingProActivation) {
+            ProActivationFlow { intent in
+                handleProActivationCompletion(intent)
+            }
         }
         .onAppear {
             if !hasPresentedInitialProOffer {
@@ -107,7 +118,11 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $importer.showingPaywall) {
-            PaywallView(feature: importer.requiresPro ?? .webConversion)
+            PaywallView(feature: importer.requiresPro ?? .webConversion) { feature in
+                // Contextual purchase (Link, etc.): run the activation flow,
+                // then RESUME the exact action that was requested.
+                showingProActivation = true
+            }
         }
         .fileImporter(isPresented: $importer.showingFileImporter,
                       allowedContentTypes: [.image, .pdf, .text, .plainText, .html, .rtf],
@@ -180,7 +195,10 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Compact brand lockup (replaces the giant nav title)
+    // MARK: - Compact brand lockup (replaces the giant nav title).
+    // Settings lives HERE — a real 44pt button in the visible header —
+    // because the navigation bar is hidden on Home and a toolbar-based
+    // gear was unreachable on device.
 
     private var brandHeader: some View {
         HStack(spacing: 10) {
@@ -191,8 +209,22 @@ struct HomeView: View {
                 .kerning(0.2)
                 .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
             Spacer()
+            Button {
+                showingSettings = true
+            } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.85) : Color(hex: "1C1D22"))
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle().fill(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05))
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Settings")
+            .accessibilityIdentifier("home_settings_gear")
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 
     // MARK: - Scan hero (primary Free action)
@@ -382,23 +414,24 @@ struct HomeView: View {
         records = storage.fetchRecords()
     }
 
-    // MARK: - Toolbar (extracted to keep body type-checkable)
-
-    @ToolbarContentBuilder
-    private var homeToolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
-            Button {
-                showingSettings = true
-            } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.subheadline)
-                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.8) : Color(hex: "1C1D22"))
-                    .padding(8)
-                    .background(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05), in: Circle())
-            }
-            .accessibilityLabel("Settings")
+    /// Called when the activation flow finishes. If the purchase originated
+    /// from a concrete action (Sign/Compress/OCR/Link…), resume it now.
+    @MainActor
+    private func handleProActivationCompletion(_ intent: ProFeature?) {
+        switch intent {
+        case .linkConversion, .webConversion:
+            importer.requiresPro = nil
+            importer.showingLinkEntry = true
+        default:
+            // Viewer-context intents (Sign/Compress/OCR/Extract) resume
+            // inside PDFToolsHostView, which owns its own activation flow.
+            break
         }
     }
+
+    // MARK: - Home intentionally hides the system navigation bar: the custom
+    // brand header above IS the product header (brand + Settings gear).
+    // Nothing else lives in toolbar content.
 }
 
 /// Navigation routes shared by Home and Library. Viewer routes carry the

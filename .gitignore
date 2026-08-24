@@ -21,3 +21,5 @@ xcuserdata/
 #
 Pods/
 Carthage/Build/
+.add_uitest_target_p*.py
+.audit_pbxproj.py

@@ -138,6 +138,40 @@
         }
       }
     },
+    "Active": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktiv"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actif"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attivo"
+          }
+        }
+      }
+    },
     "Add": {
       "localizations": {
         "de": {
@@ -202,6 +236,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aggiungi copertina"
+          }
+        }
+      }
+    },
+    "Add PDF It to your Share Sheet favorites": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Füge PDF It zu deinen Teilen-Favoriten hinzu"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add PDF It to your Share Sheet favorites"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añade PDF It a tus favoritos de la hoja de compartir"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoutez PDF It à vos favoris de la feuille de partage"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi PDF It ai preferiti del foglio di condivisione"
           }
         }
       }
@@ -617,6 +685,40 @@
         }
       }
     },
+    "BATCH SCAN": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "STAPELSCAN"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BATCH SCAN"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ESCANEO POR LOTES"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SCAN PAR LOT"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SCANSIONE IN SERIE"
+          }
+        }
+      }
+    },
     "Balanced": {
       "extractionState": "manual",
       "localizations": {
@@ -717,6 +819,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Miglior valore"
+          }
+        }
+      }
+    },
+    "COMPRESS": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "KOMPRIMIEREN"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "COMPRESS"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "COMPRIMIR"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "COMPRIMER"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "COMPRIMI"
+          }
+        }
+      }
+    },
+    "CUSTOMIZE": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ANPASSEN"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUSTOMIZE"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PERSONALIZAR"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PERSONNALISER"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PERSONALIZZA"
           }
         }
       }
@@ -960,6 +1130,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scegli foto"
+          }
+        }
+      }
+    },
+    "Choose a mode": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle einen Modus"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a mode"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige un modo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un mode"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli una modalità"
           }
         }
       }
@@ -1750,6 +1954,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Titolo copertina"
+          }
+        }
+      }
+    },
+    "Cover page, metadata, page numbers, watermark, margins.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deckblatt, Metadaten, Seitenzahlen, Wasserzeichen, Ränder."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cover page, metadata, page numbers, watermark, margins."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portada, metadatos, números de página, marca de agua, márgenes."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page de couverture, métadonnées, numéros de page, filigrane, marges."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copertina, metadati, numeri di pagina, filigrana, margini."
           }
         }
       }
@@ -2647,6 +2885,40 @@
         }
       }
     },
+    "Draw once; reuse your saved signature.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einmal zeichnen; gespeicherte Signatur wiederverwenden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Draw once; reuse your saved signature."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dibuja una vez; reutiliza tu firma guardada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dessinez une fois ; réutilisez votre signature enregistrée."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disegna una volta; riutilizza la firma salvata."
+          }
+        }
+      }
+    },
     "Duplicate": {
       "extractionState": "manual",
       "localizations": {
@@ -2678,6 +2950,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Duplica"
+          }
+        }
+      }
+    },
+    "EXTRACT": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EXTRAHIEREN"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EXTRACT"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EXTRAER"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EXTRAIRE"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ESTRAI"
           }
         }
       }
@@ -2780,6 +3086,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tutte le funzioni Pro sono sbloccate su questo dispositivo."
+          }
+        }
+      }
+    },
+    "Everything is yours.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles gehört dir."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything is yours."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo es tuyo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout est à vous."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tutto è tuo."
+          }
+        }
+      }
+    },
+    "Explore Pro Features": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro-Funktionen erkunden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explore Pro Features"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explorar funciones Pro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explorer les fonctions Pro"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esplora funzioni Pro"
           }
         }
       }
@@ -3193,6 +3567,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Come trasformare i contenuti condivisi in PDF da Safari, X, Foto e altro."
+          }
+        }
+      }
+    },
+    "If PDF It isn't visible, scroll to the end of the apps row and tap More.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wenn PDF It nicht sichtbar ist, scrolle ans Ende der App-Reihe und tippe auf Mehr."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If PDF It isn't visible, scroll to the end of the apps row and tap More."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si no ves PDF It, desplázate al final de la fila de apps y toca Más."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si PDF It n'apparaît pas, faites défiler la rangée d'apps et touchez Plus."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se PDF It non è visibile, scorri alla fine della riga delle app e tocca Altro."
           }
         }
       }
@@ -3816,6 +4224,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rendi le scansioni ricercabili con OCR sul dispositivo."
+          }
+        }
+      }
+    },
+    "Manage Subscription": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abo verwalten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage Subscription"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Administrar suscripción"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gérer l'abonnement"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gestisci abbonamento"
+          }
+        }
+      }
+    },
+    "Meet your full PDF toolkit": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entdecke dein komplettes PDF-Werkzeug"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meet your full PDF toolkit"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descubre tu kit completo de PDF"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Découvrez toute votre boîte à outils PDF"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scopri il tuo kit PDF completo"
           }
         }
       }
@@ -4677,6 +5153,108 @@
         }
       }
     },
+    "ORGANIZE": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ORDNEN"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ORGANIZE"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ORGANIZAR"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ORGANISER"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ORGANIZZA"
+          }
+        }
+      }
+    },
+    "On-device OCR makes scans searchable and selectable.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR auf dem Gerät macht Scans durchsuchbar und wählbar."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On-device OCR makes scans searchable and selectable."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El OCR en el dispositivo hace los escaneos buscables y seleccionables."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'OCR sur l'appareil rend les scans recherchables et sélectionnables."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'OCR sul dispositivo rende le scansioni ricercabili e selezionabili."
+          }
+        }
+      }
+    },
+    "On-device processing. No account. Nothing uploaded to PDF It.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verarbeitung auf dem Gerät. Kein Konto. Nichts wird zu PDF It hochgeladen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On-device processing. No account. Nothing uploaded to PDF It."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procesamiento en el dispositivo. Sin cuenta. Nada se sube a PDF It."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traitement sur l'appareil. Aucun compte. Rien n'est envoyé à PDF It."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elaborazione sul dispositivo. Nessun account. Nulla viene caricato su PDF It."
+          }
+        }
+      }
+    },
     "Open PDF It": {
       "localizations": {
         "de": {
@@ -4741,6 +5319,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apri un'app supportata, tocca Condividi e scegli PDF It."
+          }
+        }
+      }
+    },
+    "Open content": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inhalt öffnen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open content"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre el contenido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrez le contenu"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri il contenuto"
           }
         }
       }
@@ -5125,6 +5737,40 @@
         }
       }
     },
+    "PDF IT PRO": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF IT PRO"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF IT PRO"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF IT PRO"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF IT PRO"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF IT PRO"
+          }
+        }
+      }
+    },
     "PDF It": {
       "localizations": {
         "de": {
@@ -5193,6 +5839,40 @@
         }
       }
     },
+    "PDF It Pro unlocked": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF It Pro freigeschaltet"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF It Pro unlocked"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF It Pro desbloqueado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF It Pro débloqué"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF It Pro sbloccato"
+          }
+        }
+      }
+    },
     "PDF It processes and stores documents locally. Your documents are not uploaded to PDF It. When you convert a webpage, PDF It loads the page directly from its source website.": {
       "localizations": {
         "de": {
@@ -5223,6 +5903,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "PDF It elabora e memorizza i documenti localmente. I tuoi documenti non vengono caricati su PDF It. Quando converti una pagina web, PDF It la carica direttamente dal sito web di origine."
+          }
+        }
+      }
+    },
+    "PDF It receives only the content the source app chooses to share.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF It erhält nur die Inhalte, die die Quell-App teilt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF It receives only the content the source app chooses to share."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF It solo recibe el contenido que la app origen decide compartir."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF It ne reçoit que le contenu que l'app source choisit de partager."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF It riceve solo i contenuti che l'app di origine sceglie di condividere."
           }
         }
       }
@@ -6192,6 +6906,74 @@
         }
       }
     },
+    "Preview Pro Activation": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro-Aktivierungsvorschau"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preview Pro Activation"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista previa de activación Pro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aperçu de l'activation Pro"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anteprima attivazione Pro"
+          }
+        }
+      }
+    },
+    "Preview replays celebration, Share tutorial and feature guide without a purchase. Reset lets the activation flow run again after a real purchase.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Vorschau zeigt Feier, Teilen-Tutorial und Guide ohne Kauf. Zurücksetzen lässt die Aktivierung nach echtem Kauf erneut laufen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preview replays celebration, Share tutorial and feature guide without a purchase. Reset lets the activation flow run again after a real purchase."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La vista previa reproduce celebración, tutorial y guía sin compra. Restablecer permite repetir la activación tras una compra real."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'aperçu rejoue célébration, tutoriel de partage et guide sans achat. La réinitialisation permet de rejouer l'activation après un vrai achat."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'anteprima riproduce celebrazione, tutorial e guida senza acquisto. Il reset permette di rifare l'attivazione dopo un acquisto vero."
+          }
+        }
+      }
+    },
     "Print": {
       "extractionState": "manual",
       "localizations": {
@@ -6400,6 +7182,74 @@
         }
       }
     },
+    "Pro Features Guide": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro-Funktionen-Guide"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro Features Guide"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guía de funciones Pro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guide des fonctions Pro"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guida funzioni Pro"
+          }
+        }
+      }
+    },
+    "Pro Flow QA": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro-Ablauf-QA"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro Flow QA"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QA del flujo Pro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QA du flux Pro"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QA flusso Pro"
+          }
+        }
+      }
+    },
     "Pro feature": {
       "localizations": {
         "de": {
@@ -6601,6 +7451,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rapido"
+          }
+        }
+      }
+    },
+    "Quick keeps everything. Clean and Reader produce polished article PDFs.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schnell behält alles. Klar und Lesen erzeugen gepflegte Artikel-PDFs."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quick keeps everything. Clean and Reader produce polished article PDFs."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rápido lo conserva todo. Limpio y Lectura generan artículos pulidos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rapide garde tout. Épuré et Lecture produisent des articles soignés."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rapida mantiene tutto. Pulita e Lettura producono articoli curati."
+          }
+        }
+      }
+    },
+    "Quick, Clean and Reader webpage modes.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web-Modi Schnell, Klar und Lesen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quick, Clean and Reader webpage modes."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modos web Rápido, Limpio y Lectura."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modes web Rapide, Épuré et Lecture."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modalità web Rapida, Pulita e Lettura."
           }
         }
       }
@@ -6848,6 +7766,40 @@
         }
       }
     },
+    "Recommended": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empfohlen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recommended"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recomendado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recommandé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consigliato"
+          }
+        }
+      }
+    },
     "Redraw": {
       "localizations": {
         "de": {
@@ -6985,6 +7937,40 @@
         }
       }
     },
+    "Reorder and rotate pages into a new document.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seiten neu ordnen und drehen — in ein neues Dokument."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reorder and rotate pages into a new document."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reordena y rota páginas en un nuevo documento."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réordonnez et pivotez les pages en un nouveau document."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riordina e ruota le pagine in un nuovo documento."
+          }
+        }
+      }
+    },
     "Reorder, rotate and extract pages.": {
       "extractionState": "stale",
       "localizations": {
@@ -7016,6 +8002,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Riordina, ruota ed estrai pagine."
+          }
+        }
+      }
+    },
+    "Reset Pro Welcome State": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro-Willkommensstatus zurücksetzen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset Pro Welcome State"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer bienvenida Pro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réinitialiser l'accueil Pro"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset benvenuto Pro"
           }
         }
       }
@@ -7323,6 +8343,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "CONDIVIDI DA QUALSIASI APP"
+          }
+        }
+      }
+    },
+    "SIGN": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SIGNIEREN"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SIGN"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FIRMAR"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SIGNER"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FIRMA"
+          }
+        }
+      }
+    },
+    "Safari, X, Photos, Notes, Files — anything that offers Share.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safari, X, Fotos, Notizen, Dateien — jede App mit Teilen-Funktion."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safari, X, Photos, Notes, Files — anything that offers Share."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safari, X, Fotos, Notas, Archivos — cualquier app que ofrezca Compartir."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safari, X, Photos, Notes, Fichiers — toute app qui propose Partager."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safari, X, Foto, Note, File — qualsiasi app che offre Condividi."
           }
         }
       }
@@ -7946,6 +9034,40 @@
         }
       }
     },
+    "Selected pages become their own PDF.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausgewählte Seiten werden zu einem eigenen PDF."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected pages become their own PDF."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las páginas elegidas se convierten en su propio PDF."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les pages choisies deviennent leur propre PDF."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le pagine scelte diventano un PDF a parte."
+          }
+        }
+      }
+    },
     "Settings": {
       "extractionState": "manual",
       "localizations": {
@@ -8323,6 +9445,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Riduci i PDF pesanti senza perdere qualità."
+          }
+        }
+      }
+    },
+    "Shrink image-heavy PDFs honestly — never bigger copies.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildlastige PDFs ehrlich verkleinern — nie größere Kopien."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shrink image-heavy PDFs honestly — never bigger copies."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reduce los PDF con muchas imágenes — sin copias más pesadas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allégez les PDF riches en images — jamais de copies plus grosses."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riduci i PDF ricchi di immagini — mai copie più grandi."
           }
         }
       }
@@ -9188,6 +10344,40 @@
         }
       }
     },
+    "The Share Extension turns shared content into PDFs.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Share-Extension macht geteilte Inhalte zu PDFs."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Share Extension turns shared content into PDFs."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La extensión de compartir convierte contenido compartido en PDF."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'extension de partage transforme le contenu partagé en PDF."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'estensione di condivisione trasforma i contenuti in PDF."
+          }
+        }
+      }
+    },
     "The app didn't share content PDF It can work with.": {
       "extractionState": "manual",
       "localizations": {
@@ -9461,6 +10651,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Il risultato non è stato salvato nella tua libreria."
+          }
+        }
+      }
+    },
+    "The result lands in your PDF It Library.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Ergebnis landet in deiner PDF-It-Bibliothek."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The result lands in your PDF It Library."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resultado llega a tu biblioteca de PDF It."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le résultat arrive dans votre bibliothèque PDF It."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il risultato arriva nella tua libreria PDF It."
           }
         }
       }
@@ -9949,6 +11173,40 @@
         }
       }
     },
+    "To keep PDF It easy to reach, add it to your Share Sheet favorites. Depending on your iOS version, open More → Edit and add PDF It to Favorites.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Halte PDF It griffbereit: füge es zu deinen Favoriten hinzu. Je nach iOS-Version über Mehr → Bearbeiten zu den Favoriten hinzufügen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To keep PDF It easy to reach, add it to your Share Sheet favorites. Depending on your iOS version, open More → Edit and add PDF It to Favorites."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para tener PDF It siempre a mano, añádelo a tus favoritos. Según tu versión de iOS, abre Más → Editar y añade PDF It a Favoritos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour garder PDF It à portée de main, ajoutez-le à vos favoris. Selon votre version d'iOS, ouvrez Plus → Modifier puis ajoutez PDF It aux favoris."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per avere PDF It sempre a portata, aggiungilo ai preferiti. In base alla versione di iOS, apri Altro → Modifica e aggiungi PDF It ai preferiti."
+          }
+        }
+      }
+    },
     "Tool failed": {
       "localizations": {
         "de": {
@@ -10259,6 +11517,108 @@
         }
       }
     },
+    "UNLIMITED ORGANIZATION": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UNBEGRENZTE ORDNUNG"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UNLIMITED ORGANIZATION"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ORGANIZACIÓN ILIMITADA"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ORGANISATION ILLIMITÉE"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ORGANIZZAZIONE ILLIMITATA"
+          }
+        }
+      }
+    },
+    "USING PDF IT": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF IT NUTZEN"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "USING PDF IT"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "USAR PDF IT"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UTILISER PDF IT"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "USARE PDF IT"
+          }
+        }
+      }
+    },
+    "Unlimited folders and merging.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbegrenzte Ordner und Zusammenführung."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlimited folders and merging."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carpetas y fusión ilimitadas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dossiers et fusion illimités."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cartelle e unione illimitate."
+          }
+        }
+      }
+    },
     "Unlock Share Extension": {
       "localizations": {
         "de": {
@@ -10426,6 +11786,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Usa il foglio di condivisione dalle app compatibili."
+          }
+        }
+      }
+    },
+    "Use the system Share button.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nutze die System-Taste „Teilen“."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use the system Share button."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa el botón Compartir del sistema."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilisez le bouton Partager du système."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa il pulsante Condividi di sistema."
           }
         }
       }

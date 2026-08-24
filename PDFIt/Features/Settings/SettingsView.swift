@@ -5,6 +5,8 @@ struct SettingsView: View {
     @AppStorage(AppSettingsKeys.defaultMode, store: AppConfiguration.sharedDefaults)
     private var defaultMode: ConversionMode = .quick
 
+    @ObservedObject private var entitlements = EntitlementCenter.shared
+
     @AppStorage(AppSettingsKeys.defaultPaperSize, store: AppConfiguration.sharedDefaults)
     private var defaultPaperSize: PDFPaperSize = .automatic
 
@@ -30,6 +32,26 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            proSection
+
+            Section {
+                NavigationLink {
+                    ShareExtensionGuideView()
+                } label: {
+                    Label("Use PDF It from any app", systemImage: "square.and.arrow.up")
+                }
+                NavigationLink {
+                    ProFeaturesGuideView(activationMode: false)
+                } label: {
+                    Label("Pro Features Guide", systemImage: "sparkles.rectangle.stack")
+                }
+                .disabled(!entitlements.isPro)
+            } header: {
+                Text("Using PDF It")
+            } footer: {
+                Text("How to turn shared content into PDFs from Safari, X, Photos and more.")
+            }
+
             Section {
                 Picker("Language", selection: languageBinding) {
                     Text("System Default").tag(AppLanguage?.none)
@@ -38,20 +60,8 @@ struct SettingsView: View {
                         Text(language.displayName).tag(AppLanguage?.some(language))
                     }
                 }
-            } header: {
-                Text("Language")
             } footer: {
                 Text("Applies to the app and the Share Extension. The system language is used until you pick one here.")
-            }
-
-            Section {
-                NavigationLink {
-                    ShareExtensionGuideView()
-                } label: {
-                    Label("Use PDF It from any app", systemImage: "square.and.arrow.up")
-                }
-            } footer: {
-                Text("How to turn shared content into PDFs from Safari, X, Photos and more.")
             }
 
             Section("Conversion") {
@@ -125,6 +135,7 @@ struct SettingsView: View {
 
 #if DEBUG
             developerSection
+            developerActionsSection
 #endif
         }
         .scrollContentBackground(colorScheme == .dark ? .hidden : .visible)
@@ -164,6 +175,75 @@ struct SettingsView: View {
         totalBytes = records.reduce(0) { $0 + $1.fileSize }
     }
 
+    // MARK: - PDF It Pro section (the user's control center entry)
+
+    @State private var showingProPaywall = false
+    @State private var showingActivationPreview = false
+    @State private var showStoreKitUnavailableNote = false
+
+    @ViewBuilder
+    private var proSection: some View {
+        Section {
+            if entitlements.isPro {
+                LabeledContent {
+                    Label("Active", systemImage: "checkmark.seal.fill")
+                        .labelStyle(.titleAndIcon)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.green)
+                } label: {
+                    Label("PDF It Pro", systemImage: "crown.fill")
+                        .foregroundStyle(Theme.Colors.orangePrimary)
+                }
+#if !APP_STORE
+                Button {
+                    if let url = URL(string: "itms-apps://apps.apple.com/account/subscriptions") {
+                        openURL(url)
+                    } else {
+                        showStoreKitUnavailableNote = true
+                    }
+                } label: {
+                    Label("Manage Subscription", systemImage: "arrow.triangle.2.circlepath")
+                }
+#endif
+            } else {
+                Button {
+                    showingProPaywall = true
+                } label: {
+                    Label("PDF It Pro", systemImage: "crown.fill")
+                        .foregroundStyle(Theme.Colors.orangePrimary)
+                }
+            }
+
+            Button {
+                Task {
+                    await entitlements.restore()
+                    showStoreKitUnavailableNote = !entitlements.isPro && entitlements.status.isUnavailable
+                }
+            } label: {
+                Text("Restore Purchases")
+            }
+        } header: {
+            Text("PDF IT PRO")
+                .accessibilityIdentifier("pdf_settings_pro_header")
+        } footer: {
+            if showStoreKitUnavailableNote {
+                Text("Purchases are temporarily unavailable.")
+            }
+        }
+        .sheet(isPresented: $showingProPaywall) {
+            // Settings-initiated purchase: celebrate on verified success,
+            // then simply land back (no pending intent to resume).
+            PaywallView(feature: .webConversion) { _ in
+                showingActivationPreview = true
+            }
+        }
+        .sheet(isPresented: $showingActivationPreview) {
+            ProActivationFlow { _ in } // no intent side effects
+        }
+    }
+
+    @Environment(\.openURL) private var openURL
+
 #if DEBUG
     /// DEBUG-ONLY developer surface. Lets the tester run the whole app —
     /// including the Share Extension via the App Group flag — as Pro before
@@ -190,6 +270,21 @@ struct SettingsView: View {
             Text("Developer")
         } footer: {
             Text("DEBUG builds only. Forces every Pro feature, in the app and the Share Extension. Not present in release.")
+        }
+    }
+
+    /// DEBUG-only visual QA entries. Never compiled into Release.
+    @ViewBuilder
+    private var developerActionsSection: some View {
+        Section {
+            Button("Preview Pro Activation") { showingActivationPreview = true }
+            Button("Reset Pro Welcome State") {
+                ProActivationState.resetWelcomeState()
+            }
+        } header: {
+            Text("Pro Flow QA")
+        } footer: {
+            Text("Preview replays celebration, Share tutorial and feature guide without a purchase. Reset lets the activation flow run again after a real purchase.")
         }
     }
 #endif

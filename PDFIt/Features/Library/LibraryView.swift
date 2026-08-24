@@ -217,6 +217,7 @@ struct LibraryView: View {
                 }
                 .accessibilityLabel("Add")
                 Button("Select") { enterSelectionMode() }
+                    .accessibilityIdentifier("library_select")
             }
         }
     }
