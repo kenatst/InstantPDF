@@ -30,6 +30,7 @@ struct PaywallView: View {
                 VStack(spacing: Theme.Spacing.lg) {
                     heroBlock
                     featureShowcase
+                    comparisonCard
                     privacyStrip
 
                     if entitlements.isPro {
@@ -71,56 +72,147 @@ struct PaywallView: View {
         .preferredColorScheme(.dark)
     }
 
-    // MARK: - Hero
-
-    // MARK: - Hero: outcome-first promise (not a feature list)
+    // MARK: - Hero: Crown Mascot & Promise
 
     private var heroBlock: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 16) {
             ZStack {
-                Circle().stroke(Theme.Colors.orangePrimary.opacity(0.4), lineWidth: 1)
-                    .frame(width: 96, height: 96)
-                MascotView(type: .hero, size: 92, enableFloatingAnimation: false)
+                // Warm ambient glow behind the crown mascot
+                Circle()
+                    .fill(Theme.Colors.orangePrimary.opacity(0.18))
+                    .frame(width: 150, height: 150)
+                    .blur(radius: 20)
+
+                MascotView(type: .crown, size: 140, enableFloatingAnimation: true)
             }
             .accessibilityHidden(true)
 
-            VStack(spacing: 7) {
-                Text("PDFIT PRO")
-                    .font(.caption.weight(.black))
-                    .tracking(2.2)
-                    .foregroundStyle(Theme.Colors.orangePrimary)
-                Text("Turn anything into a PDF from any app.")
-                    .font(.system(size: 27, weight: .heavy, design: .rounded))
+            VStack(spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "crown.fill")
+                        .font(.caption.weight(.black))
+                    Text("PDFIT PRO")
+                        .font(.caption.weight(.black))
+                        .tracking(2.2)
+                }
+                .foregroundStyle(Theme.Colors.orangePrimary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(Theme.Colors.orangePrimary.opacity(0.14))
+                        .overlay(Capsule().strokeBorder(Theme.Colors.orangePrimary.opacity(0.35), lineWidth: 1))
+                )
+
+                Text("Supercharge your PDF workflow.")
+                    .font(.system(size: 26, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
+                    .padding(.horizontal, 10)
+
+                Text("Unlock the share sheet, signing, OCR, compression and unlimited organization.")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.white.opacity(0.72))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 12)
             }
         }
+        .padding(.top, 4)
     }
 
-    // MARK: - Outcome blocks: sell results, map to features second
+    // MARK: - 4 Core Value Pillars
 
     private var featureShowcase: some View {
         VStack(alignment: .leading, spacing: 0) {
-            outcomeRow(symbol: "sparkles",
-                       title: "Sign documents without uploading them anywhere.",
-                       copy: "Draw once — place your signature on the exact spot. Everything stays on this iPhone.")
-            Divider().overlay(Color.white.opacity(0.10))
+            outcomeRow(symbol: "square.and.arrow.up",
+                       title: "Share Sheet & Web Conversion",
+                       copy: "Convert directly from Safari, Photos, Files or any app without opening PDFIT. Strip ads with Clean & Reader modes.")
+            Divider().overlay(Color.white.opacity(0.08))
                 .padding(.leading, 54)
-            outcomeRow(symbol: "doc.text.magnifyingglass",
-                       title: "Make scans searchable on your iPhone.",
-                       copy: "On-device OCR turns pictures of paper into selectable text. No cloud round-trip.")
-            Divider().overlay(Color.white.opacity(0.10))
+            outcomeRow(symbol: "signature",
+                       title: "Sign & Search on Device",
+                       copy: "Sign contracts & forms anywhere on the page. On-device OCR extracts selectable text without cloud uploads.")
+            Divider().overlay(Color.white.opacity(0.08))
                 .padding(.leading, 54)
             outcomeRow(symbol: "arrow.down.doc",
-                       title: "Compress and organize files in seconds.",
-                       copy: "Smaller files that stay readable, plus page-level tools for reorder, extract and rotate.")
+                       title: "Compress & Batch Scan",
+                       copy: "Shrink heavy PDFs while keeping crisp quality. Continuous batch scanning with automatic document separation.")
+            Divider().overlay(Color.white.opacity(0.08))
+                .padding(.leading, 54)
+            outcomeRow(symbol: "square.stack.3d.up",
+                       title: "Extract Pages & Unlimited Organization",
+                       copy: "Reorder, rotate, delete and extract pages. Unlimited folders, advanced merge and custom formatting.")
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.xs)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-            .fill(Theme.Colors.darkCard)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.09), lineWidth: 1)))
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .fill(Theme.Colors.darkCard)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.09), lineWidth: 1)
+                )
+        )
+    }
+
+    // MARK: - Free vs Pro Comparison Card
+
+    private var comparisonCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Free vs Pro")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+                Spacer()
+                Text("Complete Breakdown")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.Colors.orangePrimary)
+            }
+
+            VStack(spacing: 8) {
+                comparisonRow(name: "Scan & Multipage Scan", free: true, pro: true)
+                comparisonRow(name: "Photos, Text & Files → PDF", free: true, pro: true)
+                comparisonRow(name: "Local Library & Smart Naming", free: true, pro: true)
+                comparisonRow(name: "Share Extension (Any App)", free: false, pro: true)
+                comparisonRow(name: "Web / Links (Clean & Reader)", free: false, pro: true)
+                comparisonRow(name: "PDF Signatures", free: false, pro: true)
+                comparisonRow(name: "Searchable On-Device OCR", free: false, pro: true)
+                comparisonRow(name: "PDF Compression", free: false, pro: true)
+                comparisonRow(name: "Extract, Rotate & Reorder Pages", free: false, pro: true)
+                comparisonRow(name: "Batch Scan (Multi-doc)", free: false, pro: true)
+                comparisonRow(name: "Unlimited Folders & Merging", free: false, pro: true)
+            }
+        }
+        .padding(Theme.Spacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .fill(Theme.Colors.darkCardSecondary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                        .strokeBorder(Theme.Colors.darkStroke, lineWidth: 1)
+                )
+        )
+    }
+
+    private func comparisonRow(name: String, free: Bool, pro: Bool) -> some View {
+        HStack {
+            Text(LocalizedStringKey(name))
+                .font(.caption.weight(pro && !free ? .semibold : .regular))
+                .foregroundStyle(pro && !free ? .white : Color.white.opacity(0.72))
+            Spacer()
+            HStack(spacing: 24) {
+                Image(systemName: free ? "checkmark.circle.fill" : "xmark.circle")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(free ? Color.gray.opacity(0.8) : Color.white.opacity(0.2))
+                    .frame(width: 24)
+
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Theme.Colors.orangePrimary)
+                    .frame(width: 24)
+            }
+        }
+        .padding(.vertical, 2)
     }
 
     /// Privacy proof strip — precise claims only.

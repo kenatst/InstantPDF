@@ -48,16 +48,21 @@ struct SettingsView: View {
                 NavigationLink {
                     ShareExtensionGuideView()
                 } label: {
-                    Label("Use PDF It from any app", systemImage: "square.and.arrow.up")
+                    Label("Use PDFIT from any app", systemImage: "square.and.arrow.up")
                 }
                 NavigationLink {
                     ProFeaturesGuideView(activationMode: false)
                 } label: {
-                    Label("Pro Features Guide", systemImage: "sparkles.rectangle.stack")
+                    HStack {
+                        Label("Explore Pro Features", systemImage: "crown.fill")
+                        Spacer()
+                        if !entitlements.isPro {
+                            ProBadge()
+                        }
+                    }
                 }
-                .disabled(!entitlements.isPro)
             } header: {
-                SettingsSectionHeader("Using PDF It", symbol: "sparkles.rectangle.stack")
+                SettingsSectionHeader("Using PDFIT", symbol: "sparkles.rectangle.stack")
             } footer: {
                 Text("How to turn shared content into PDFs from Safari, X, Photos and more.")
             }

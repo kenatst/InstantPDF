@@ -227,6 +227,8 @@ struct MascotView: View {
         case onboarding3
         case success
         case error
+        case crown
+        case pro
         
         var assetName: String {
             switch self {
@@ -240,7 +242,7 @@ struct MascotView: View {
             case .onboarding1: return "MascotOnboarding1"
             case .onboarding2: return "MascotOnboarding2"
             case .onboarding3: return "MascotOnboarding3"
-            case .success: return "MascotSuccess"
+            case .success, .crown, .pro: return "MascotCrown"
             case .error: return "MascotError"
             }
         }

@@ -207,6 +207,8 @@ final class LocalizationAndProductTests: XCTestCase {
         XCTAssertEqual(MascotActionCard.Category.files.mascotType.assetName, "MascotFiles")
         XCTAssertEqual(MascotView.MascotType.library.assetName, "MascotLibrary")
         XCTAssertEqual(MascotView.MascotType.scan.assetName, "MascotScan")
+        XCTAssertEqual(MascotView.MascotType.crown.assetName, "MascotCrown")
+        XCTAssertEqual(MascotView.MascotType.pro.assetName, "MascotCrown")
     }
 
     // MARK: - Option & Error Localization Tests
