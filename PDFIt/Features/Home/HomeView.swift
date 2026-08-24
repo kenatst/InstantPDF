@@ -16,6 +16,10 @@ struct HomeView: View {
     @State private var showingScanner = false
     /// Typed viewer routing: the exact created/tapped document ID.
     @State private var presentedViewerID: UUID?
+    /// A scan is persisted while its sheet is still visible. Navigate only
+    /// after dismissal; changing the NavigationStack during a modal teardown
+    /// is dropped intermittently by SwiftUI on a real iPhone.
+    @State private var pendingScannedRecordID: UUID?
     /// One-time Pro offer right after onboarding (Free stays fully usable).
     @AppStorage(AppSettingsKeys.hasPresentedInitialProOffer)
     private var hasPresentedInitialProOffer = false
@@ -55,7 +59,7 @@ struct HomeView: View {
         .onChange(of: importer.photoSelections, initial: false) { _, _ in
             importer.handlePhotoSelections()
         }
-        .sheet(isPresented: $showingScanner) {
+        .sheet(isPresented: $showingScanner, onDismiss: finishScanPresentation) {
             ScanFlowSheet(model: scanModel) { documents in
                 // REAL persistence: every document must be saved or the user
                 // hears about it. No silent `try?`. The scan sheet keeps its
@@ -79,9 +83,10 @@ struct HomeView: View {
                 }
                 reloadRecords()
                 if let id = lastSavedID {
-                    // Open the exact created document.
-                    showingScanner = false
-                    presentedViewerID = id
+                    // The scan sheet dismisses itself after it has received
+                    // this acknowledgement. Route on the subsequent
+                    // onDismiss callback so the saved document reliably opens.
+                    pendingScannedRecordID = id
                 }
                 return []
             }
@@ -427,6 +432,14 @@ struct HomeView: View {
 
     private func reloadRecords() {
         records = storage.fetchRecords()
+    }
+
+    @MainActor
+    private func finishScanPresentation() {
+        reloadRecords()
+        guard let id = pendingScannedRecordID else { return }
+        pendingScannedRecordID = nil
+        presentedViewerID = id
     }
 
     /// Called when the activation flow finishes. If the purchase originated

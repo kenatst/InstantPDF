@@ -221,11 +221,22 @@ final class ScanFlowTests: XCTestCase {
     func testScanModelCleanUpResetsSession() throws {
         let model = ScanFlowModel()
         let data = try makeJPEGData()
+        let firstStoreDirectory = model.stagingForTesting.directory
         let url = try XCTUnwrap(try? model.stagingForTesting.stage(data: data, fileExtension: "jpg"))
         model.ingestFromTesting([url])
         XCTAssertFalse(model.session.isEmpty)
         model.cleanUp()
         XCTAssertTrue(model.session.isEmpty, "cancel wipes the review session")
+        XCTAssertNotEqual(model.stagingForTesting.directory, firstStoreDirectory,
+                          "a finished scan must rotate in a writable staging session")
+        XCTAssertFalse(model.stagingForTesting.isCleanedUp)
+
+        let nextImage = try XCTUnwrap(UIImage(data: data))
+        model.ingest(images: [nextImage])
+        XCTAssertEqual(model.session.pages.count, 1,
+                       "a second scan must still stage and enter review")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: model.session.pages[0].imageURL.path))
+        model.cleanUp()
     }
 
     @MainActor

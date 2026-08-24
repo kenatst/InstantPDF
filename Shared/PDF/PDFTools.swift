@@ -151,11 +151,19 @@ enum PDFTools {
         var chunks: [Data] = []
         for pageIndex in 1...total {
             guard let page = document.page(at: pageIndex) else { continue }
-            let box = page.getBoxRect(.mediaBox)
+            // PDF viewers display the CropBox. Rebuilding from MediaBox made
+            // documents with printer margins / hidden canvas look massively
+            // zoomed out after compression even though their content bytes
+            // were otherwise valid.
+            let cropBox = page.getBoxRect(.cropBox)
+            let mediaBox = page.getBoxRect(.mediaBox)
+            let usesCropBox = !cropBox.isEmpty && !cropBox.isNull
+            let visibleBox = usesCropBox ? cropBox : mediaBox
+            let displayBox: CGPDFBox = usesCropBox ? .cropBox : .mediaBox
             let rotation = ((Int(page.rotationAngle) % 360) + 360) % 360
             let pageSize = (rotation == 90 || rotation == 270)
-                ? CGSize(width: box.height, height: box.width)
-                : box.size
+                ? CGSize(width: visibleBox.height, height: visibleBox.width)
+                : visibleBox.size
 
             // Rasterize at capped long edge, ALWAYS ≥2x points→pixels so text
             // stays retina-crisp (the old 1x cap produced blurry pages).
@@ -171,7 +179,7 @@ enum PDFTools {
                 cgContext?.saveGState()
                 cgContext?.translateBy(x: 0, y: pixelSize.height)
                 cgContext?.scaleBy(x: 1, y: -1)
-                let transform = page.getDrawingTransform(.mediaBox,
+                let transform = page.getDrawingTransform(displayBox,
                                                          rect: CGRect(origin: .zero, size: pixelSize),
                                                          rotate: 0,
                                                          preserveAspectRatio: true)
@@ -206,7 +214,7 @@ enum PDFTools {
                     cgContext.saveGState()
                     cgContext.translateBy(x: 0, y: pageSize.height)
                     cgContext.scaleBy(x: 1, y: -1)
-                    cgContext.concatenate(page.getDrawingTransform(.mediaBox,
+                    cgContext.concatenate(page.getDrawingTransform(displayBox,
                                                                     rect: CGRect(origin: .zero, size: pageSize),
                                                                     rotate: 0,
                                                                     preserveAspectRatio: true))

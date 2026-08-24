@@ -35,9 +35,11 @@ final class ScanFlowModel: ObservableObject {
         guard !images.isEmpty else { return }
         for image in images {
             guard let data = normalizedJPEG(image) else { continue }
-            let url = staging.appendPathComponent("scan-\(UUID().uuidString).jpg")
             do {
-                try data.write(to: url, options: .atomic)
+                // Always stage through TempFileStore. A scan model survives
+                // multiple sheet presentations, so direct writes to a stale
+                // directory are not safe after an earlier cleanup.
+                let url = try staging.stage(data: data, fileExtension: "jpg")
                 session.append(page: ScannedPage(id: UUID(), imageURL: url))
             } catch {
                 continue
@@ -54,8 +56,7 @@ final class ScanFlowModel: ObservableObject {
         autoreleasepool {
             let processed = ScanEnhancement.processData(raw, enhancement: page.enhancement)
             let rotated = Self.rotatedJPEG(processed, quarterTurns: page.rotationQuarterTurns)
-            let url = store.appendPathComponent("enh-\(UUID().uuidString).jpg")
-            if (try? rotated.write(to: url, options: .atomic)) != nil {
+            if let url = try? store.stage(data: rotated, fileExtension: "jpg") {
                 // Keep the original capture; the enhanced copy becomes the
                 // conversion source. Originals are cleaned with the session.
                 page.imageURL = url
@@ -132,16 +133,15 @@ final class ScanFlowModel: ObservableObject {
 
     /// Removes all staged scan files (cancel / after full save-all).
     func cleanUp() {
-        staging.cleanUp()
+        // Home owns this model for the lifetime of the tab. TempFileStore is
+        // deliberately one-shot, so reusing it after cleanUp means every
+        // later scan writes into a deleted directory. Rotate in a fresh store
+        // before ending the session so scan #2, #3, … persist normally.
+        let expiredStaging = staging
+        staging = TempFileStore()
+        expiredStaging.cleanUp()
         session = ScanSessionModel()
         showingReview = false
-    }
-}
-
-extension TempFileStore {
-    /// Appends a uniquely-named file URL inside this store's directory.
-    fileprivate func appendPathComponent(_ name: String) -> URL {
-        directory.appendingPathComponent(name)
     }
 }
 

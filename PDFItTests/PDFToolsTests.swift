@@ -147,6 +147,31 @@ final class PDFToolsTests: XCTestCase {
                       "vector/text pages keep searchable text")
     }
 
+    func testBestQualityPreservesVisibleCropInsteadOfZoomingOutToMediaBox() throws {
+        let mediaBounds = CGRect(x: 0, y: 0, width: 1600, height: 1600)
+        let data = UIGraphicsPDFRenderer(bounds: mediaBounds).pdfData { context in
+            context.beginPage()
+            UIColor.white.setFill()
+            context.cgContext.fill(mediaBounds)
+            UIColor.systemOrange.setFill()
+            context.cgContext.fill(CGRect(x: 600, y: 500, width: 400, height: 600))
+        }
+        let sourceDocument = try XCTUnwrap(PDFDocument(data: data))
+        let sourcePage = try XCTUnwrap(sourceDocument.page(at: 0))
+        sourcePage.setBounds(CGRect(x: 600, y: 500, width: 400, height: 600), for: .cropBox)
+        let croppedURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cropped-\(UUID().uuidString).pdf")
+        try XCTUnwrap(sourceDocument.dataRepresentation()).write(to: croppedURL)
+        defer { try? FileManager.default.removeItem(at: croppedURL) }
+
+        let result = try PDFTools.compress(from: croppedURL, preset: .bestQuality)
+        let compressed = try XCTUnwrap(PDFDocument(data: result.data))
+        let outputBounds = try XCTUnwrap(compressed.page(at: 0)).bounds(for: .mediaBox)
+
+        XCTAssertEqual(outputBounds.width, 400, accuracy: 1)
+        XCTAssertEqual(outputBounds.height, 600, accuracy: 1)
+    }
+
     // MARK: - Signature
 
     private func makeSignaturePNG() throws -> Data {
