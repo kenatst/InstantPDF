@@ -1,11 +1,15 @@
 import SwiftUI
 
-/// Three cinematic onboarding screens with character interaction and native SwiftUI compositions.
+/// A short, editorial onboarding that introduces the product's three core promises.
+/// The scenes are native SwiftUI compositions rather than fake screenshots, so they
+/// remain legible at every Dynamic Type size and in every supported language.
 struct OnboardingView: View {
     @AppStorage(AppSettingsKeys.hasCompletedOnboarding)
     private var hasCompletedOnboarding = false
 
     @State private var page: Int
+    @State private var hasAppeared = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var onComplete: (() -> Void)?
 
     init(initialPage: Int = 0, onComplete: (() -> Void)? = nil) {
@@ -16,58 +20,161 @@ struct OnboardingView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Theme.Colors.darkBackground.ignoresSafeArea()
+                OnboardingBackdrop(page: page)
+                    .ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     TabView(selection: $page) {
-                        page1.tag(0)
-                        page2.tag(1)
-                        page3.tag(2)
+                        conversionPage.tag(0)
+                        sharePage.tag(1)
+                        privacyPage.tag(2)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
+                    .animation(.easeInOut(duration: 0.35), value: page)
 
-                    // Custom Page Indicators
-                    HStack(spacing: 8) {
-                        ForEach(0..<3) { index in
-                            Capsule()
-                                .fill(page == index ? Theme.Colors.orangePrimary : Color.white.opacity(0.2))
-                                .frame(width: page == index ? 22 : 7, height: 7)
-                                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: page)
-                        }
-                    }
-                    .padding(.bottom, 22)
+                    pageControl
+                        .padding(.top, 6)
+                        .padding(.bottom, 18)
 
-                    // Bottom Action Button
-                    Button {
-                        if page < 2 {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                page += 1
-                            }
-                        } else {
-                            completeOnboarding()
+                    Button(action: advance) {
+                        HStack(spacing: 10) {
+                            Text(page < 2 ? LocalizedStringKey("Continue") : LocalizedStringKey("Get Started"))
+                            Image(systemName: page < 2 ? "arrow.right" : "arrow.right.circle.fill")
+                                .font(.headline.weight(.bold))
                         }
-                    } label: {
-                        Text(page < 2 ? LocalizedStringKey("Continue") : LocalizedStringKey("Get Started"))
                     }
                     .primaryOrangeButton()
                     .padding(.horizontal, 24)
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 18)
                     .accessibilityHint(page < 2 ? Text("Show the next page") : Text("Start using PDF It"))
                 }
+                .opacity(hasAppeared ? 1 : 0)
+                .offset(y: hasAppeared ? 0 : 10)
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Skip") {
-                        completeOnboarding()
-                    }
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color.white.opacity(0.6))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.white.opacity(0.08), in: Capsule())
+                    Button("Skip", action: completeOnboarding)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.72))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.white.opacity(0.07), in: Capsule())
                 }
             }
             .preferredColorScheme(.dark)
+            .onAppear {
+                guard !hasAppeared else { return }
+                if reduceMotion {
+                    hasAppeared = true
+                } else {
+                    withAnimation(.easeOut(duration: 0.5)) { hasAppeared = true }
+                }
+            }
+        }
+    }
+
+    private var pageControl: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<3, id: \.self) { index in
+                Capsule()
+                    .fill(page == index ? Theme.Colors.orangePrimary : Color.white.opacity(0.22))
+                    .frame(width: page == index ? 24 : 7, height: 7)
+                    .animation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.8), value: page)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+    }
+
+    // MARK: - 1. Any source, one destination
+
+    private var conversionPage: some View {
+        OnboardingPage(title: "Anything to PDF",
+                       subtitle: "Turn photos, links, text, and files into beautiful PDFs instantly.") {
+            ZStack {
+                OnboardingStage()
+
+                MascotView(type: .hero, size: 194, enableFloatingAnimation: !reduceMotion)
+                    .offset(y: 18)
+
+                SourcePortrait(type: .photos, label: "Photos")
+                    .offset(x: -104, y: -78)
+                SourcePortrait(type: .link, label: "Link")
+                    .offset(x: 104, y: -64)
+                SourcePortrait(type: .text, label: "Text")
+                    .offset(x: -104, y: 84)
+                SourcePortrait(type: .files, label: "Files")
+                    .offset(x: 102, y: 92)
+
+                ScanMark()
+                    .offset(y: 135)
+            }
+            .frame(maxWidth: 390)
+            .frame(height: 370)
+        }
+    }
+
+    // MARK: - 2. Share extension, made understandable at a glance
+
+    private var sharePage: some View {
+        OnboardingPage(title: "Share. PDF It. Done.",
+                       subtitle: "Use the share sheet. We'll handle the rest.") {
+            ZStack(alignment: .top) {
+                OnboardingStage()
+
+                MascotView(type: .hero, size: 108, enableFloatingAnimation: false)
+                    .offset(y: -72)
+                    .zIndex(2)
+
+                ShareSheetConcept()
+                    .padding(.horizontal, 22)
+                    .padding(.top, 50)
+            }
+            .frame(maxWidth: 390)
+            .frame(height: 370)
+        }
+    }
+
+    // MARK: - 3. Truthful, local privacy story
+
+    private var privacyPage: some View {
+        OnboardingPage(title: "Private & Local",
+                       subtitle: "On-device processing. No account. Nothing uploaded to PDF It.") {
+            VStack(spacing: 0) {
+                ZStack {
+                    OnboardingStage()
+
+                    LocalArchiveScene()
+
+                    MascotView(type: .library, size: 228, enableFloatingAnimation: !reduceMotion)
+                        .offset(y: 8)
+
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 19, weight: .bold))
+                        .foregroundStyle(Theme.Colors.orangeLight)
+                        .padding(14)
+                        .background(.black.opacity(0.52), in: Circle())
+                        .overlay(Circle().strokeBorder(Theme.Colors.orangePrimary.opacity(0.58), lineWidth: 1))
+                        .offset(y: -132)
+                }
+                .frame(maxWidth: 390)
+                .frame(height: 310)
+
+                Text("PDF It processes and stores documents locally. Your documents are not uploaded to PDF It. When you convert a webpage, PDF It loads the page directly from its source website.")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Color.white.opacity(0.68))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
+                    .padding(.horizontal, 18)
+                    .padding(.top, 2)
+            }
+        }
+    }
+
+    private func advance() {
+        if page < 2 {
+            withAnimation(.easeInOut(duration: 0.3)) { page += 1 }
+        } else {
+            completeOnboarding()
         }
     }
 
@@ -77,251 +184,212 @@ struct OnboardingView: View {
         AppConfiguration.sharedDefaults.set(true, forKey: AppSettingsKeys.hasCompletedOnboarding)
         onComplete?()
     }
+}
 
-    // MARK: - Screen 1: Anything to PDF + Floating Vector Tiles
+// MARK: - Editorial building blocks
 
-    private var page1: some View {
-        VStack(spacing: 0) {
-            header(
-                title: "Anything to PDF",
-                subtitle: "Turn photos, links, text, and files into beautiful PDFs instantly."
-            )
+private struct OnboardingPage<Artwork: View>: View {
+    let title: LocalizedStringKey
+    let subtitle: LocalizedStringKey
+    @ViewBuilder let artwork: Artwork
 
-            Spacer()
-
-            ZStack {
-                // Background ambient warm glow
-                RadialGradient(
-                    colors: [Theme.Colors.orangePrimary.opacity(0.25), Color.clear],
-                    center: .center,
-                    startRadius: 10,
-                    endRadius: 160
-                )
-                .frame(width: 320, height: 320)
-
-                // Mascot in Center
-                MascotView(type: .hero, size: 195)
-
-                // Floating Vector Source Tiles
-                FloatingSourceTile(icon: "photo.fill", label: "Photos", xOffset: -125, yOffset: -75)
-                FloatingSourceTile(icon: "link", label: "Link", xOffset: 125, yOffset: -75)
-                FloatingSourceTile(icon: "doc.text.fill", label: "Text", xOffset: -125, yOffset: 65)
-                FloatingSourceTile(icon: "folder.fill", label: "Files", xOffset: 125, yOffset: 65)
-            }
-            .frame(height: 280)
-
-            Spacer()
-        }
-        .padding(.horizontal, 16)
+    init(title: LocalizedStringKey,
+         subtitle: LocalizedStringKey,
+         @ViewBuilder artwork: () -> Artwork) {
+        self.title = title
+        self.subtitle = subtitle
+        self.artwork = artwork()
     }
 
-    // MARK: - Screen 2: Share Sheet Composition + Sitting Mascot
-
-    private var page2: some View {
+    var body: some View {
         VStack(spacing: 0) {
-            header(
-                title: "Share. PDF It. Done.",
-                subtitle: "Use the share sheet. We'll handle the rest."
-            )
+            VStack(spacing: 11) {
+                Text(title)
+                    .font(.system(size: 34, weight: .black, design: .rounded))
+                    .tracking(-0.7)
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .accessibilityAddTraits(.isHeader)
 
-            Spacer()
-
-            ZStack(alignment: .top) {
-                // Stylized iOS Share Sheet Panel
-                VStack(spacing: 12) {
-                    // App Row
-                    HStack(spacing: 14) {
-                        ShareAppIcon(name: "AirDrop", icon: "paperplane.fill", color: .blue)
-                        ShareAppIcon(name: "Messages", icon: "message.fill", color: .green)
-                        ShareAppIcon(name: "Mail", icon: "envelope.fill", color: .cyan)
-                        ShareAppIcon(name: "Notes", icon: "note.text", color: .orange)
-                    }
-                    .padding(.top, 38) // Room for mascot sitting on top
-
-                    Divider()
-                        .background(Color.white.opacity(0.1))
-                        .padding(.vertical, 2)
-
-                    // PDF It Highlighted Action Row
-                    HStack {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(Theme.Colors.orangeGradient)
-                                .frame(width: 32, height: 32)
-                            Image(systemName: "doc.fill")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundStyle(.white)
-                        }
-
-                        Text("PDF It")
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(.white)
-
-                        Spacer()
-
-                        HStack(spacing: 4) {
-                            Text("PDF")
-                                .font(.system(size: 11, weight: .bold))
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 10, weight: .bold))
-                        }
-                        .foregroundStyle(Theme.Colors.orangePrimary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(Theme.Colors.orangePrimary.opacity(0.15), in: Capsule())
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color.white.opacity(0.06))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .strokeBorder(Theme.Colors.orangePrimary.opacity(0.4), lineWidth: 1)
-                            )
-                    )
-                }
-                .padding(16)
-                .frame(maxWidth: 320)
-                .background(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(Theme.Colors.darkCard)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
-                        )
-                        .shadow(color: Color.black.opacity(0.4), radius: 16, y: 8)
-                )
-                .padding(.top, 40) // Push panel down so mascot rests on its top edge
-
-                // Mascot Sitting on the Share Sheet edge
-                MascotView(type: .hero, size: 138, enableFloatingAnimation: false)
-                    .offset(y: -32)
+                Text(subtitle)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.white.opacity(0.69))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(height: 290)
+            .padding(.top, 22)
+            .padding(.horizontal, 24)
 
-            Spacer()
+            Spacer(minLength: 12)
+            artwork
+            Spacer(minLength: 8)
         }
-        .padding(.horizontal, 16)
-    }
-
-    // MARK: - Screen 3: Private & Local + Floating Shield Glow
-
-    private var page3: some View {
-        VStack(spacing: 0) {
-            header(
-                title: "Private & Local",
-                subtitle: "No uploads. No account. Everything stays on your device."
-            )
-
-            Spacer()
-
-            ZStack {
-                // Soft radial security aura
-                RadialGradient(
-                    colors: [Theme.Colors.orangePrimary.opacity(0.22), Color.clear],
-                    center: .center,
-                    startRadius: 20,
-                    endRadius: 170
-                )
-                .frame(width: 320, height: 320)
-
-                // Glowing Security Shield Vector behind Mascot
-                Image(systemName: "lock.shield.fill")
-                    .font(.system(size: 140))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Theme.Colors.orangeLight.opacity(0.4), Theme.Colors.orangeDark.opacity(0.15)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .shadow(color: Theme.Colors.orangePrimary.opacity(0.3), radius: 20)
-                    .offset(y: -10)
-
-                // Mascot Holding PDF
-                MascotView(type: .hero, size: 195)
-            }
-            .frame(height: 280)
-
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-    }
-
-    // MARK: - Header Helper
-
-    private func header(title: LocalizedStringKey, subtitle: LocalizedStringKey) -> some View {
-        VStack(spacing: 10) {
-            Text(title)
-                .font(.system(size: 32, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .multilineTextAlignment(.center)
-                .accessibilityAddTraits(.isHeader)
-
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundStyle(Color.white.opacity(0.7))
-                .multilineTextAlignment(.center)
-                .lineSpacing(3)
-                .padding(.horizontal, 32)
-        }
-        .padding(.top, 24)
     }
 }
 
-// MARK: - Floating Source Tile (Screen 1)
-
-private struct FloatingSourceTile: View {
-    let icon: String
-    let label: LocalizedStringKey
-    let xOffset: CGFloat
-    let yOffset: CGFloat
+private struct OnboardingBackdrop: View {
+    let page: Int
 
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(Theme.Colors.orangePrimary)
-            Text(label)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.white)
+        ZStack {
+            LinearGradient(colors: [Color(hex: "050505"), Color(hex: "0B0806"), Color(hex: "060606")],
+                           startPoint: .top,
+                           endPoint: .bottom)
+            RadialGradient(colors: [Theme.Colors.orangePrimary.opacity(page == 1 ? 0.18 : 0.11), .clear],
+                           center: .bottom,
+                           startRadius: 8,
+                           endRadius: 420)
+            LinearGradient(colors: [.white.opacity(0.035), .clear], startPoint: .top, endPoint: .center)
         }
+    }
+}
+
+private struct OnboardingStage: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: 34, style: .continuous)
+            .fill(
+                LinearGradient(colors: [Color.white.opacity(0.045), Color.black.opacity(0.34)],
+                               startPoint: .top,
+                               endPoint: .bottom)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 34, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(colors: [Theme.Colors.orangeLight.opacity(0.52), .white.opacity(0.055)],
+                                       startPoint: .topLeading,
+                                       endPoint: .bottomTrailing),
+                        lineWidth: 1
+                    )
+            }
+            .shadow(color: Theme.Colors.orangeDark.opacity(0.18), radius: 26, y: 14)
+            .padding(.horizontal, 12)
+    }
+}
+
+private struct SourcePortrait: View {
+    let type: MascotView.MascotType
+    let label: LocalizedStringKey
+
+    var body: some View {
+        VStack(spacing: 2) {
+            MascotView(type: type, size: 76, enableFloatingAnimation: false)
+            Text(label)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.white.opacity(0.84))
+        }
+        .padding(.vertical, 6)
+        .frame(width: 90)
+        .background(.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+    }
+}
+
+private struct ScanMark: View {
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: "viewfinder")
+                .font(.caption.weight(.bold))
+            Text("Scan Document")
+                .font(.caption.weight(.bold))
+        }
+        .foregroundStyle(Theme.Colors.orangeLight)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(
-            Capsule()
-                .fill(Theme.Colors.darkCardSecondary.opacity(0.92))
-                .overlay(
-                    Capsule()
-                        .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
-                )
-                .shadow(color: Theme.Colors.orangePrimary.opacity(0.2), radius: 8, y: 3)
-        )
-        .offset(x: xOffset, y: yOffset)
+        .background(.black.opacity(0.52), in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.Colors.orangePrimary.opacity(0.45), lineWidth: 1))
     }
 }
 
-// MARK: - Share App Icon (Screen 2)
-
-private struct ShareAppIcon: View {
-    let name: String
-    let icon: String
-    let color: Color
+private struct ShareSheetConcept: View {
+    private let sources: [(LocalizedStringKey, String, Color)] = [
+        ("Safari", "safari.fill", .blue),
+        ("Photos", "photo.fill", .pink),
+        ("Messages", "message.fill", .green),
+        ("Notes", "note.text", .yellow),
+        ("Files", "folder.fill", .cyan)
+    ]
 
     var body: some View {
-        VStack(spacing: 6) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(color.opacity(0.2))
-                    .frame(width: 44, height: 44)
-                Image(systemName: icon)
-                    .font(.system(size: 20))
-                    .foregroundStyle(color)
+        VStack(spacing: 16) {
+            Capsule()
+                .fill(Color.white.opacity(0.22))
+                .frame(width: 42, height: 5)
+
+            HStack(spacing: 0) {
+                ForEach(Array(sources.enumerated()), id: \.offset) { _, source in
+                    VStack(spacing: 7) {
+                        Image(systemName: source.1)
+                            .font(.system(size: 19, weight: .semibold))
+                            .foregroundStyle(source.2)
+                            .frame(width: 43, height: 43)
+                            .background(source.2.opacity(0.16), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                        Text(source.0)
+                            .font(.system(size: 9, weight: .medium))
+                            .lineLimit(1)
+                            .foregroundStyle(Color.white.opacity(0.73))
+                    }
+                    .frame(maxWidth: .infinity)
+                }
             }
-            Text(name)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.7))
+
+            Divider().overlay(Color.white.opacity(0.10))
+
+            HStack(spacing: 12) {
+                Image(systemName: "doc.richtext.fill")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 42, height: 42)
+                    .background(Theme.Colors.orangeGradient, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                Text("PDFIT")
+                    .font(.headline.weight(.black))
+                    .kerning(0.7)
+                    .foregroundStyle(.white)
+                Spacer()
+                HStack(spacing: 4) {
+                    Text("PDF")
+                    Image(systemName: "arrow.right")
+                }
+                .font(.caption.weight(.black))
+                .foregroundStyle(Theme.Colors.orangeLight)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(Theme.Colors.orangePrimary.opacity(0.16), in: Capsule())
+            }
+            .padding(12)
+            .background(Theme.Colors.orangePrimary.opacity(0.09), in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).strokeBorder(Theme.Colors.orangePrimary.opacity(0.58), lineWidth: 1))
         }
+        .padding(16)
+        .padding(.top, 26)
+        .background(.black.opacity(0.58), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color.white.opacity(0.13), lineWidth: 1))
+        .shadow(color: .black.opacity(0.42), radius: 22, y: 12)
+    }
+}
+
+private struct LocalArchiveScene: View {
+    var body: some View {
+        HStack(spacing: 20) {
+            VStack(spacing: 15) {
+                archiveGlyph("doc.text.fill")
+                archiveGlyph("folder.fill")
+            }
+            .offset(x: -82, y: 6)
+            VStack(spacing: 15) {
+                archiveGlyph("magnifyingglass")
+                archiveGlyph("text.viewfinder")
+            }
+            .offset(x: 82, y: 6)
+        }
+        .opacity(0.72)
+    }
+
+    private func archiveGlyph(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 22, weight: .medium))
+            .foregroundStyle(Theme.Colors.orangeLight.opacity(0.9))
+            .frame(width: 50, height: 50)
+            .background(.black.opacity(0.34), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).strokeBorder(Theme.Colors.orangePrimary.opacity(0.28), lineWidth: 1))
     }
 }

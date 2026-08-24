@@ -25,7 +25,11 @@ struct PDFItApp: App {
     }
 
     private var activeLocale: Locale {
-        guard let language = languageSetting.language else { return .autoupdatingCurrent }
+        // Before a user picks an in-app override, resolve the iPhone's
+        // preferred language through our supported set. This makes a first
+        // launch deterministic (en/fr/es/de/it) and gives unsupported system
+        // languages the documented English fallback.
+        let language = languageSetting.language ?? LanguageManager.resolved
         return Locale(identifier: language.rawValue)
     }
 }

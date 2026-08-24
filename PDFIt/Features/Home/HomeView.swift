@@ -214,38 +214,40 @@ struct HomeView: View {
     // gear was unreachable on device.
 
     private var brandHeader: some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            MascotView(type: .hero, size: 42, enableFloatingAnimation: false)
-                .accessibilityHidden(true)
-            Text("PDF It")
-                .font(.system(size: 22, weight: .heavy, design: .rounded))
-                .kerning(-0.2)
+        ZStack {
+            Text("PDFIT")
+                .font(.system(size: 23, weight: .black, design: .rounded))
+                .kerning(1.2)
                 .foregroundStyle(colorScheme == .dark ? .white : Theme.Colors.ink)
-            Spacer()
-            Button {
-                showingSettings = true
-            } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.9) : Theme.Colors.ink)
-                    .frame(width: 44, height: 44)
-                    .background(
-                        Circle()
-                            .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Theme.Colors.surface)
-                            .overlay(
-                                Circle().strokeBorder(
-                                    colorScheme == .dark ? Theme.Colors.darkStroke : Theme.Colors.stroke.opacity(0.75),
-                                    lineWidth: 1
+                .accessibilityLabel("PDF It")
+
+            HStack {
+                Spacer()
+                Button {
+                    showingSettings = true
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.9) : Theme.Colors.ink)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            Circle()
+                                .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Theme.Colors.surface)
+                                .overlay(
+                                    Circle().strokeBorder(
+                                        colorScheme == .dark ? Theme.Colors.darkStroke : Theme.Colors.stroke.opacity(0.75),
+                                        lineWidth: 1
+                                    )
                                 )
-                            )
-                            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.22 : 0.07), radius: 10, y: 4)
-                    )
+                                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.22 : 0.07), radius: 10, y: 4)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Settings")
+                .accessibilityIdentifier("home_settings_gear")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Settings")
-            .accessibilityIdentifier("home_settings_gear")
         }
-        .accessibilityElement(children: .contain)
+        .frame(maxWidth: .infinity, minHeight: 44)
     }
 
     // MARK: - Scan hero (primary Free action)
@@ -258,17 +260,8 @@ struct HomeView: View {
             showingScanner = true
         } label: {
             HStack(spacing: Theme.Spacing.md) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(Theme.Colors.orangePrimary.opacity(colorScheme == .dark ? 0.2 : 0.11))
-                    RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .strokeBorder(Theme.Colors.orangePrimary.opacity(0.36), lineWidth: 1.5)
-                        .frame(width: 31, height: 39)
-                    Image(systemName: "doc.viewfinder")
-                        .font(.system(size: 23, weight: .semibold))
-                        .foregroundStyle(Theme.Colors.orangePrimary)
-                }
-                .frame(width: 64, height: 68)
+                MascotView(type: .scan, size: 78, enableFloatingAnimation: false)
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text("Scan Document")

@@ -190,7 +190,10 @@ final class LocalizationAndProductTests: XCTestCase {
             "All", "Web", "Files", "Anything to PDF", "Private & Local",
             "No uploads. No account. Everything stays on your device.",
             "Turn photos, links, text, and files into beautiful PDFs instantly.",
-            "Use the share sheet. We'll handle the rest."
+            "Use the share sheet. We'll handle the rest.",
+            "Share. PDF It. Done.", "On-device processing. No account. Nothing uploaded to PDF It.",
+            "PDF It processes and stores documents locally. Your documents are not uploaded to PDF It. When you convert a webpage, PDF It loads the page directly from its source website.",
+            "Safari", "Messages", "Notes", "Photos", "Scan Document"
         ] {
             let localizations = try XCTUnwrap(strings[key]?["localizations"] as? [String: Any],
                                                "Missing premium surface key: \(key)")
@@ -202,6 +205,8 @@ final class LocalizationAndProductTests: XCTestCase {
         XCTAssertEqual(MascotActionCard.Category.link.mascotType.assetName, "MascotLink")
         XCTAssertEqual(MascotActionCard.Category.text.mascotType.assetName, "MascotText")
         XCTAssertEqual(MascotActionCard.Category.files.mascotType.assetName, "MascotFiles")
+        XCTAssertEqual(MascotView.MascotType.library.assetName, "MascotLibrary")
+        XCTAssertEqual(MascotView.MascotType.scan.assetName, "MascotScan")
     }
 
     // MARK: - Option & Error Localization Tests

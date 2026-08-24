@@ -220,6 +220,8 @@ struct MascotView: View {
         case link
         case text
         case files
+        case library
+        case scan
         case onboarding1
         case onboarding2
         case onboarding3
@@ -233,6 +235,8 @@ struct MascotView: View {
             case .link: return "MascotLink"
             case .text: return "MascotText"
             case .files: return "MascotFiles"
+            case .library: return "MascotLibrary"
+            case .scan: return "MascotScan"
             case .onboarding1: return "MascotOnboarding1"
             case .onboarding2: return "MascotOnboarding2"
             case .onboarding3: return "MascotOnboarding3"

@@ -97,6 +97,8 @@ struct LibraryView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xl) {
+                libraryLead
+
                 if !records.isEmpty || !folders.isEmpty {
                     filterPillBar
                 }
@@ -118,8 +120,8 @@ struct LibraryView: View {
             .padding(.bottom, 40)
         }
         .themeBackground()
-        .navigationTitle(Text(embedded ? LocalizedStringKey("Recent") : LocalizedStringKey("Library")))
-        .navigationBarTitleDisplayMode(embedded ? .inline : .large)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "Search PDFs")
         .toolbar { toolbarContent }
         .onAppear(perform: reload)
@@ -171,6 +173,24 @@ struct LibraryView: View {
                 PDFViewerView(recordID: recordID)
             }
         }
+    }
+
+    private var libraryLead: some View {
+        HStack(alignment: .center, spacing: Theme.Spacing.sm) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(embedded ? LocalizedStringKey("Recent") : LocalizedStringKey("Library"))
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(colorScheme == .dark ? .white : Theme.Colors.ink)
+                Text("PDFIT")
+                    .font(.caption.weight(.black))
+                    .kerning(1.1)
+                    .foregroundStyle(Theme.Colors.orangePrimary)
+            }
+            Spacer(minLength: 8)
+            MascotView(type: .library, size: 72, enableFloatingAnimation: false)
+                .accessibilityHidden(true)
+        }
+        .padding(.horizontal, Theme.Spacing.xs)
     }
 
     // MARK: - Toolbar
@@ -430,7 +450,7 @@ struct LibraryView: View {
     private var emptyState: some View {
         VStack(spacing: 18) {
             Spacer(minLength: 60)
-            MascotView(type: .hero, size: 148)
+            MascotView(type: .library, size: 148)
             VStack(spacing: 6) {
                 Text("Your PDFs will appear here.")
                     .font(.title3.weight(.bold))
@@ -453,7 +473,7 @@ struct LibraryView: View {
         VStack(spacing: 12) {
             Spacer(minLength: 70)
             if isEmptyFolder {
-                MascotView(type: .hero, size: 92, enableFloatingAnimation: false)
+                MascotView(type: .library, size: 92, enableFloatingAnimation: false)
             } else {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 40))
