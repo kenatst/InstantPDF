@@ -33,15 +33,21 @@ final class ScanFlowModel: ObservableObject {
     /// Receives freshly captured images from VNDocumentCameraViewController.
     func ingest(images: [UIImage]) {
         guard !images.isEmpty else { return }
-        for image in images {
-            guard let data = normalizedJPEG(image) else { continue }
+        ScanPipelineTrace.capture(pages: images.count)
+        for (index, image) in images.enumerated() {
+            guard let data = normalizedJPEG(image) else {
+                ScanPipelineTrace.failure(stage: "normalize", underlying: "image \(index) produced no JPEG data")
+                continue
+            }
             do {
                 // Always stage through TempFileStore. A scan model survives
                 // multiple sheet presentations, so direct writes to a stale
                 // directory are not safe after an earlier cleanup.
                 let url = try staging.stage(data: data, fileExtension: "jpg")
+                ScanPipelineTrace.staged(url: url, index: index, bytes: data.count)
                 session.append(page: ScannedPage(id: UUID(), imageURL: url))
             } catch {
+                ScanPipelineTrace.failure(stage: "stage", underlying: error.localizedDescription)
                 continue
             }
         }
@@ -124,6 +130,7 @@ final class ScanFlowModel: ObservableObject {
 
         let coordinator = ConversionCoordinator()
         let document = try await coordinator.convert(items: items, options: options)
+        ScanPipelineTrace.converted(pageCount: document.pageCount, bytes: document.data.count)
 
         // Conversion success is not persistence success. The review session
         // stays alive until the caller confirms every document was written

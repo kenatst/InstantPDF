@@ -215,8 +215,8 @@ struct LibraryView: View {
                     .foregroundStyle(Theme.Colors.orangePrimary)
             }
             Spacer(minLength: 8)
-            MascotView(type: .library, size: 72, enableFloatingAnimation: false)
-                .accessibilityHidden(true)
+            // Documents-first header: no mascot in the chrome — it lives in
+            // the empty state and contextual illustration only.
         }
         .padding(.horizontal, Theme.Spacing.xs)
     }
@@ -487,7 +487,7 @@ struct LibraryView: View {
                 Text("Your PDFs will appear here.")
                     .font(.title3.weight(.bold))
                     .foregroundStyle(colorScheme == .dark ? .white : Theme.Colors.ink)
-                Text("Share a webpage, photo, or document from any app and choose PDF It.")
+                Text("Share a webpage, photo, or document from any app and choose PDFIT.")
                     .font(.subheadline)
                     .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.62) : Theme.Colors.inkSecondary)
                     .multilineTextAlignment(.center)

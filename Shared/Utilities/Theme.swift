@@ -44,10 +44,10 @@ enum Theme {
     }
 
     enum Radius {
-        static let control: CGFloat = 14
-        static let card: CGFloat = 20
-        static let feature: CGFloat = 24
-        static let hero: CGFloat = 30
+        static let control: CGFloat = 12
+        static let card: CGFloat = 16
+        static let feature: CGFloat = 20
+        static let hero: CGFloat = 24
     }
 
     enum Colors {

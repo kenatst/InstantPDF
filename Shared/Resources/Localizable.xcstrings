@@ -1552,6 +1552,40 @@
         }
       }
     },
+    "Compress and organize files in seconds.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dateien in Sekunden komprimieren und ordnen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compress and organize files in seconds."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprime y organiza archivos en segundos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compressez et organisez vos fichiers en quelques secondes."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprimi e organizza i file in pochi secondi."
+          }
+        }
+      }
+    },
     "Compress, sign and extract pages in a tap.": {
       "extractionState": "stale",
       "localizations": {
@@ -3307,6 +3341,40 @@
         }
       }
     },
+    "Draw once — place your signature on the exact spot. Everything stays on this iPhone.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einmal zeichnen — die Signatur genau dort platzieren. Alles bleibt auf diesem iPhone."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Draw once — place your signature on the exact spot. Everything stays on this iPhone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dibuja una vez — coloca tu firma en el punto exacto. Todo permanece en este iPhone."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dessinez une fois — placez votre signature à l'endroit exact. Tout reste sur cet iPhone."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disegna una volta — posiziona la firma nel punto esatto. Tutto resta su questo iPhone."
+          }
+        }
+      }
+    },
     "Draw once; reuse your saved signature.": {
       "extractionState": "stale",
       "localizations": {
@@ -4823,6 +4891,40 @@
         }
       }
     },
+    "Make scans searchable on your iPhone.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mach Scans auf deinem iPhone durchsuchbar."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make scans searchable on your iPhone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz que tus escaneos sean buscables en tu iPhone."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rendez vos scans recherchables sur votre iPhone."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rendi le scansioni ricercabili sul tuo iPhone."
+          }
+        }
+      }
+    },
     "Make scans searchable with on-device OCR.": {
       "localizations": {
         "de": {
@@ -5644,6 +5746,40 @@
         }
       }
     },
+    "No PDFIT uploads": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine PDFIT-Uploads"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No PDFIT uploads"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin subidas a PDFIT"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun envoi PDFIT"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun upload su PDFIT"
+          }
+        }
+      }
+    },
     "No PDFs yet": {
       "extractionState": "manual",
       "localizations": {
@@ -5675,6 +5811,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nessun PDF ancora"
+          }
+        }
+      }
+    },
+    "No account": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Konto"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No account"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin cuenta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sans compte"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun account"
           }
         }
       }
@@ -5887,6 +6057,40 @@
         }
       }
     },
+    "On-device OCR": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On-Device-OCR"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On-device OCR"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR en el dispositivo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR sur l'appareil"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR on-device"
+          }
+        }
+      }
+    },
     "On-device OCR makes scans searchable and selectable.": {
       "extractionState": "stale",
       "localizations": {
@@ -5918,6 +6122,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "L'OCR sul dispositivo rende le scansioni ricercabili e selezionabili."
+          }
+        }
+      }
+    },
+    "On-device OCR turns pictures of paper into selectable text. No cloud round-trip.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On-Device-OCR macht aus Papierfotos wählbaren Text. Kein Cloud-Umweg."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On-device OCR turns pictures of paper into selectable text. No cloud round-trip."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El OCR en el dispositivo convierte fotos de papel en texto seleccionable. Sin viajes a la nube."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'OCR sur l'appareil transforme les photos de papier en texte sélectionnable. Aucun aller-retour cloud."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'OCR on-device trasforma le foto di carta in testo selezionabile. Nessun passaggio dal cloud."
           }
         }
       }
@@ -6849,6 +7087,108 @@
           "stringUnit": {
             "state": "translated",
             "value": "Anteprima PDF"
+          }
+        }
+      }
+    },
+    "PDFIT": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT"
+          }
+        }
+      }
+    },
+    "PDFIT PRO": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT PRO"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT PRO"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT PRO"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT PRO"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT PRO"
+          }
+        }
+      }
+    },
+    "PDFIT Pro": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT Pro"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT Pro"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT Pro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT Pro"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDFIT Pro"
           }
         }
       }
@@ -10543,6 +10883,40 @@
         }
       }
     },
+    "Sign documents without uploading them anywhere.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dokumente signieren, ohne sie hochzuladen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign documents without uploading them anywhere."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firma documentos sin subirlos a ningún sitio."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signez des documents sans les envoyer nulle part."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firma documenti senza caricarli da nessuna parte."
+          }
+        }
+      }
+    },
     "Signature": {
       "localizations": {
         "de": {
@@ -10745,6 +11119,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "File più piccoli"
+          }
+        }
+      }
+    },
+    "Smaller files that stay readable, plus page-level tools for reorder, extract and rotate.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kleinere, gut lesbare Dateien plus Seitenwerkzeuge zum Umordnen, Extrahieren und Drehen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smaller files that stay readable, plus page-level tools for reorder, extract and rotate."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivos más pequeños que siguen legibles, más herramientas por página: reordenar, extraer y rotar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Des fichiers plus légers qui restent lisibles, plus des outils par page : réordonner, extraire, pivoter."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File più piccoli ma leggibili, più strumenti per pagina: riordina, estrai e ruota."
           }
         }
       }
@@ -12539,6 +12947,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Trasforma qualsiasi pagina web o link in un PDF pulito."
+          }
+        }
+      }
+    },
+    "Turn anything into a PDF from any app.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwandle alles aus jeder App in ein PDF."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn anything into a PDF from any app."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Convierte lo que sea en PDF desde cualquier app."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transformez n'importe quoi en PDF depuis n'importe quelle app."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trasforma qualsiasi cosa in un PDF da qualsiasi app."
           }
         }
       }
@@ -15334,108 +15776,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "•"
-          }
-        }
-      }
-    },
-    "PDFIT": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT"
-          }
-        }
-      }
-    },
-    "PDFIT Pro": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT Pro"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT Pro"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT Pro"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT Pro"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT Pro"
-          }
-        }
-      }
-    },
-    "PDFIT PRO": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT PRO"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT PRO"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT PRO"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT PRO"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PDFIT PRO"
           }
         }
       }

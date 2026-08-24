@@ -30,6 +30,7 @@ struct PaywallView: View {
                 VStack(spacing: Theme.Spacing.lg) {
                     heroBlock
                     featureShowcase
+                    privacyStrip
 
                     if entitlements.isPro {
                         alreadyPro
@@ -72,14 +73,14 @@ struct PaywallView: View {
 
     // MARK: - Hero
 
+    // MARK: - Hero: outcome-first promise (not a feature list)
+
     private var heroBlock: some View {
         VStack(spacing: 14) {
             ZStack {
-                Circle().stroke(Theme.Colors.orangePrimary.opacity(0.48), lineWidth: 1)
-                    .frame(width: 100, height: 100)
-                Circle().fill(Theme.Colors.orangePrimary.opacity(0.12))
-                    .frame(width: 86, height: 86)
-                MascotView(type: .hero, size: 96, enableFloatingAnimation: false)
+                Circle().stroke(Theme.Colors.orangePrimary.opacity(0.4), lineWidth: 1)
+                    .frame(width: 96, height: 96)
+                MascotView(type: .hero, size: 92, enableFloatingAnimation: false)
             }
             .accessibilityHidden(true)
 
@@ -88,57 +89,95 @@ struct PaywallView: View {
                     .font(.caption.weight(.black))
                     .tracking(2.2)
                     .foregroundStyle(Theme.Colors.orangePrimary)
-                Text("Your complete private PDF toolkit.")
-                    .font(.system(size: 28, weight: .heavy, design: .rounded))
+                Text("Turn anything into a PDF from any app.")
+                    .font(.system(size: 27, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
-                Text("Scan, convert, organize and edit PDFs — privately on your device.")
-                    .font(.footnote)
-                    .foregroundStyle(Color.white.opacity(0.62))
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
-    // MARK: - Feature showcase
+    // MARK: - Outcome blocks: sell results, map to features second
 
     private var featureShowcase: some View {
-        VStack(spacing: 0) {
-            showcaseRow(icon: "square.and.arrow.up", title: "Share from any app", copy: "Create PDFs from the Share Sheet.")
-            Divider().overlay(Color.white.opacity(0.10)).padding(.leading, 58)
-            showcaseRow(icon: "wand.and.stars", title: "Complete PDF tools", copy: "Compress, sign and extract pages.")
-            Divider().overlay(Color.white.opacity(0.10)).padding(.leading, 58)
-            showcaseRow(icon: "lock.shield", title: "Local Processing Only", copy: "Scan, convert, organize and edit PDFs — privately on your device.")
+        VStack(alignment: .leading, spacing: 0) {
+            outcomeRow(symbol: "sparkles",
+                       title: "Sign documents without uploading them anywhere.",
+                       copy: "Draw once — place your signature on the exact spot. Everything stays on this iPhone.")
+            Divider().overlay(Color.white.opacity(0.10))
+                .padding(.leading, 54)
+            outcomeRow(symbol: "doc.text.magnifyingglass",
+                       title: "Make scans searchable on your iPhone.",
+                       copy: "On-device OCR turns pictures of paper into selectable text. No cloud round-trip.")
+            Divider().overlay(Color.white.opacity(0.10))
+                .padding(.leading, 54)
+            outcomeRow(symbol: "arrow.down.doc",
+                       title: "Compress and organize files in seconds.",
+                       copy: "Smaller files that stay readable, plus page-level tools for reorder, extract and rotate.")
         }
         .padding(.horizontal, Theme.Spacing.md)
+        .padding(.vertical, Theme.Spacing.xs)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
             .fill(Theme.Colors.darkCard)
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.11), lineWidth: 1)))
+                .strokeBorder(Color.white.opacity(0.09), lineWidth: 1)))
     }
 
-    private func showcaseRow(icon: String, title: LocalizedStringKey, copy: LocalizedStringKey) -> some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            Image(systemName: icon)
-                .font(.system(size: 17, weight: .semibold))
+    /// Privacy proof strip — precise claims only.
+    private var privacyStrip: some View {
+        HStack(spacing: 14) {
+            Label {
+                Text("No account") 
+            } icon: {
+                Image(systemName: "person.crop.circle.badge.xmark")
+            }
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(Color.white.opacity(0.72))
+
+            Label {
+                Text("No PDFIT uploads")
+            } icon: {
+                Image(systemName: "icloud.slash")
+            }
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(Color.white.opacity(0.72))
+
+            Label {
+                Text("On-device OCR")
+            } icon: {
+                Image(systemName: "cpu")
+            }
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(Color.white.opacity(0.72))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Theme.Spacing.sm)
+    }
+
+    private func outcomeRow(symbol: String,
+                            title: LocalizedStringKey,
+                            copy: LocalizedStringKey) -> some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.sm) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(Theme.Colors.orangePrimary)
-                .frame(width: 40, height: 40)
+                .frame(width: 36, height: 36)
                 .background(
-                    Circle().fill(Theme.Colors.orangePrimary.opacity(0.14))
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .fill(Theme.Colors.orangePrimary.opacity(0.13))
                 )
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.footnote.weight(.bold))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(.white)
                 Text(copy)
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(Color.white.opacity(0.58))
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
-        .padding(.vertical, Theme.Spacing.sm)
+        .padding(.vertical, Theme.Spacing.sm + 2)
     }
 
     private var headline: LocalizedStringKey {

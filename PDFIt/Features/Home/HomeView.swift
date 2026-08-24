@@ -70,11 +70,21 @@ struct HomeView: View {
                 var failedDocuments: [ConvertedDocument] = []
                 for document in documents {
                     do {
+                        ScanPipelineTrace.saveStart(bytes: document.data.count)
                         let record = try storage.save(document: document)
+                        let fileURL = storage.fileURL(for: record)
+                        ScanPipelineTrace.saved(recordID: record.id,
+                                                fileURL: fileURL,
+                                                fileSize: record.fileSize)
+                        // Durable means a FRESH manager (relaunch path) sees it.
+                        let fresh = StorageManager(containerURL: storage.containerURLForTesting)
+                            .record(withID: record.id) != nil
+                        ScanPipelineTrace.verifiedAfterFreshRead(recordID: record.id, found: fresh)
                         lastSavedID = record.id
                     } catch {
                         failures += 1
                         failedDocuments.append(document)
+                        ScanPipelineTrace.failure(stage: "save", underlying: error.localizedDescription)
                     }
                 }
                 if failures > 0 {

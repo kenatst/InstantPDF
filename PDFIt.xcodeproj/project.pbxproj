@@ -104,12 +104,14 @@
 		A100000000000000238 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000237 /* PaywallView.swift */; };
 		A100000000000000241 /* PDFToolsHostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000240 /* PDFToolsHostView.swift */; };
 		A100000000000000247 /* SignatureCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000248 /* SignatureCanvasView.swift */; };
+		A10000000000000012B /* ScanPipelineTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000012C /* ScanPipelineTrace.swift */; };
 		A10000000000000011F /* SignaturePlacementCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000012A /* SignaturePlacementCanvas.swift */; };
 		A100000000000000243 /* LibraryIdentityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000242 /* LibraryIdentityTests.swift */; };
 		A100000000000000246 /* DevicePassIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000245 /* DevicePassIntegrationTests.swift */; };
 		A100000000000000250 /* ProActivationFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000249 /* ProActivationFlow.swift */; };
 		A100000000000000252 /* PendingProIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000251 /* PendingProIntent.swift */; };
 		A100000000000000254 /* ProActivationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000253 /* ProActivationTests.swift */; };
+		A10000000000000012D /* ScanPersistenceContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000012E /* ScanPersistenceContractTests.swift */; };
 		A1000000000000000FF /* PDFItUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000010A /* PDFItUITests.swift */; };
 		A100000000000000174 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000172 /* Theme.swift */; };
 /* End PBXBuildFile section */
@@ -221,12 +223,14 @@
 		A100000000000000237 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		A100000000000000240 /* PDFToolsHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFToolsHostView.swift; sourceTree = "<group>"; };
 		A100000000000000248 /* SignatureCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignatureCanvasView.swift; sourceTree = "<group>"; };
+		A10000000000000012C /* ScanPipelineTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanPipelineTrace.swift; sourceTree = "<group>"; };
 		A10000000000000012A /* SignaturePlacementCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignaturePlacementCanvas.swift; sourceTree = "<group>"; };
 		A100000000000000242 /* LibraryIdentityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryIdentityTests.swift; sourceTree = "<group>"; };
 		A100000000000000245 /* DevicePassIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicePassIntegrationTests.swift; sourceTree = "<group>"; };
 		A100000000000000249 /* ProActivationFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProActivationFlow.swift; sourceTree = "<group>"; };
 		A100000000000000251 /* PendingProIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingProIntent.swift; sourceTree = "<group>"; };
 		A100000000000000253 /* ProActivationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProActivationTests.swift; sourceTree = "<group>"; };
+		A10000000000000012E /* ScanPersistenceContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanPersistenceContractTests.swift; sourceTree = "<group>"; };
 		A10000000000000010A /* PDFItUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFItUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -466,6 +470,7 @@
 			children = (
 				A100000000000000058 /* FilenameGenerator.swift */,
 				A100000000000000061 /* TempFileStore.swift */,
+				A10000000000000012C /* ScanPipelineTrace.swift */,
 				A100000000000000149 /* CardTapPolicy.swift */,
 				A100000000000000172 /* Theme.swift */,
 				A100000000000000192 /* LanguageManager.swift */,
@@ -508,6 +513,7 @@
 				A100000000000000242 /* LibraryIdentityTests.swift */,
 				A100000000000000245 /* DevicePassIntegrationTests.swift */,
 				A100000000000000253 /* ProActivationTests.swift */,
+				A10000000000000012E /* ScanPersistenceContractTests.swift */,
 			);
 			path = PDFItTests;
 			sourceTree = "<group>";
@@ -738,6 +744,7 @@
 				A100000000000000252 /* PendingProIntent.swift in Sources */,
 				A100000000000000241 /* PDFToolsHostView.swift in Sources */,
 				A100000000000000247 /* SignatureCanvasView.swift in Sources */,
+				A10000000000000012B /* ScanPipelineTrace.swift in Sources */,
 				A10000000000000011F /* SignaturePlacementCanvas.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -762,6 +769,7 @@
 				A100000000000000056 /* StoredPDFRecord.swift in Sources */,
 				A100000000000000059 /* FilenameGenerator.swift in Sources */,
 				A100000000000000062 /* TempFileStore.swift in Sources */,
+				A10000000000000012B /* ScanPipelineTrace.swift in Sources */,
 				A100000000000000065 /* WebContentExtractor.swift in Sources */,
 				A100000000000000068 /* WebPDFConverter.swift in Sources */,
 				A100000000000000069 /* ShareViewController.swift in Sources */,
@@ -799,6 +807,7 @@
 				A100000000000000243 /* LibraryIdentityTests.swift in Sources */,
 				A100000000000000246 /* DevicePassIntegrationTests.swift in Sources */,
 				A100000000000000254 /* ProActivationTests.swift in Sources */,
+				A10000000000000012D /* ScanPersistenceContractTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

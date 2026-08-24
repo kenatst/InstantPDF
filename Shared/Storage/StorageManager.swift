@@ -19,6 +19,13 @@ final class StorageManager {
 
     static let shared = StorageManager(appGroupID: AppConfiguration.appGroupIdentifier)
 
+    /// Human-readable description of the storage backend this process
+    /// actually resolved at launch — surfaced in DEBUG pipeline traces so a
+    /// write-backend ≠ read-backend mismatch can never hide again.
+    nonisolated static var activeBackendDescription: String {
+        shared.backendDescription
+    }
+
     private let containerURL: URL?
     private let queue = DispatchQueue(label: "com.kenatst.pdfit.storage")
     private let fileAccessQueue = DispatchQueue(label: "com.kenatst.pdfit.storage.filecoordination")
@@ -42,8 +49,13 @@ final class StorageManager {
     /// with the extension). When that container is unavailable — e.g. an
     /// entitlement/provisioning hiccup on a device build — it falls back to
     /// an app-local directory so the product KEEPS WORKING (scans, imports,
-    /// every feature) instead of throwing on every save. Extension sharing
-    /// simply degrades until the entitlement is fixed.
+    /// every feature) instead of throwing on every save.
+    ///
+    /// CRITICAL COHERENCE RULE: the backend is elected ONCE per instance and
+    /// stored. Every read AND write on this instance then uses the same
+    /// containerURL. Re-evaluating availability per call could route a save
+    /// to the fallback while a later Library fetch reads the (empty) App
+    /// Group metadata — the exact "saved but invisible" failure class.
     convenience init(appGroupID: String) {
         if let url = AppConfiguration.appGroupContainerURL {
             self.init(containerURL: url)
@@ -55,6 +67,16 @@ final class StorageManager {
         try? FileManager.default.createDirectory(at: local, withIntermediateDirectories: true)
         self.init(containerURL: local)
     }
+
+    /// Which physical location this instance serves — diagnostics only.
+    var backendDescription: String {
+        guard let containerURL else { return "none" }
+        let isAppGroup = containerURL.path.contains(AppConfiguration.appGroupIdentifier)
+        return isAppGroup ? "app-group" : "app-local(\(containerURL.path))"
+    }
+
+    /// Test/diagnostic exposure of the elected backend URL. Read-only.
+    var containerURLForTesting: URL? { containerURL }
 
     /// Designated initializer — injectable for tests.
     init(containerURL: URL?) {
