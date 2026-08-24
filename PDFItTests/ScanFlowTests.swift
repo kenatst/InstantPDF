@@ -254,6 +254,111 @@ final class ScanFlowTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
         model.cleanUp()
     }
+
+    // MARK: - End-to-End Scan Save & Reopen Cycle
+
+    @MainActor
+    func testFullScanSavePersistenceAndReopenCycle() async throws {
+        let testContainer = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pdfit-scan-test-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: testContainer, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: testContainer) }
+
+        let storage = StorageManager(containerURL: testContainer)
+        let model = ScanFlowModel()
+        let data = try makeJPEGData(color: .systemBlue)
+        let stagedURL = try model.stagingForTesting.stage(data: data, fileExtension: "jpg")
+        model.ingestFromTesting([stagedURL])
+
+        // 1. Create PDF
+        let document = try await model.createPDF(for: nil, paperSize: .a4)
+        XCTAssertGreaterThan(document.data.count, 0)
+        XCTAssertEqual(document.pageCount, 1)
+
+        // 2. Save PDF
+        let record = try storage.save(document: document)
+        let fileURL = try XCTUnwrap(storage.fileURL(for: record))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path))
+        XCTAssertGreaterThan(record.fileSize, 0)
+
+        // 3. Confirm cleanUp
+        model.cleanUp()
+        XCTAssertTrue(model.session.isEmpty)
+
+        // 4. Verify reopening
+        let reloadedPDF = try XCTUnwrap(PDFDocument(url: fileURL))
+        XCTAssertEqual(reloadedPDF.pageCount, 1)
+
+        // 5. Verify fresh StorageManager (relaunch simulation)
+        let freshStorage = StorageManager(containerURL: testContainer)
+        let records = freshStorage.fetchRecords()
+        XCTAssertEqual(records.count, 1)
+        XCTAssertEqual(records.first?.id, record.id)
+    }
+
+    @MainActor
+    func testMultipleSequentialScansInSameSession() async throws {
+        let testContainer = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pdfit-multi-scan-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: testContainer, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: testContainer) }
+
+        let storage = StorageManager(containerURL: testContainer)
+        let model = ScanFlowModel()
+
+        for scanIndex in 1...3 {
+            let data = try makeJPEGData(color: UIColor(hue: CGFloat(scanIndex) / 4, saturation: 1, brightness: 1, alpha: 1))
+            let staged = try model.stagingForTesting.stage(data: data, fileExtension: "jpg")
+            model.ingestFromTesting([staged])
+
+            let document = try await model.createPDF(for: nil, paperSize: .a4)
+            let record = try storage.save(document: document)
+            let fileURL = try XCTUnwrap(storage.fileURL(for: record))
+            XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path))
+
+            model.cleanUp()
+            XCTAssertTrue(model.session.isEmpty)
+        }
+
+        let records = storage.fetchRecords()
+        XCTAssertEqual(records.count, 3)
+        for record in records {
+            let url = try XCTUnwrap(storage.fileURL(for: record))
+            XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+            XCTAssertNotNil(PDFDocument(url: url))
+        }
+    }
+
+    @MainActor
+    func testMultipageScanSavesSingleMultiPagePDF() async throws {
+        let testContainer = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pdfit-multipage-scan-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: testContainer, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: testContainer) }
+
+        let storage = StorageManager(containerURL: testContainer)
+        let model = ScanFlowModel()
+
+        var urls: [URL] = []
+        for i in 0..<5 {
+            let data = try makeJPEGData(color: UIColor(white: CGFloat(i) / 6, alpha: 1))
+            let staged = try model.stagingForTesting.stage(data: data, fileExtension: "jpg")
+            urls.append(staged)
+        }
+        model.ingestFromTesting(urls)
+        XCTAssertEqual(model.session.pages.count, 5)
+
+        let document = try await model.createPDF(for: nil, paperSize: .a4)
+        XCTAssertEqual(document.pageCount, 5)
+
+        let record = try storage.save(document: document)
+        XCTAssertEqual(record.pageCount, 5)
+
+        let fileURL = try XCTUnwrap(storage.fileURL(for: record))
+        let pdf = try XCTUnwrap(PDFDocument(url: fileURL))
+        XCTAssertEqual(pdf.pageCount, 5)
+        model.cleanUp()
+    }
 }
 
 // MARK: - Test hooks (main-actor isolated accessors)

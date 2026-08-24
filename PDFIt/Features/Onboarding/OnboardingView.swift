@@ -46,7 +46,7 @@ struct OnboardingView: View {
                     .primaryOrangeButton()
                     .padding(.horizontal, 24)
                     .padding(.bottom, 18)
-                    .accessibilityHint(page < 2 ? Text("Show the next page") : Text("Start using PDF It"))
+                    .accessibilityHint(page < 2 ? Text("Show the next page") : Text("Start using PDFIT"))
                 }
                 .opacity(hasAppeared ? 1 : 0)
                 .offset(y: hasAppeared ? 0 : 10)
@@ -116,7 +116,7 @@ struct OnboardingView: View {
     // MARK: - 2. Share extension, made understandable at a glance
 
     private var sharePage: some View {
-        OnboardingPage(title: "Share. PDF It. Done.",
+        OnboardingPage(title: "Share. PDFIT. Done.",
                        subtitle: "Use the share sheet. We'll handle the rest.") {
             ZStack(alignment: .top) {
                 OnboardingStage()
@@ -138,7 +138,7 @@ struct OnboardingView: View {
 
     private var privacyPage: some View {
         OnboardingPage(title: "Private & Local",
-                       subtitle: "On-device processing. No account. Nothing uploaded to PDF It.") {
+                       subtitle: "On-device processing. No account. Nothing uploaded to PDFIT.") {
             VStack(spacing: 0) {
                 ZStack {
                     OnboardingStage()

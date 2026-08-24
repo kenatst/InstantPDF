@@ -56,6 +56,9 @@ struct HomeView: View {
         .onChange(of: scenePhase, initial: false) { _, newPhase in
             if newPhase == .active { reloadRecords() }
         }
+        .onReceive(NotificationCenter.default.publisher(for: StorageManager.didUpdateNotification)) { _ in
+            reloadRecords()
+        }
         .onChange(of: importer.photoSelections, initial: false) { _, _ in
             importer.handlePhotoSelections()
         }

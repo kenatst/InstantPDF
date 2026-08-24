@@ -129,6 +129,9 @@ struct LibraryView: View {
             if phase == .active { reload() }
         }
         .onChange(of: languageOverride) { _, _ in reload() }
+        .onReceive(NotificationCenter.default.publisher(for: StorageManager.didUpdateNotification)) { _ in
+            reload()
+        }
         .alert("Rename", isPresented: Binding(get: { renamingRecord != nil },
                                                set: { if !$0 { renamingRecord = nil } })) {
             TextField("Name", text: $newName)

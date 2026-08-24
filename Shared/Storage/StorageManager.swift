@@ -19,6 +19,9 @@ final class StorageManager {
 
     static let shared = StorageManager(appGroupID: AppConfiguration.appGroupIdentifier)
 
+    /// Broadcast notification whenever storage persists, deletes, moves, or renames records.
+    static let didUpdateNotification = Notification.Name("com.kenatst.pdfit.storageDidUpdate")
+
     /// Human-readable description of the storage backend this process
     /// actually resolved at launch — surfaced in DEBUG pipeline traces so a
     /// write-backend ≠ read-backend mismatch can never hide again.
@@ -59,6 +62,7 @@ final class StorageManager {
     convenience init(appGroupID: String) {
         if let url = AppConfiguration.appGroupContainerURL {
             self.init(containerURL: url)
+            self.reconcileLocalFallbackIfNeeded()
             return
         }
         AppConfiguration.log.fault("App Group unavailable; falling back to app-local library storage.")
@@ -66,6 +70,56 @@ final class StorageManager {
             .appendingPathComponent("LocalLibrary", isDirectory: true)
         try? FileManager.default.createDirectory(at: local, withIntermediateDirectories: true)
         self.init(containerURL: local)
+    }
+
+    /// Reconciles and migrates any stranded documents from local fallback directory into App Group.
+    func reconcileLocalFallbackIfNeeded() {
+        guard let container = containerDirectory,
+              container.path.contains(AppConfiguration.appGroupIdentifier) else { return }
+        let local = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("LocalLibrary", isDirectory: true)
+        let localMetadata = local.appendingPathComponent("Library/metadata.json")
+        guard FileManager.default.fileExists(atPath: localMetadata.path) else { return }
+
+        let localRecords = Self.decodeRecords(from: localMetadata)
+        guard !localRecords.isEmpty else { return }
+
+        guard let targetDocs = documentsDirectory,
+              let targetMetadata = metadataFileURL else { return }
+
+        try? FileManager.default.createDirectory(at: targetDocs, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(at: targetMetadata.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if let targetThumbs = thumbnailsDirectory {
+            try? FileManager.default.createDirectory(at: targetThumbs, withIntermediateDirectories: true)
+        }
+
+        _ = try? coordinatedReadModifyWrite(targetMetadata) { currentRecords in
+            var migrated = 0
+            for record in localRecords {
+                if !currentRecords.contains(where: { $0.id == record.id }) {
+                    let srcPDF = local.appendingPathComponent(record.relativePath)
+                    let dstPDF = container.appendingPathComponent(record.relativePath)
+                    try? FileManager.default.createDirectory(at: dstPDF.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    if FileManager.default.fileExists(atPath: srcPDF.path) {
+                        try? FileManager.default.copyItem(at: srcPDF, to: dstPDF)
+                    }
+                    if let thumbPath = record.thumbnailPath {
+                        let srcThumb = local.appendingPathComponent(thumbPath)
+                        let dstThumb = container.appendingPathComponent(thumbPath)
+                        try? FileManager.default.createDirectory(at: dstThumb.deletingLastPathComponent(), withIntermediateDirectories: true)
+                        if FileManager.default.fileExists(atPath: srcThumb.path) {
+                            try? FileManager.default.copyItem(at: srcThumb, to: dstThumb)
+                        }
+                    }
+                    currentRecords.insert(record, at: 0)
+                    migrated += 1
+                }
+            }
+            if migrated > 0 {
+                try? FileManager.default.removeItem(at: localMetadata)
+            }
+            return migrated
+        }
     }
 
     /// Which physical location this instance serves — diagnostics only.
@@ -128,6 +182,9 @@ final class StorageManager {
                                              thumbnailPath: thumbnailPath)
                 currentRecords.insert(record, at: 0)
                 return record
+            }
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: StorageManager.didUpdateNotification, object: nil)
             }
             return uniqueName
         }
@@ -227,6 +284,9 @@ final class StorageManager {
                 currentRecords.removeAll { $0.id == record.id }
                 return true
             }
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: StorageManager.didUpdateNotification, object: nil)
+            }
         }
     }
 
@@ -265,6 +325,9 @@ final class StorageManager {
                     currentRecords[index] = mutated
                 }
                 return mutated
+            }
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: StorageManager.didUpdateNotification, object: nil)
             }
             return updated
         }
@@ -420,6 +483,9 @@ final class StorageManager {
                 }
                 return true
             }
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: StorageManager.didUpdateNotification, object: nil)
+            }
         }
     }
 
@@ -450,6 +516,9 @@ final class StorageManager {
                     changed = true
                 }
                 return changed
+            }
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: StorageManager.didUpdateNotification, object: nil)
             }
         }
     }

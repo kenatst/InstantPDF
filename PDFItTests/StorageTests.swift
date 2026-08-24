@@ -152,4 +152,31 @@ final class StorageTests: XCTestCase {
         XCTAssertTrue(afterLoss.fetchRecords().isEmpty,
                       "Records whose file is gone are pruned from the index")
     }
+
+    func testFallbackReconciliationMigratesStrandedRecords() throws {
+        // Create local fallback container
+        let localDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("LocalLibrary", isDirectory: true)
+        try FileManager.default.createDirectory(at: localDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: localDir) }
+
+        let localManager = StorageManager(containerURL: localDir)
+        let saved = try localManager.save(document: makeDocument(title: "Stranded Fallback Scan"))
+        XCTAssertEqual(localManager.fetchRecords().count, 1)
+
+        // Mock App Group container with the bundle group identifier in path
+        let appGroupDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("group.com.kenatst.pdfit-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: appGroupDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: appGroupDir) }
+
+        let appGroupManager = StorageManager(containerURL: appGroupDir)
+        appGroupManager.reconcileLocalFallbackIfNeeded()
+
+        // App Group should now have the migrated record
+        let migratedRecords = appGroupManager.fetchRecords()
+        XCTAssertEqual(migratedRecords.count, 1)
+        XCTAssertEqual(migratedRecords.first?.id, saved.id)
+        XCTAssertTrue(appGroupManager.exists(migratedRecords[0]))
+    }
 }

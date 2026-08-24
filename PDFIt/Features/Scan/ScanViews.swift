@@ -40,18 +40,15 @@ struct ScanCameraView: UIViewControllerRepresentable {
             for index in 0..<scan.pageCount {
                 images.append(scan.imageOfPage(at: index))
             }
-            controller.dismiss(animated: true)
             onCompletion(images)
         }
 
         func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
-            controller.dismiss(animated: true)
             onCompletion([])
         }
 
         func documentCameraViewController(_ controller: VNDocumentCameraViewController,
                                           didFailWithError error: Error) {
-            controller.dismiss(animated: true)
             onError(error.localizedDescription)
         }
     }
@@ -62,7 +59,7 @@ struct ScanCameraView: UIViewControllerRepresentable {
 ///   (with graceful simulator/unavailability fallback) → capture lands in
 ///   the review screen → Create PDF → documents returned via onFinish.
 struct ScanFlowSheet: View {
-    @StateObject private var model: ScanFlowModel
+    @ObservedObject var model: ScanFlowModel
     @Environment(\.dismiss) private var dismiss
     /// Documents produced by the flow; HomeView persists them.
     /// Returns only the documents that could not be persisted. Successful
@@ -77,7 +74,7 @@ struct ScanFlowSheet: View {
     enum Phase { case launching, camera, review, batchGate }
 
     init(model: ScanFlowModel, onFinish: @escaping ([ConvertedDocument]) -> [ConvertedDocument]) {
-        _model = StateObject(wrappedValue: model)
+        self.model = model
         self.onFinish = onFinish
     }
 
@@ -134,7 +131,7 @@ struct ScanFlowSheet: View {
 /// Review screen: reorder, rotate, delete, enhance presets, batch groups,
 /// smart name suggestion, and the Create PDF path through the shared engine.
 struct ScanReviewView: View {
-    @StateObject private var model: ScanFlowModel
+    @ObservedObject var model: ScanFlowModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @State private var selectedPaper: PDFPaperSize = .automatic
@@ -160,7 +157,7 @@ struct ScanReviewView: View {
          batchEnabled: Bool = true,
          onFinish: @escaping ([ConvertedDocument]) -> [ConvertedDocument],
          onClose: (() -> Void)? = nil) {
-        _model = StateObject(wrappedValue: model)
+        self.model = model
         self.batchEnabled = batchEnabled
         self.onFinish = onFinish
         self.onClose = onClose
