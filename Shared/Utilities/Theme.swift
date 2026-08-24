@@ -33,26 +33,53 @@ extension Color {
 
 enum Theme {
 
+    enum Spacing {
+        static let xxs: CGFloat = 4
+        static let xs: CGFloat = 8
+        static let sm: CGFloat = 12
+        static let md: CGFloat = 16
+        static let lg: CGFloat = 20
+        static let xl: CGFloat = 24
+        static let xxl: CGFloat = 32
+    }
+
+    enum Radius {
+        static let control: CGFloat = 14
+        static let card: CGFloat = 20
+        static let feature: CGFloat = 24
+        static let hero: CGFloat = 30
+    }
+
     enum Colors {
         static let orangePrimary = Color(hex: "FF7A1A")
-        static let orangeLight = Color(hex: "FF9538")
-        static let orangeDark = Color(hex: "E05A00")
+        static let orangeLight = Color(hex: "FFA351")
+        static let orangeDark = Color(hex: "C94700")
+        static let amber = Color(hex: "FFB02E")
+
+        static let warmBackground = Color(hex: "F7F3ED")
+        static let warmBackgroundRaised = Color(hex: "FCF9F5")
+        static let surface = Color(hex: "FFFDFC")
+        static let surfaceMuted = Color(hex: "F1ECE5")
+        static let ink = Color(hex: "1E1815")
+        static let inkSecondary = Color(hex: "766D66")
+        static let stroke = Color(hex: "DED5CB")
         
         static let orangeGradient = LinearGradient(
-            colors: [Color(hex: "FF8A28"), Color(hex: "E85800")],
+            colors: [Color(hex: "FF963D"), Color(hex: "E95708")],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
 
         static let heroCardGradient = LinearGradient(
-            colors: [Color(hex: "FF8526"), Color(hex: "E55400")],
+            colors: [Color(hex: "FF9A3D"), Color(hex: "F16A16"), Color(hex: "D94A00")],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
 
-        static let darkBackground = Color(hex: "0D0E12")
-        static let darkCard = Color(hex: "18191E")
-        static let darkCardSecondary = Color(hex: "22242B")
+        static let darkBackground = Color(hex: "12100F")
+        static let darkCard = Color(hex: "1D1A18")
+        static let darkCardSecondary = Color(hex: "29231F")
+        static let darkStroke = Color(hex: "403832")
         
         static let glow = Color(hex: "FF7A1A").opacity(0.25)
     }
@@ -62,11 +89,22 @@ enum Theme {
         @Environment(\.colorScheme) private var colorScheme
 
         func body(content: Content) -> some View {
-            content
-                .background(
-                    (colorScheme == .dark ? Colors.darkBackground : Color(hex: "F7F8FA"))
+            content.background {
+                ZStack {
+                    (colorScheme == .dark ? Colors.darkBackground : Colors.warmBackground)
                         .ignoresSafeArea()
-                )
+                    RadialGradient(
+                        colors: [
+                            Colors.orangePrimary.opacity(colorScheme == .dark ? 0.075 : 0.055),
+                            .clear
+                        ],
+                        center: .topTrailing,
+                        startRadius: 0,
+                        endRadius: 360
+                    )
+                    .ignoresSafeArea()
+                }
+            }
         }
     }
 
@@ -86,13 +124,13 @@ enum Theme {
                         .overlay(
                             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                                 .strokeBorder(
-                                    isSelected ? Colors.orangePrimary : (colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.06)),
+                            isSelected ? Colors.orangePrimary : (colorScheme == .dark ? Colors.darkStroke : Colors.stroke.opacity(0.72)),
                                     lineWidth: isSelected ? 2 : 1
                                 )
                         )
                         .shadow(
-                            color: isSelected ? Colors.glow : (colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.04)),
-                            radius: isSelected ? 12 : 8,
+                            color: isSelected ? Colors.glow : (colorScheme == .dark ? Color.black.opacity(0.34) : Color(hex: "6F4D35").opacity(0.075)),
+                            radius: isSelected ? 12 : 14,
                             x: 0,
                             y: isSelected ? 4 : 2
                         )
@@ -103,20 +141,25 @@ enum Theme {
     // Primary CTA Button Style
     struct PrimaryButtonStyle: ButtonStyle {
         @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
         func makeBody(configuration: Configuration) -> some View {
             configuration.label
-                .font(.headline.weight(.semibold))
+                .font(.headline.weight(.bold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+                .frame(minHeight: 54)
                 .contentShape(Rectangle())
                 .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                         .fill(isEnabled ? Colors.orangeGradient : LinearGradient(colors: [Color.gray.opacity(0.5)], startPoint: .top, endPoint: .bottom))
-                        .shadow(color: isEnabled ? Colors.orangePrimary.opacity(0.35) : Color.clear, radius: 10, x: 0, y: 5)
+                        .overlay(alignment: .top) {
+                            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                                .strokeBorder(Color.white.opacity(isEnabled ? 0.24 : 0), lineWidth: 1)
+                        }
+                        .shadow(color: isEnabled ? Colors.orangeDark.opacity(0.25) : Color.clear, radius: 10, x: 0, y: 6)
                 )
-                .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+                .scaleEffect(configuration.isPressed && !reduceMotion ? 0.975 : 1.0)
                 .opacity(isEnabled ? 1.0 : 0.6)
                 .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
         }
@@ -125,23 +168,24 @@ enum Theme {
     // Secondary Outline Button Style
     struct SecondaryButtonStyle: ButtonStyle {
         @Environment(\.colorScheme) private var colorScheme
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
         func makeBody(configuration: Configuration) -> some View {
             configuration.label
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(colorScheme == .dark ? Color.white : Color(hex: "111215"))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+                .frame(minHeight: 50)
                 .contentShape(Rectangle())
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(colorScheme == .dark ? Colors.darkCardSecondary : Color(hex: "EAECEF"))
+                    RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                        .fill(colorScheme == .dark ? Colors.darkCardSecondary : Colors.surfaceMuted)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                                .strokeBorder(colorScheme == .dark ? Colors.darkStroke : Colors.stroke.opacity(0.85), lineWidth: 1)
                         )
                 )
-                .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+                .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1.0)
                 .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
         }
     }
@@ -172,6 +216,10 @@ extension View {
 struct MascotView: View {
     enum MascotType {
         case hero
+        case photos
+        case link
+        case text
+        case files
         case onboarding1
         case onboarding2
         case onboarding3
@@ -180,7 +228,11 @@ struct MascotView: View {
         
         var assetName: String {
             switch self {
-            case .hero: return "MascotHero"
+            case .hero: return "MascotHeroPremium"
+            case .photos: return "MascotPhotos"
+            case .link: return "MascotLink"
+            case .text: return "MascotText"
+            case .files: return "MascotFiles"
             case .onboarding1: return "MascotOnboarding1"
             case .onboarding2: return "MascotOnboarding2"
             case .onboarding3: return "MascotOnboarding3"
@@ -220,7 +272,7 @@ struct MascotView: View {
             }
         }
         .frame(width: size, height: size)
-        .shadow(color: Theme.Colors.orangePrimary.opacity(0.22), radius: 14, x: 0, y: 6)
+        .shadow(color: Color.black.opacity(0.09), radius: 13, x: 0, y: 7)
         .offset(y: (!reduceMotion && enableFloatingAnimation && isFloating) ? -4 : 0)
         .onAppear {
             if !reduceMotion && enableFloatingAnimation {

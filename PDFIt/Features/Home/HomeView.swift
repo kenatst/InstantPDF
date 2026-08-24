@@ -29,12 +29,13 @@ struct HomeView: View {
     @ObservedObject private var entitlements = EntitlementCenter.shared
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: Theme.Spacing.xxl) {
                 brandHeader
-                    .padding(.top, 8)
+                    .padding(.top, Theme.Spacing.xs)
 
                 heroCard
 
@@ -44,8 +45,8 @@ struct HomeView: View {
 
                 recentSection
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 32)
+            .padding(.horizontal, Theme.Spacing.lg)
+            .padding(.bottom, 40)
         }
         .themeBackground()
         .toolbar(.hidden, for: .navigationBar)
@@ -97,12 +98,13 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showingOnboardingPaywall) {
             PaywallView(feature: .webConversion,
-                        showsContinueFree: true) { _ in
+                        showsContinueFree: true,
+                        onVerifiedPurchase: { _ in
                 // Verified purchase from the onboarding paywall: celebrate,
                 // teach, then land on Home. No pending intent to resume —
                 // the flow's finish clears it anyway.
                 showingProActivation = true
-            }
+            })
         }
         .sheet(isPresented: $showingProActivation) {
             ProActivationFlow { intent in
@@ -118,11 +120,22 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $importer.showingPaywall) {
-            PaywallView(feature: importer.requiresPro ?? .webConversion) { feature in
+#if DEBUG
+            PaywallView(feature: importer.requiresPro ?? .webConversion,
+                        onVerifiedPurchase: { feature in
                 // Contextual purchase (Link, etc.): run the activation flow,
                 // then RESUME the exact action that was requested.
                 showingProActivation = true
+            }, onDebugDemoMode: { intent in
+                // Demo Mode is not a purchase: resume immediately without
+                // celebration or changing real purchase state.
+                handleProActivationCompletion(intent)
+            })
+#else
+            PaywallView(feature: importer.requiresPro ?? .webConversion) { _ in
+                showingProActivation = true
             }
+#endif
         }
         .fileImporter(isPresented: $importer.showingFileImporter,
                       allowedContentTypes: [.image, .pdf, .text, .plainText, .html, .rtf],
@@ -201,23 +214,31 @@ struct HomeView: View {
     // gear was unreachable on device.
 
     private var brandHeader: some View {
-        HStack(spacing: 10) {
-            MascotView(type: .hero, size: 34, enableFloatingAnimation: false)
+        HStack(spacing: Theme.Spacing.sm) {
+            MascotView(type: .hero, size: 42, enableFloatingAnimation: false)
                 .accessibilityHidden(true)
             Text("PDF It")
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .kerning(0.2)
-                .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
+                .font(.system(size: 22, weight: .heavy, design: .rounded))
+                .kerning(-0.2)
+                .foregroundStyle(colorScheme == .dark ? .white : Theme.Colors.ink)
             Spacer()
             Button {
                 showingSettings = true
             } label: {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.85) : Color(hex: "1C1D22"))
+                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.9) : Theme.Colors.ink)
                     .frame(width: 44, height: 44)
                     .background(
-                        Circle().fill(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05))
+                        Circle()
+                            .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Theme.Colors.surface)
+                            .overlay(
+                                Circle().strokeBorder(
+                                    colorScheme == .dark ? Theme.Colors.darkStroke : Theme.Colors.stroke.opacity(0.75),
+                                    lineWidth: 1
+                                )
+                            )
+                            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.22 : 0.07), radius: 10, y: 4)
                     )
             }
             .buttonStyle(.plain)
@@ -236,43 +257,42 @@ struct HomeView: View {
             // this outer sheet shows the review UI around it.
             showingScanner = true
         } label: {
-            HStack(spacing: 14) {
-                ZStack(alignment: .bottomTrailing) {
-                    MascotView(type: .hero, size: 56, enableFloatingAnimation: false)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: Theme.Spacing.md) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .fill(Theme.Colors.orangePrimary.opacity(colorScheme == .dark ? 0.2 : 0.11))
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .strokeBorder(Theme.Colors.orangePrimary.opacity(0.36), lineWidth: 1.5)
+                        .frame(width: 31, height: 39)
                     Image(systemName: "doc.viewfinder")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 23, weight: .semibold))
                         .foregroundStyle(Theme.Colors.orangePrimary)
-                        .padding(7)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(colorScheme == .dark ? Theme.Colors.darkCard : Color.white)
-                        )
                 }
-                .frame(width: 64, height: 58)
+                .frame(width: 64, height: 68)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text("Scan Document")
-                        .font(.subheadline.weight(.bold))
-                    Text("Turn paper into a clean PDF in seconds.")
-                        .font(.caption2)
-                        .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.5) : Color.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(colorScheme == .dark ? .white : Theme.Colors.ink)
+                    Text("Turn paper documents into clean, readable PDFs.")
+                        .font(.footnote)
+                        .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.62) : Theme.Colors.inkSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.4) : Color(hex: "9AA0AA"))
+                    .foregroundStyle(Theme.Colors.orangePrimary)
             }
-            .padding(14)
+            .padding(Theme.Spacing.md)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Color(hex: "FFF3E8"))
+                RoundedRectangle(cornerRadius: Theme.Radius.feature, style: .continuous)
+                    .fill(colorScheme == .dark ? Theme.Colors.darkCard : Theme.Colors.surface)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .strokeBorder(Theme.Colors.orangePrimary.opacity(0.35), lineWidth: 1.5)
+                        RoundedRectangle(cornerRadius: Theme.Radius.feature, style: .continuous)
+                            .strokeBorder(colorScheme == .dark ? Theme.Colors.darkStroke : Theme.Colors.stroke.opacity(0.75), lineWidth: 1)
                     )
+                    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.2 : 0.065), radius: 14, y: 7)
             )
         }
         .buttonStyle(.plain)
@@ -286,41 +306,55 @@ struct HomeView: View {
         Button {
             showingSourceChooser = true
         } label: {
-            ZStack(alignment: .trailing) {
-                HStack(alignment: .center, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 7) {
+            ZStack(alignment: .bottomTrailing) {
+                VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                         Text("Anything → PDF")
-                            .font(.system(size: 27, weight: .heavy, design: .rounded))
+                            .font(.system(size: dynamicTypeSize.isAccessibilitySize ? 30 : 32,
+                                          weight: .heavy,
+                                          design: .rounded))
                             .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                        Text("Photos, webpages, text and files.\nOne beautiful PDF.")
+                        Text("Photos, webpages, text and files.\nOne PDF. In seconds.")
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(Color.white.opacity(0.92))
-                            .lineSpacing(2)
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                        Text("Create PDF")
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(Color(hex: "7A2E00"))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 9)
-                            .background(Color.white, in: Capsule())
-                            .padding(.top, 8)
+                        HStack(spacing: 7) {
+                            Text("Create PDF")
+                                .font(.subheadline.weight(.bold))
+                            Image(systemName: "arrow.right")
+                                .font(.caption.weight(.black))
+                        }
+                        .foregroundStyle(Color(hex: "7A2E00"))
+                        .padding(.horizontal, 16)
+                        .frame(minHeight: 40)
+                        .background(Color.white, in: Capsule())
+                        .shadow(color: Theme.Colors.orangeDark.opacity(0.2), radius: 8, y: 4)
+                        .padding(.top, Theme.Spacing.xs)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 24)
-                    .padding(.leading, 22)
-                    .padding(.trailing, 108)
+                    .padding(.vertical, Theme.Spacing.xl)
+                    .padding(.leading, Theme.Spacing.xl)
+                    .padding(.trailing, dynamicTypeSize.isAccessibilitySize ? Theme.Spacing.xl : 124)
                 }
                 .background(
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous)
                         .fill(Theme.Colors.heroCardGradient)
-                        .shadow(color: Theme.Colors.orangePrimary.opacity(0.35), radius: 16, x: 0, y: 7)
+                        .overlay(alignment: .topLeading) {
+                            RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+                        }
+                        .shadow(color: Theme.Colors.orangeDark.opacity(0.24), radius: 18, x: 0, y: 10)
                 )
 
-                MascotView(type: .hero, size: 138, enableFloatingAnimation: true)
-                    .offset(x: 10, y: -26)
+                if !dynamicTypeSize.isAccessibilitySize {
+                    MascotView(type: .hero, size: 155, enableFloatingAnimation: true)
+                        .offset(x: 14, y: 18)
+                        .accessibilityHidden(true)
+                }
             }
         }
         .buttonStyle(.plain)
@@ -331,7 +365,7 @@ struct HomeView: View {
     // MARK: - 4 mascot source cards
 
     private var actionGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.sm), GridItem(.flexible(), spacing: Theme.Spacing.sm)], spacing: Theme.Spacing.sm) {
             PhotosPicker(selection: $importer.photoSelections, matching: .images) {
                 MascotActionCard(category: .photos)
             }
@@ -372,11 +406,11 @@ struct HomeView: View {
     @ViewBuilder
     private var recentSection: some View {
         if !records.isEmpty {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 HStack {
                     Text("Recent")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(colorScheme == .dark ? .white : Theme.Colors.ink)
                     Spacer()
                     NavigationLink(value: LibraryRoute.library) {
                         Text("See All")
@@ -420,8 +454,12 @@ struct HomeView: View {
     private func handleProActivationCompletion(_ intent: ProFeature?) {
         switch intent {
         case .linkConversion, .webConversion:
-            importer.requiresPro = nil
-            importer.showingLinkEntry = true
+            if !importer.resumePendingProConversion() {
+                // Defensive fallback for an activation started somewhere
+                // other than Link entry: reopen the correct surface.
+                importer.requiresPro = nil
+                importer.showingLinkEntry = true
+            }
         default:
             // Viewer-context intents (Sign/Compress/OCR/Extract) resume
             // inside PDFToolsHostView, which owns its own activation flow.
@@ -491,13 +529,19 @@ struct SourceChooserSheet: View {
                         MascotActionCard(category: MascotActionCard.Category(rawValue: source.rawValue) ?? .photos)
                     }
                     .buttonStyle(.plain)
+                    .overlay(alignment: .topTrailing) {
+                        if source == .link && !EntitlementCenter.shared.isPro {
+                            ProBadge()
+                                .padding(Theme.Spacing.xs)
+                        }
+                    }
                 }
             }
             Spacer(minLength: 0)
         }
         .padding(22)
         .themeBackground()
-        .presentationDetents([.medium])
+        .presentationDetents([.large])
     }
 }
 
@@ -535,12 +579,21 @@ struct PhotosPickerSheet: View {
 struct MascotActionCard: View {
     enum Category: String {
         case photos, link, text, files
+
+        var mascotType: MascotView.MascotType {
+            switch self {
+            case .photos: return .photos
+            case .link: return .link
+            case .text: return .text
+            case .files: return .files
+            }
+        }
     }
 
     let category: Category
     @Environment(\.colorScheme) private var colorScheme
 
-    private var title: String {
+    private var title: LocalizedStringKey {
         switch category {
         case .photos: return "Photos"
         case .link: return "Link"
@@ -549,44 +602,46 @@ struct MascotActionCard: View {
         }
     }
 
-    private var subtitle: String {
+    private var subtitle: LocalizedStringKey {
         switch category {
-        case .photos: return "From Library"
-        case .link: return "From URL"
-        case .text: return "Write or Paste"
-        case .files: return "From Device"
+        case .photos: return "From your photo library"
+        case .link: return "From a URL"
+        case .text: return "Write or paste"
+        case .files: return "From your device"
         }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Canonical mascot composed with a native category glyph.
-            ZStack(alignment: .bottomTrailing) {
-                MascotView(type: .hero, size: 52, enableFloatingAnimation: false)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            MascotView(type: category.mascotType, size: 108, enableFloatingAnimation: false)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityHidden(true)
+
+            HStack(alignment: .bottom, spacing: Theme.Spacing.xs) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(colorScheme == .dark ? .white : Theme.Colors.ink)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.58) : Theme.Colors.inkSecondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: Theme.Spacing.xxs)
                 categoryBadge
             }
-            .frame(height: 54)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
-                Text(subtitle)
-                    .font(.caption2)
-                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.5) : Color.secondary)
-            }
         }
-        .padding(14)
+        .padding(Theme.Spacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(colorScheme == .dark ? Theme.Colors.darkCard : Color.white)
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .fill(colorScheme == .dark ? Theme.Colors.darkCard : Theme.Colors.surface)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                        .strokeBorder(colorScheme == .dark ? Theme.Colors.darkStroke : Theme.Colors.stroke.opacity(0.65), lineWidth: 1)
                 )
-                .shadow(color: colorScheme == .dark ? Color.black.opacity(0.2) : Color.black.opacity(0.03), radius: 6, x: 0, y: 2)
+                .shadow(color: colorScheme == .dark ? Color.black.opacity(0.24) : Color(hex: "6F4D35").opacity(0.07), radius: 12, x: 0, y: 6)
         )
     }
 
@@ -596,7 +651,7 @@ struct MascotActionCard: View {
         ZStack {
             RoundedRectangle(cornerRadius: 9, style: .continuous)
                 .fill(Theme.Colors.orangePrimary.opacity(0.16))
-                .frame(width: 34, height: 34)
+                .frame(width: 32, height: 32)
             Image(systemName: symbolName)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Theme.Colors.orangePrimary)
@@ -651,7 +706,7 @@ private struct RecentPDFRow: View {
                 HStack(spacing: 6) {
                     Text(record.createdAt.formatted(date: .abbreviated, time: .omitted))
                     Text("•")
-                    Text(String(localized: "plural.pages \(record.pageCount)"))
+                    Text(String(localized: "plural.pages \(record.pageCount)", bundle: LanguageManager.bundle))
                     Text("•")
                     Text(ByteCountFormatter.string(fromByteCount: record.fileSize, countStyle: .file))
                 }

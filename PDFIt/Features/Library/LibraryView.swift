@@ -51,6 +51,16 @@ struct LibraryView: View {
         case files = "Files"
 
         var id: String { rawValue }
+
+        var titleKey: LocalizedStringKey {
+            switch self {
+            case .all: return "All"
+            case .web: return "Web"
+            case .photos: return "Photos"
+            case .text: return "Text"
+            case .files: return "Files"
+            }
+        }
     }
 
     private var visibleRecords: [StoredPDFRecord] {
@@ -86,7 +96,7 @@ struct LibraryView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: Theme.Spacing.xl) {
                 if !records.isEmpty || !folders.isEmpty {
                     filterPillBar
                 }
@@ -103,12 +113,13 @@ struct LibraryView: View {
                     documentGrid
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 32)
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.top, Theme.Spacing.xs)
+            .padding(.bottom, 40)
         }
         .themeBackground()
-        .navigationTitle(embedded ? "Recent" : "Library")
+        .navigationTitle(Text(embedded ? LocalizedStringKey("Recent") : LocalizedStringKey("Library")))
+        .navigationBarTitleDisplayMode(embedded ? .inline : .large)
         .searchable(text: $searchText, prompt: "Search PDFs")
         .toolbar { toolbarContent }
         .onAppear(perform: reload)
@@ -226,21 +237,30 @@ struct LibraryView: View {
 
     private var filterPillBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Spacing.xs) {
                 ForEach(FilterCategory.allCases) { category in
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             selectedFilter = category
                         }
                     } label: {
-                        Text(category.rawValue)
+                        Text(category.titleKey)
                             .font(.subheadline.weight(selectedFilter == category ? .bold : .medium))
-                            .foregroundStyle(selectedFilter == category ? .white : (colorScheme == .dark ? Color.white.opacity(0.7) : Color.secondary))
+                            .foregroundStyle(selectedFilter == category ? .white : (colorScheme == .dark ? Color.white.opacity(0.72) : Theme.Colors.inkSecondary))
                             .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
+                            .frame(minHeight: 38)
                             .background(
                                 Capsule()
-                                    .fill(selectedFilter == category ? AnyShapeStyle(Theme.Colors.orangePrimary) : AnyShapeStyle(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Color(hex: "E8EAF0")))
+                                    .fill(selectedFilter == category ? AnyShapeStyle(Theme.Colors.orangePrimary) : AnyShapeStyle(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Theme.Colors.surface))
+                                    .overlay(
+                                        Capsule().strokeBorder(
+                                            selectedFilter == category
+                                                ? Color.white.opacity(0.16)
+                                                : (colorScheme == .dark ? Theme.Colors.darkStroke : Theme.Colors.stroke.opacity(0.7)),
+                                            lineWidth: 1
+                                        )
+                                    )
+                                    .shadow(color: Color.black.opacity(selectedFilter == category ? 0.1 : 0.035), radius: 6, y: 3)
                             )
                     }
                     .buttonStyle(.plain)
@@ -256,8 +276,8 @@ struct LibraryView: View {
     private var folderRail: some View {
         if !folders.isEmpty || activeFolderID != nil {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    folderCard(title: String(localized: "All PDFs"),
+                HStack(spacing: Theme.Spacing.sm) {
+                    folderCard(title: String(localized: "All PDFs", bundle: LanguageManager.bundle),
                                count: records.filter { $0.folderID == nil }.count,
                                symbol: "tray.full",
                                selected: activeFolderID == nil,
@@ -288,14 +308,19 @@ struct LibraryView: View {
                 activeFolderID = isRoot ? nil : folder?.id
             }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Spacing.sm) {
                 Image(systemName: symbol)
-                    .font(.footnote.weight(.semibold))
+                    .font(.system(size: 18, weight: .semibold))
+                    .frame(width: 36, height: 36)
+                    .background(
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .fill(selected ? Color.white.opacity(0.18) : Theme.Colors.orangePrimary.opacity(0.12))
+                    )
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title)
-                        .font(.caption.weight(.semibold))
+                        .font(.subheadline.weight(.bold))
                         .lineLimit(1)
-                    Text(String(localized: "plural.docs \(count)"))
+                    Text(String(localized: "plural.docs \(count)", bundle: LanguageManager.bundle))
                         .font(.caption2)
                         .opacity(0.65)
                 }
@@ -320,13 +345,18 @@ struct LibraryView: View {
                     }
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .foregroundStyle(selected ? Color.white : (colorScheme == .dark ? Color.white.opacity(0.85) : Color(hex: "3A3C43")))
+            .padding(.horizontal, Theme.Spacing.sm)
+            .padding(.vertical, Theme.Spacing.sm)
+            .frame(minWidth: 142, minHeight: 64, alignment: .leading)
+            .foregroundStyle(selected ? Color.white : (colorScheme == .dark ? Color.white.opacity(0.88) : Theme.Colors.ink))
             .background(
-                Capsule()
+                RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                     .fill(selected ? AnyShapeStyle(Theme.Colors.orangeGradient) : AnyShapeStyle(colorScheme == .dark ? Theme.Colors.darkCard : Color.white))
-                    .shadow(color: colorScheme == .dark ? .black.opacity(0.2) : .black.opacity(0.04), radius: 5, y: 2)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                            .strokeBorder(selected ? Color.white.opacity(0.18) : (colorScheme == .dark ? Theme.Colors.darkStroke : Theme.Colors.stroke.opacity(0.7)), lineWidth: 1)
+                    )
+                    .shadow(color: colorScheme == .dark ? .black.opacity(0.22) : Color(hex: "6F4D35").opacity(0.065), radius: 10, y: 5)
             )
         }
         .buttonStyle(.plain)
@@ -335,7 +365,7 @@ struct LibraryView: View {
     // MARK: - Document grid
 
     private var documentGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.sm), GridItem(.flexible(), spacing: Theme.Spacing.sm)], spacing: Theme.Spacing.sm) {
             ForEach(visibleRecords) { record in
                 Group {
                     if selectionMode {
@@ -400,14 +430,14 @@ struct LibraryView: View {
     private var emptyState: some View {
         VStack(spacing: 18) {
             Spacer(minLength: 60)
-            MascotView(type: .hero, size: 140)
+            MascotView(type: .hero, size: 148)
             VStack(spacing: 6) {
                 Text("Your PDFs will appear here.")
                     .font(.title3.weight(.bold))
-                    .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
+                    .foregroundStyle(colorScheme == .dark ? .white : Theme.Colors.ink)
                 Text("Share a webpage, photo, or document from any app and choose PDF It.")
                     .font(.subheadline)
-                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.secondary)
+                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.62) : Theme.Colors.inkSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 36)
             }
@@ -429,10 +459,11 @@ struct LibraryView: View {
                     .font(.system(size: 40))
                     .foregroundStyle(Color.secondary)
             }
-            Text(isEmptyFolder ? "This folder is empty." : "No Matching PDFs")
+            Text(isEmptyFolder ? LocalizedStringKey("This folder is empty.") : LocalizedStringKey("No Matching PDFs"))
                 .font(.headline)
-            Text(isEmptyFolder ? "Move PDFs here with Select, or keep creating." :
-                                    "Try searching with a different filename.")
+            Text(isEmptyFolder
+                 ? LocalizedStringKey("Move PDFs here with Select, or keep creating.")
+                 : LocalizedStringKey("Try searching with a different filename."))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -530,7 +561,7 @@ struct LibraryView: View {
         }
         guard chunks.count >= 2,
               let merged = try? PDFAssembly.merge(chunks) else { return }
-        let title = String(localized: "Merged PDF")
+        let title = String(localized: "Merged PDF", bundle: LanguageManager.bundle)
         let stamped = PersonalizationApplier.applyingMetadata(to: merged,
                                                               title: title,
                                                               author: nil,

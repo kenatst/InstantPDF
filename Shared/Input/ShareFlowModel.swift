@@ -65,7 +65,7 @@ final class ShareFlowModel: ObservableObject {
                 return false
             }.count
 
-            var title = String(localized: "Content")
+            var title = String(localized: "Content", bundle: LanguageManager.bundle)
             var subtitle: String?
             var symbolName = "doc"
             var availableModes: [ConversionMode] = [.quick]
@@ -80,33 +80,33 @@ final class ShareFlowModel: ObservableObject {
             }
 
             if items.count == 1, case .url(let url) = items[0].kind {
-                title = String(localized: "Webpage")
+                title = String(localized: "Webpage", bundle: LanguageManager.bundle)
                 subtitle = url.host
                 symbolName = items[0].source.symbolName
                 availableModes = [.quick, .clean, .reader]
                 failingURL = url
             } else if items.count == 1, case .html = items[0].kind {
-                title = String(localized: "Web Content")
+                title = String(localized: "Web Content", bundle: LanguageManager.bundle)
                 subtitle = items[0].sourceURL?.host
                 symbolName = "safari"
                 availableModes = [.quick, .clean, .reader]
                 failingURL = items[0].sourceURL
             } else if imageCount == items.count, imageCount > 0 {
-                title = String(localized: "plural.images \(imageCount)")
-                subtitle = imageCount > 1 ? String(localized: "Order preserved") : nil
+                title = String(localized: "plural.images \(imageCount)", bundle: LanguageManager.bundle)
+                subtitle = imageCount > 1 ? String(localized: "Order preserved", bundle: LanguageManager.bundle) : nil
                 symbolName = "photo.on.rectangle"
             } else if textCount == items.count, textCount > 0 {
-                title = textCount == 1 ? String(localized: "Text") : String(localized: "plural.text_items \(textCount)")
+                title = textCount == 1 ? String(localized: "Text", bundle: LanguageManager.bundle) : String(localized: "plural.text_items \(textCount)", bundle: LanguageManager.bundle)
                 symbolName = "note.text"
             } else if pdfCount == 1, items.count == 1 {
-                title = String(localized: "PDF Ready")
+                title = String(localized: "PDF Ready", bundle: LanguageManager.bundle)
                 subtitle = items[0].originalFilename
                 symbolName = "doc.richtext"
                 isPDFPassthrough = true
                 paperSizeRelevant = false
             } else {
-                title = String(localized: "plural.items \(items.count)")
-                subtitle = String(localized: "Merged into one PDF")
+                title = String(localized: "plural.items \(items.count)", bundle: LanguageManager.bundle)
+                subtitle = String(localized: "Merged into one PDF", bundle: LanguageManager.bundle)
                 symbolName = "square.stack.3d.up"
             }
 
@@ -116,13 +116,13 @@ final class ShareFlowModel: ObservableObject {
 
             let notice: String?
             if extracted.skippedCount > 0 {
-                var base = String(localized: "plural.skipped_media_notice \(extracted.skippedCount)")
+                var base = String(localized: "plural.skipped_media_notice \(extracted.skippedCount)", bundle: LanguageManager.bundle)
                 if hasAttachedText {
-                    base += "\n" + String(localized: "Shared text will be used if the page can't load.")
+                    base += "\n" + String(localized: "Shared text will be used if the page can't load.", bundle: LanguageManager.bundle)
                 }
                 notice = base
             } else if hasAttachedText {
-                notice = String(localized: "Shared text will be used if the page can't load.")
+                notice = String(localized: "Shared text will be used if the page can't load.", bundle: LanguageManager.bundle)
             } else {
                 notice = nil
             }
@@ -274,7 +274,7 @@ final class ShareFlowModel: ObservableObject {
     func saveLinkAsText() {
         guard let url = readySummary?.failingURL else { return }
         let item = IncomingItem(kind: .text(url.absoluteString),
-                                title: String(localized: "Saved Link"),
+                                title: String(localized: "Saved Link", bundle: LanguageManager.bundle),
                                 sourceURL: url,
                                 source: .website)
         runConversion(items: [item])

@@ -174,6 +174,36 @@ final class LocalizationAndProductTests: XCTestCase {
         }
     }
 
+    func testPremiumSurfaceLocalizationAndMascotMappings() throws {
+        let catalogURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Shared/Resources/Localizable.xcstrings")
+        let data = try Data(contentsOf: catalogURL)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let strings = try XCTUnwrap(json["strings"] as? [String: [String: Any]])
+
+        for key in [
+            "Photos, webpages, text and files.\nOne PDF. In seconds.",
+            "From your photo library", "From a URL", "Write or paste", "From your device",
+            "Try Pro — Demo Mode", "Privacy & Support", "Using PDF It", "Unlock Pro",
+            "All", "Web", "Files", "Anything to PDF", "Private & Local",
+            "No uploads. No account. Everything stays on your device.",
+            "Turn photos, links, text, and files into beautiful PDFs instantly.",
+            "Use the share sheet. We'll handle the rest."
+        ] {
+            let localizations = try XCTUnwrap(strings[key]?["localizations"] as? [String: Any],
+                                               "Missing premium surface key: \(key)")
+            XCTAssertEqual(Set(localizations.keys), Set(["en", "fr", "es", "de", "it"]))
+        }
+
+        XCTAssertEqual(MascotView.MascotType.hero.assetName, "MascotHeroPremium")
+        XCTAssertEqual(MascotActionCard.Category.photos.mascotType.assetName, "MascotPhotos")
+        XCTAssertEqual(MascotActionCard.Category.link.mascotType.assetName, "MascotLink")
+        XCTAssertEqual(MascotActionCard.Category.text.mascotType.assetName, "MascotText")
+        XCTAssertEqual(MascotActionCard.Category.files.mascotType.assetName, "MascotFiles")
+    }
+
     // MARK: - Option & Error Localization Tests
 
     func testConversionModesHaveDisplayNames() {

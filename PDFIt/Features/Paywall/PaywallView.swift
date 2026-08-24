@@ -16,6 +16,11 @@ struct PaywallView: View {
     /// failure or pending). The host decides what happens next — typically
     /// the Pro activation flow, then resuming the original intent.
     var onVerifiedPurchase: ((ProFeature) -> Void)? = nil
+#if DEBUG
+    /// Demo Mode is entitlement-only: no purchase celebration or analytics.
+    /// Contextual hosts use this callback to resume the exact requested action.
+    var onDebugDemoMode: ((ProIntent) -> Void)? = nil
+#endif
 
     @ObservedObject private var entitlements = EntitlementCenter.shared
     @State private var busyProductID: String?
@@ -24,7 +29,7 @@ struct PaywallView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 18) {
+                VStack(spacing: Theme.Spacing.lg) {
                     heroBlock
                     featureShowcase
 
@@ -32,6 +37,9 @@ struct PaywallView: View {
                         alreadyPro
                     } else {
                         productSection
+#if DEBUG
+                        debugDemoButton
+#endif
                         restoreButton
                     }
 
@@ -46,7 +54,8 @@ struct PaywallView: View {
 
                     legalFootnote
                 }
-                .padding(20)
+                .padding(.horizontal, Theme.Spacing.lg)
+                .padding(.vertical, Theme.Spacing.xl)
             }
             .themeBackground()
             .navigationTitle("PDF It Pro")
@@ -61,24 +70,33 @@ struct PaywallView: View {
             }
         }
         .tint(Theme.Colors.orangePrimary)
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
     }
 
     // MARK: - Hero
 
     private var heroBlock: some View {
         VStack(spacing: 8) {
-            MascotView(type: .success, size: 96, enableFloatingAnimation: false)
+            ZStack {
+                Circle()
+                    .fill(Theme.Colors.orangePrimary.opacity(colorScheme == .dark ? 0.18 : 0.1))
+                    .frame(width: 118, height: 118)
+                MascotView(type: .hero, size: 122, enableFloatingAnimation: false)
+            }
+            .accessibilityHidden(true)
 
             VStack(spacing: 6) {
                 Text("PDF It Pro")
-                    .font(.system(size: 26, weight: .heavy, design: .rounded))
+                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .foregroundStyle(colorScheme == .dark ? .white : Theme.Colors.ink)
                 Text("Your complete private PDF toolkit.")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.title3.weight(.bold))
+                    .multilineTextAlignment(.center)
                 Text("Scan, convert, organize and edit PDFs — privately on your device.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.62) : Theme.Colors.inkSecondary)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -86,58 +104,63 @@ struct PaywallView: View {
     // MARK: - Feature showcase (visual benefit cards)
 
     private var featureShowcase: some View {
-        VStack(spacing: 10) {
-            showcaseRow(icon: "square.and.arrow.up",
-                        titleKey: "SHARE FROM ANY APP",
-                        copyKey: "Turn shared content into a PDF without leaving the app.")
-            showcaseRow(icon: "safari",
-                        titleKey: "WEB → PDF",
-                        copyKey: "Capture webpages with Quick, Clean and Reader modes.")
-            showcaseRow(icon: "text.viewfinder",
-                        titleKey: "SEARCHABLE SCANS",
-                        copyKey: "Use on-device OCR to search and copy text.")
-            showcaseRow(icon: "slider.horizontal.3",
-                        titleKey: "PDF TOOLS",
-                        copyKey: "Compress, sign and extract pages in a tap.")
-            showcaseRow(icon: "square.stack.3d.up",
-                        titleKey: "BATCH & ORGANIZE",
-                        copyKey: "Scan several documents at once. Unlimited folders and merge.")
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.sm),
+                            GridItem(.flexible(), spacing: Theme.Spacing.sm)],
+                  spacing: Theme.Spacing.sm) {
+            showcaseCard(icon: "square.and.arrow.up",
+                         titleKey: "Share from any app",
+                         copyKey: "Create PDFs from the Share Sheet.")
+            showcaseCard(icon: "safari",
+                         titleKey: "Web to PDF",
+                         copyKey: "Quick, Clean and Reader modes.")
+            showcaseCard(icon: "text.viewfinder",
+                         titleKey: "Searchable OCR",
+                         copyKey: "Find and copy text on device.")
+            showcaseCard(icon: "signature",
+                         titleKey: "Complete PDF tools",
+                         copyKey: "Compress, sign and extract pages.")
+            showcaseCard(icon: "square.stack.3d.up",
+                         titleKey: "Batch and organize",
+                         copyKey: "Scan, merge and use unlimited folders.")
+            showcaseCard(icon: "slider.horizontal.3",
+                         titleKey: "Advanced customization",
+                         copyKey: "Covers, metadata, page numbers and more.")
         }
     }
 
-    private func showcaseRow(icon: String, titleKey: String, copyKey: String) -> some View {
-        HStack(spacing: 12) {
+    private func showcaseCard(icon: String, titleKey: LocalizedStringKey, copyKey: LocalizedStringKey) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             Image(systemName: icon)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Theme.Colors.orangePrimary)
-                .frame(width: 34, height: 34)
+                .frame(width: 38, height: 38)
                 .background(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Theme.Colors.orangePrimary.opacity(0.14))
                 )
             VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey(titleKey))
-                    .font(.caption.weight(.bold))
-                    .kerning(0.4)
-                Text(LocalizedStringKey(copyKey))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                Text(titleKey)
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(colorScheme == .dark ? .white : Theme.Colors.ink)
+                Text(copyKey)
+                    .font(.caption2)
+                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.58) : Theme.Colors.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 0)
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Spacing.sm)
+        .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(colorScheme == .dark ? Theme.Colors.darkCard : Color.white)
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .fill(colorScheme == .dark ? Theme.Colors.darkCard : Theme.Colors.surface)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                        .strokeBorder(colorScheme == .dark ? Theme.Colors.darkStroke : Theme.Colors.stroke.opacity(0.7), lineWidth: 1)
                 )
         )
     }
 
-    private var headline: String {
+    private var headline: LocalizedStringKey {
         switch feature {
         case .webConversion, .linkConversion:
             return "Turn any webpage or link into a clean PDF."
@@ -171,7 +194,7 @@ struct PaywallView: View {
         } else {
             VStack(spacing: 6) {
                 // Feature-specific headline above pricing.
-                Text(LocalizedStringKey(headline))
+                Text(headline)
                     .font(.subheadline.weight(.semibold))
                     .multilineTextAlignment(.center)
                     .padding(.bottom, 6)
@@ -209,7 +232,7 @@ struct PaywallView: View {
                     .font(.subheadline.weight(.semibold))
                     .multilineTextAlignment(.center)
 #if DEBUG
-                Text("StoreKit products aren't configured yet. Use Settings → Developer → Force PDF It Pro to test Pro during development.")
+                Text("StoreKit products aren't configured yet. You can still explore every Pro feature with Demo Mode.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -224,6 +247,27 @@ struct PaywallView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
     }
+
+#if DEBUG
+    /// PRE-LAUNCH DEBUG DEMO MODE
+    /// Remove before App Store production release.
+    private var debugDemoButton: some View {
+        Button {
+            let intent = DebugProDemoMode.activate(feature, entitlementCenter: entitlements)
+            dismiss()
+            onDebugDemoMode?(intent)
+        } label: {
+            HStack(spacing: Theme.Spacing.xs) {
+                Image(systemName: "hammer.fill")
+                Text("Try Pro — Demo Mode")
+                    .fontWeight(.bold)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .secondaryDarkButton()
+        .accessibilityIdentifier("paywall_demo_mode")
+    }
+#endif
 
     private func productRow(_ product: Product, badge: String?) -> some View {
         Button {
@@ -258,14 +302,15 @@ struct PaywallView: View {
                 }
             }
             .contentShape(Rectangle())
-            .padding(14)
+            .padding(Theme.Spacing.md)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(colorScheme == .dark ? Theme.Colors.darkCard : Color.white)
+                RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                    .fill(colorScheme == .dark ? Theme.Colors.darkCard : Theme.Colors.surface)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                             .strokeBorder(Theme.Colors.orangePrimary.opacity(0.3), lineWidth: 1.5)
                     )
+                    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.05), radius: 10, y: 5)
             )
         }
         .buttonStyle(.plain)
@@ -290,7 +335,7 @@ struct PaywallView: View {
             case .userCancelled:
                 break
             case .pending:
-                message = String(localized: "Purchase pending approval.")
+                message = String(localized: "Purchase pending approval.", bundle: LanguageManager.bundle)
             case .failed(let reason):
                 message = reason
             }
@@ -302,7 +347,7 @@ struct PaywallView: View {
             Task {
                 await entitlements.restore()
                 message = entitlements.isPro
-                    ? String(localized: "Purchases restored.")
+                    ? String(localized: "Purchases restored.", bundle: LanguageManager.bundle)
                     : nil
             }
         }

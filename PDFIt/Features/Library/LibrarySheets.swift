@@ -29,7 +29,7 @@ struct MergeReorderSheet: View {
                                 Text(record.displayName)
                                     .font(.subheadline.weight(.semibold))
                                     .lineLimit(1)
-                                Text(String(localized: "plural.pages \(record.pageCount)"))
+                                Text(String(localized: "plural.pages \(record.pageCount)", bundle: LanguageManager.bundle))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

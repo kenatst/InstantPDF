@@ -57,8 +57,10 @@ struct ProActivationFlow: View {
     }
 
     private func finish() {
+        ProActivationState.hasCompletedGuide = true
         onFinish?(PendingProIntent.current)
         PendingProIntent.clear()
+        dismiss()
     }
 }
 
@@ -98,7 +100,7 @@ struct ProCelebrationView: View {
                                     y: documentsIn ? docOffset(i).y : 40)
                     }
 
-                    MascotView(type: .success, size: 132, enableFloatingAnimation: false)
+                    MascotView(type: .hero, size: 146, enableFloatingAnimation: false)
                         .scaleEffect(mascotIn ? 1 : (reduceMotion ? 1 : 0.4))
                         .opacity(mascotIn ? 1 : 0)
 
@@ -185,6 +187,7 @@ struct ShareExtensionTutorialView: View {
     var onNext: () -> Void = {}
     var onSkip: () -> Void = {}
     var onDone: () -> Void = {}
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ScrollView {
@@ -219,7 +222,7 @@ struct ShareExtensionTutorialView: View {
                     .padding(.top, 4)
 
                 Button(action: activationMode ? onNext : onDone) {
-                    Text(activationMode ? "Next" : "Done")
+                    Text(activationMode ? LocalizedStringKey("Next") : LocalizedStringKey("Done"))
                         .fontWeight(.bold)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
@@ -238,7 +241,7 @@ struct ShareExtensionTutorialView: View {
             .padding(20)
         }
         .themeBackground()
-        .navigationTitle(activationMode ? "" : "Use PDF It from any app")
+        .navigationTitle(Text(activationMode ? LocalizedStringKey("") : LocalizedStringKey("Use PDF It from any app")))
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -272,7 +275,7 @@ struct ShareExtensionTutorialView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white)
+                .fill(colorScheme == .dark ? Theme.Colors.darkCard : Theme.Colors.surface)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(Theme.Colors.orangePrimary.opacity(0.4), lineWidth: 1.5)
@@ -365,7 +368,7 @@ struct ProFeaturesGuideView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
-                MascotView(type: .success, size: 84, enableFloatingAnimation: false)
+                MascotView(type: .hero, size: 96, enableFloatingAnimation: false)
                     .padding(.bottom, 2)
                 Text("Meet your full PDF toolkit")
                     .font(.title3.weight(.heavy))
@@ -398,7 +401,7 @@ struct ProFeaturesGuideView: View {
                 Button {
                     onFinish()
                 } label: {
-                    Text(activationMode ? "Start using PDF It" : "Done")
+                    Text(activationMode ? LocalizedStringKey("Start using PDF It") : LocalizedStringKey("Done"))
                         .fontWeight(.bold)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
@@ -409,7 +412,7 @@ struct ProFeaturesGuideView: View {
             .padding(20)
         }
         .themeBackground()
-        .navigationTitle(activationMode ? "" : "Explore Pro Features")
+        .navigationTitle(Text(activationMode ? LocalizedStringKey("") : LocalizedStringKey("Explore Pro Features")))
         .navigationBarTitleDisplayMode(.inline)
     }
 }

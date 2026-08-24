@@ -1,6 +1,8 @@
 import SwiftUI
 
-/// Refined dark-card Settings view matching PDF It's premium identity.
+/// PDF It's organized product control center. Every preference below is wired
+/// to a real behavior; product education and DEBUG tooling stay clearly apart.
+@MainActor
 struct SettingsView: View {
     @AppStorage(AppSettingsKeys.defaultMode, store: AppConfiguration.sharedDefaults)
     private var defaultMode: ConversionMode = .quick
@@ -28,7 +30,15 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismissView
     @Environment(\.colorScheme) private var colorScheme
     /// Injected from the app root; selecting a language refreshes all UI live.
-    var languageSetting: LanguageSetting?
+    @ObservedObject private var languageSetting: LanguageSetting
+
+    init(languageSetting: LanguageSetting) {
+        _languageSetting = ObservedObject(wrappedValue: languageSetting)
+    }
+
+    init() {
+        _languageSetting = ObservedObject(wrappedValue: LanguageSetting.shared)
+    }
 
     var body: some View {
         Form {
@@ -47,7 +57,7 @@ struct SettingsView: View {
                 }
                 .disabled(!entitlements.isPro)
             } header: {
-                Text("Using PDF It")
+                SettingsSectionHeader("Using PDF It", symbol: "sparkles.rectangle.stack")
             } footer: {
                 Text("How to turn shared content into PDFs from Safari, X, Photos and more.")
             }
@@ -60,11 +70,13 @@ struct SettingsView: View {
                         Text(language.displayName).tag(AppLanguage?.some(language))
                     }
                 }
+            } header: {
+                SettingsSectionHeader("Language", symbol: "globe")
             } footer: {
                 Text("Applies to the app and the Share Extension. The system language is used until you pick one here.")
             }
 
-            Section("Conversion") {
+            Section {
                 Picker("Default Mode", selection: $defaultMode) {
                     ForEach(ConversionMode.allCases) { mode in
                         Text(mode.displayName).tag(mode)
@@ -80,15 +92,12 @@ struct SettingsView: View {
                         Text(quality.displayName).tag(quality)
                     }
                 }
-            }
-
-            Section {
                 Toggle("Include Source Link", isOn: $includeSourceURL)
                     .tint(Theme.Colors.orangePrimary)
                 Toggle("Include Creation Date", isOn: $includeCreationDate)
                     .tint(Theme.Colors.orangePrimary)
             } header: {
-                Text("PDF Options")
+                SettingsSectionHeader("Defaults", symbol: "slider.horizontal.3")
             } footer: {
                 Text("Adds a subtle footer to generated text and article PDFs. Existing PDFs are never modified.")
             }
@@ -98,7 +107,7 @@ struct SettingsView: View {
                 LabeledContent("Total Size",
                                value: ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file))
             } header: {
-                Text("Storage")
+                SettingsSectionHeader("Storage", symbol: "internaldrive")
             } footer: {
                 Text("Your PDFs stay securely on this device until you delete them.")
             }
@@ -122,15 +131,17 @@ struct SettingsView: View {
                 Link("Terms of Use", destination: ExternalLinks.termsOfUse)
                 Link("Support & Feedback", destination: ExternalLinks.support)
             } header: {
-                Text("Privacy & Security")
+                SettingsSectionHeader("Privacy & Support", symbol: "lock.shield")
             } footer: {
                 Text("PDF It processes and stores documents locally. Your documents are not uploaded to PDF It. When you convert a webpage, PDF It loads the page directly from its source website.")
             }
 
-            Section("About") {
-                LabeledContent("App Name", value: "PDF It")
-                LabeledContent("Version", value: appVersion)
-                LabeledContent("Creator Tag", value: String(localized: "PDFs are tagged “PDF It” in their metadata"))
+            Section {
+                LabeledContent("Version", value: shortVersion)
+                LabeledContent("Build", value: buildVersion)
+                LabeledContent("Creator Tag", value: String(localized: "PDFs are tagged “PDF It” in their metadata", bundle: LanguageManager.bundle))
+            } header: {
+                SettingsSectionHeader("About", symbol: "info.circle")
             }
 
 #if DEBUG
@@ -138,10 +149,14 @@ struct SettingsView: View {
             developerActionsSection
 #endif
         }
-        .scrollContentBackground(colorScheme == .dark ? .hidden : .visible)
-        .background(colorScheme == .dark ? Theme.Colors.darkBackground.ignoresSafeArea() : Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
+        .scrollContentBackground(.hidden)
+        .background((colorScheme == .dark ? Theme.Colors.darkBackground : Theme.Colors.warmBackground).ignoresSafeArea())
         .tint(Theme.Colors.orangePrimary)
-        .navigationTitle("Settings")
+        .environment(\.locale, settingsLocale)
+        // Refresh only this surface when its explicit bundle changes. Keeping
+        // MainTabView's identity stable means the Settings sheet stays open.
+        .id(languageSetting.refreshToken)
+        .navigationTitle(String(localized: "Settings", bundle: LanguageManager.bundle))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
@@ -155,18 +170,25 @@ struct SettingsView: View {
         }
     }
 
-    private var appVersion: String {
-        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
-        return "\(short) (\(build))"
+    private var shortVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
+    }
+
+    private var buildVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
     }
 
     private var languageBinding: Binding<AppLanguage?> {
         Binding(get: { languageOverride },
                 set: { newValue in
                     languageOverride = newValue
-                    languageSetting?.select(newValue)
+                    languageSetting.select(newValue)
                 })
+    }
+
+    private var settingsLocale: Locale {
+        guard let language = languageSetting.language else { return .autoupdatingCurrent }
+        return Locale(identifier: language.rawValue)
     }
 
     private func reloadStorage() {
@@ -185,14 +207,18 @@ struct SettingsView: View {
     private var proSection: some View {
         Section {
             if entitlements.isPro {
-                LabeledContent {
-                    Label("Active", systemImage: "checkmark.seal.fill")
-                        .labelStyle(.titleAndIcon)
-                        .font(.subheadline.weight(.bold))
+                HStack(spacing: Theme.Spacing.sm) {
+                    proIcon
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("PDF It Pro")
+                            .font(.headline.weight(.bold))
+                        Text("Active")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.green)
+                    }
+                    Spacer()
+                    Image(systemName: "checkmark.seal.fill")
                         .foregroundStyle(.green)
-                } label: {
-                    Label("PDF It Pro", systemImage: "crown.fill")
-                        .foregroundStyle(Theme.Colors.orangePrimary)
                 }
 #if !APP_STORE
                 Button {
@@ -209,8 +235,21 @@ struct SettingsView: View {
                 Button {
                     showingProPaywall = true
                 } label: {
-                    Label("PDF It Pro", systemImage: "crown.fill")
-                        .foregroundStyle(Theme.Colors.orangePrimary)
+                    HStack(spacing: Theme.Spacing.sm) {
+                        proIcon
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("PDF It Pro")
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(.primary)
+                            Text("Unlock Pro")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Theme.Colors.orangePrimary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.bold))
+                            .foregroundStyle(Theme.Colors.orangePrimary)
+                    }
                 }
             }
 
@@ -223,7 +262,7 @@ struct SettingsView: View {
                 Text("Restore Purchases")
             }
         } header: {
-            Text("PDF IT PRO")
+            SettingsSectionHeader("PDF IT PRO", symbol: "crown")
                 .accessibilityIdentifier("pdf_settings_pro_header")
         } footer: {
             if showStoreKitUnavailableNote {
@@ -233,13 +272,24 @@ struct SettingsView: View {
         .sheet(isPresented: $showingProPaywall) {
             // Settings-initiated purchase: celebrate on verified success,
             // then simply land back (no pending intent to resume).
-            PaywallView(feature: .webConversion) { _ in
+            PaywallView(feature: .webConversion, onVerifiedPurchase: { _ in
                 showingActivationPreview = true
-            }
+            })
         }
         .sheet(isPresented: $showingActivationPreview) {
             ProActivationFlow { _ in } // no intent side effects
         }
+    }
+
+    private var proIcon: some View {
+        Image(systemName: "crown.fill")
+            .font(.system(size: 18, weight: .bold))
+            .foregroundStyle(Theme.Colors.orangePrimary)
+            .frame(width: 40, height: 40)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Theme.Colors.orangePrimary.opacity(0.13))
+            )
     }
 
     @Environment(\.openURL) private var openURL
@@ -256,18 +306,10 @@ struct SettingsView: View {
             Toggle("Force PDF It Pro", isOn: $forcePro)
                 .tint(Theme.Colors.orangePrimary)
                 .onChange(of: forcePro) { _, enabled in
-                    UserDefaults(suiteName: AppConfiguration.appGroupIdentifier)?
-                        .set(enabled, forKey: EntitlementCenter.debugForceProKey)
-                    // Refresh gating everywhere + republish extension-visible state.
-                    Task {
-                        await EntitlementCenter.shared.recompute()
-                        // isPro may not change (force-Pro is a read-time OR);
-                        // nudge observers so gates re-evaluate immediately.
-                        EntitlementCenter.shared.objectWillChange.send()
-                    }
+                    EntitlementCenter.shared.setDebugProOverride(enabled)
                 }
         } header: {
-            Text("Developer")
+            SettingsSectionHeader("Developer", symbol: "hammer")
         } footer: {
             Text("DEBUG builds only. Forces every Pro feature, in the app and the Share Extension. Not present in release.")
         }
@@ -282,10 +324,27 @@ struct SettingsView: View {
                 ProActivationState.resetWelcomeState()
             }
         } header: {
-            Text("Pro Flow QA")
+            SettingsSectionHeader("Pro Flow QA", symbol: "checklist")
         } footer: {
             Text("Preview replays celebration, Share tutorial and feature guide without a purchase. Reset lets the activation flow run again after a real purchase.")
         }
     }
 #endif
+}
+
+private struct SettingsSectionHeader: View {
+    let title: LocalizedStringKey
+    let symbol: String
+
+    init(_ title: LocalizedStringKey, symbol: String) {
+        self.title = title
+        self.symbol = symbol
+    }
+
+    var body: some View {
+        Label(title, systemImage: symbol)
+            .font(.caption.weight(.bold))
+            .foregroundStyle(.secondary)
+            .textCase(nil)
+    }
 }

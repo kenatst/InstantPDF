@@ -67,15 +67,27 @@ Prerequisite: Agreements, Tax & Banking accepted for paid apps.
 
 ---
 
-## C. Debug force-Pro (development convenience ONLY)
+## C. DEBUG Pro testing (development convenience ONLY)
 
 `Settings → Developer → Force PDF It Pro` exists **only in DEBUG builds**.
 It flips gating in the host app AND the Share Extension through an App Group
 flag so the tester can exercise Pro flows before ASC products exist.
 
+The paywall also exposes `Try Pro — Demo Mode` in DEBUG builds. It uses the
+same App Group debug flag, dismisses the paywall, and immediately resumes the
+exact contextual action (for example Link, Compress, Sign, Extract, or OCR).
+It does not create a StoreKit transaction, trigger purchase analytics, or show
+the post-purchase activation ceremony.
+
 Guarantees:
-- The flag is compiled out of Release (`EntitlementCenter.debugForceProEnabled`
-  returns hardcoded `false` outside DEBUG); no user default can unlock Pro.
+- The key, mutator, paywall action, and Demo Mode coordinator are all enclosed
+  in `#if DEBUG` and are absent from Release; no user default can unlock Pro.
 - The App Group entitlement snapshot always reflects the REAL StoreKit verdict;
   force-Pro is read-time-only in the host and can never persist "Pro" into
   extension state.
+
+## BEFORE SHIPPING
+
+- Confirm the DEBUG Demo Mode action is absent in a Release build.
+- Confirm real StoreKit products are available from App Store Connect.
+- Complete a sandbox purchase and a TestFlight purchase, including restore.

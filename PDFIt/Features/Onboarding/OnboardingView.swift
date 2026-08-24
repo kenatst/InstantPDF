@@ -47,12 +47,12 @@ struct OnboardingView: View {
                             completeOnboarding()
                         }
                     } label: {
-                        Text(page < 2 ? "Continue" : "Get Started")
+                        Text(page < 2 ? LocalizedStringKey("Continue") : LocalizedStringKey("Get Started"))
                     }
                     .primaryOrangeButton()
                     .padding(.horizontal, 24)
                     .padding(.bottom, 20)
-                    .accessibilityHint(page < 2 ? "Show the next page" : "Start using PDF It")
+                    .accessibilityHint(page < 2 ? Text("Show the next page") : Text("Start using PDF It"))
                 }
             }
             .toolbar {
@@ -100,7 +100,7 @@ struct OnboardingView: View {
                 .frame(width: 320, height: 320)
 
                 // Mascot in Center
-                MascotView(type: .onboarding1, size: 195)
+                MascotView(type: .hero, size: 195)
 
                 // Floating Vector Source Tiles
                 FloatingSourceTile(icon: "photo.fill", label: "Photos", xOffset: -125, yOffset: -75)
@@ -195,8 +195,8 @@ struct OnboardingView: View {
                 .padding(.top, 40) // Push panel down so mascot rests on its top edge
 
                 // Mascot Sitting on the Share Sheet edge
-                MascotView(type: .onboarding2, size: 145, enableFloatingAnimation: false)
-                    .offset(y: -30)
+                MascotView(type: .hero, size: 138, enableFloatingAnimation: false)
+                    .offset(y: -32)
             }
             .frame(height: 290)
 
@@ -240,7 +240,7 @@ struct OnboardingView: View {
                     .offset(y: -10)
 
                 // Mascot Holding PDF
-                MascotView(type: .onboarding3, size: 195)
+                MascotView(type: .hero, size: 195)
             }
             .frame(height: 280)
 
@@ -251,7 +251,7 @@ struct OnboardingView: View {
 
     // MARK: - Header Helper
 
-    private func header(title: String, subtitle: String) -> some View {
+    private func header(title: LocalizedStringKey, subtitle: LocalizedStringKey) -> some View {
         VStack(spacing: 10) {
             Text(title)
                 .font(.system(size: 32, weight: .bold, design: .rounded))
@@ -274,7 +274,7 @@ struct OnboardingView: View {
 
 private struct FloatingSourceTile: View {
     let icon: String
-    let label: String
+    let label: LocalizedStringKey
     let xOffset: CGFloat
     let yOffset: CGFloat
 

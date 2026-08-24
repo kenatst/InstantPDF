@@ -1,8 +1,8 @@
 import SwiftUI
 import Combine
 
-/// Observable language state for SwiftUI: views read `environment.language`
-/// and the app root re-renders on change via `.id(languageRefreshToken)`.
+/// Observable language state for SwiftUI: views read the published language
+/// and the app root updates its locale environment on change.
 /// This is how switching Français → English updates the UI immediately,
 /// without relaunch and without Bundle swizzling.
 @MainActor

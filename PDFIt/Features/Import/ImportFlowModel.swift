@@ -157,7 +157,12 @@ final class ImportFlowModel: ObservableObject {
             return false
         }
         if containsWeb && !EntitlementCenter.shared.isPro {
+            // Preserve the exact request before replacing the entry sheet
+            // with a contextual paywall. Purchase/Demo Mode resumes this URL
+            // and these options; the user never has to enter them twice.
+            pendingItems = items
             requiresPro = .webConversion
+            showingLinkEntry = false
             showingPaywall = true
             return
         }
@@ -175,6 +180,29 @@ final class ImportFlowModel: ObservableObject {
 
         runConversion(items: items)
     }
+
+    /// Resumes the precise web request staged at the Pro gate. The entitlement
+    /// check prevents this helper from becoming a bypass in production.
+    @discardableResult
+    func resumePendingProConversion() -> Bool {
+        guard EntitlementCenter.shared.isPro, !pendingItems.isEmpty else { return false }
+        let items = pendingItems
+        requiresPro = nil
+        showingPaywall = false
+        showingLinkEntry = false
+        runConversion(items: items)
+        return true
+    }
+
+#if DEBUG
+    /// Test-only inspection for the pre-launch Demo Mode resumption contract.
+    var debugPendingProRequest: (url: URL, options: ConversionOptions)? {
+        guard let item = pendingItems.first,
+              case .url(let url) = item.kind,
+              let optionsOverride else { return nil }
+        return (url, optionsOverride)
+    }
+#endif
 
     /// The actual engine call, split out so Retry and post-Customize
     /// conversion reuse the exact same path.
@@ -526,7 +554,7 @@ struct ConversionResultSheet: View {
                 // Mascot Celebratory Hero with Particle Sparks
                 ZStack {
                     AmberSparkParticles()
-                    MascotView(type: .success, size: 145)
+                    MascotView(type: .hero, size: 145)
                 }
                 .frame(height: 155)
 
@@ -558,7 +586,7 @@ struct ConversionResultSheet: View {
                             .lineLimit(1)
 
                         let sizeText = ByteCountFormatter.string(fromByteCount: Int64(document.data.count), countStyle: .file)
-                        Text(String(localized: "preview.pages_and_size \(document.pageCount) \(sizeText)"))
+                        Text(String(localized: "preview.pages_and_size \(document.pageCount) \(sizeText)", bundle: LanguageManager.bundle))
                             .font(.caption)
                             .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.secondary)
                     }

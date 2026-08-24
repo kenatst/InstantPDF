@@ -29,16 +29,16 @@ extension ConversionError {
     /// Short, human sentence for titles.
     var headline: String {
         switch self {
-        case .noUsableContent: return String(localized: "Nothing to convert")
-        case .someContentSkipped: return String(localized: "Some items were skipped")
-        case .fileTooLarge: return String(localized: "This file is too large")
-        case .unreadableFile: return String(localized: "This file couldn't be read")
-        case .invalidURL: return String(localized: "This link isn't valid")
-        case .pageUnreachable: return String(localized: "We couldn't load this page")
-        case .pageTooSlow: return String(localized: "This page took too long to load")
-        case .webProcessTerminated: return String(localized: "The page couldn't be rendered")
-        case .generationFailed: return String(localized: "We couldn't create the PDF")
-        case .cancelled: return String(localized: "Cancelled")
+        case .noUsableContent: return String(localized: "Nothing to convert", bundle: LanguageManager.bundle)
+        case .someContentSkipped: return String(localized: "Some items were skipped", bundle: LanguageManager.bundle)
+        case .fileTooLarge: return String(localized: "This file is too large", bundle: LanguageManager.bundle)
+        case .unreadableFile: return String(localized: "This file couldn't be read", bundle: LanguageManager.bundle)
+        case .invalidURL: return String(localized: "This link isn't valid", bundle: LanguageManager.bundle)
+        case .pageUnreachable: return String(localized: "We couldn't load this page", bundle: LanguageManager.bundle)
+        case .pageTooSlow: return String(localized: "This page took too long to load", bundle: LanguageManager.bundle)
+        case .webProcessTerminated: return String(localized: "The page couldn't be rendered", bundle: LanguageManager.bundle)
+        case .generationFailed: return String(localized: "We couldn't create the PDF", bundle: LanguageManager.bundle)
+        case .cancelled: return String(localized: "Cancelled", bundle: LanguageManager.bundle)
         }
     }
 
@@ -46,33 +46,33 @@ extension ConversionError {
     var message: String {
         switch self {
         case .noUsableContent:
-            return String(localized: "The app didn't share content PDF It can work with.")
+            return String(localized: "The app didn't share content PDF It can work with.", bundle: LanguageManager.bundle)
         case .someContentSkipped:
-            return String(localized: "Videos and audio aren't supported — everything else was converted.")
+            return String(localized: "Videos and audio aren't supported — everything else was converted.", bundle: LanguageManager.bundle)
         case .fileTooLarge(let name):
             if let name {
-                return String(localized: "error.file_too_large.named \(name)")
+                return String(localized: "error.file_too_large.named \(name)", bundle: LanguageManager.bundle)
             } else {
-                return String(localized: "Files over 100 MB can't be converted safely.")
+                return String(localized: "Files over 100 MB can't be converted safely.", bundle: LanguageManager.bundle)
             }
         case .unreadableFile(let name):
             if let name {
-                return String(localized: "error.unreadable_file.named \(name)")
+                return String(localized: "error.unreadable_file.named \(name)", bundle: LanguageManager.bundle)
             } else {
-                return String(localized: "The file couldn't be read.")
+                return String(localized: "The file couldn't be read.", bundle: LanguageManager.bundle)
             }
         case .invalidURL:
-            return String(localized: "Check the link and try again.")
+            return String(localized: "Check the link and try again.", bundle: LanguageManager.bundle)
         case .pageUnreachable:
-            return String(localized: "Check your connection, then retry.")
+            return String(localized: "Check your connection, then retry.", bundle: LanguageManager.bundle)
         case .pageTooSlow:
-            return String(localized: "The site never finished loading. Retry, or save the link as text.")
+            return String(localized: "The site never finished loading. Retry, or save the link as text.", bundle: LanguageManager.bundle)
         case .webProcessTerminated:
-            return String(localized: "The site used too much memory to render. Try again, or save the link as text.")
+            return String(localized: "The site used too much memory to render. Try again, or save the link as text.", bundle: LanguageManager.bundle)
         case .generationFailed:
-            return String(localized: "Something went wrong while creating the PDF. Please try again.")
+            return String(localized: "Something went wrong while creating the PDF. Please try again.", bundle: LanguageManager.bundle)
         case .cancelled:
-            return String(localized: "The conversion was cancelled.")
+            return String(localized: "The conversion was cancelled.", bundle: LanguageManager.bundle)
         }
     }
 
@@ -96,9 +96,9 @@ extension ConversionError {
 
         var title: String {
             switch self {
-            case .retry: return String(localized: "Retry")
-            case .saveLinkAsText: return String(localized: "Save Link as PDF")
-            case .cancel: return String(localized: "Cancel")
+            case .retry: return String(localized: "Retry", bundle: LanguageManager.bundle)
+            case .saveLinkAsText: return String(localized: "Save Link as PDF", bundle: LanguageManager.bundle)
+            case .cancel: return String(localized: "Cancel", bundle: LanguageManager.bundle)
             }
         }
     }

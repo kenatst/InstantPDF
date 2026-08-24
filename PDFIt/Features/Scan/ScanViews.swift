@@ -118,14 +118,14 @@ struct ScanFlowSheet: View {
             set: { if !$0 { unavailabilityMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(unavailabilityMessage ?? "Document scanning requires a real iPhone or iPad with a camera.")
+            Text(unavailabilityMessage ?? LanguageManager.string("Document scanning requires a real iPhone or iPad with a camera."))
         }
     }
 
     private func begin() {
         guard phase == .launching else { return }
         guard ScanCameraView.isSupported else {
-            unavailabilityMessage = String(localized: "This device doesn't support document scanning. Scanning requires a camera.")
+            unavailabilityMessage = String(localized: "This device doesn't support document scanning. Scanning requires a camera.", bundle: LanguageManager.bundle)
             return
         }
         phase = .camera
@@ -195,7 +195,9 @@ struct ScanReviewView: View {
                 }
             }
             .themeBackground()
-            .navigationTitle(model.session.groups.count > 1 ? "Batch Scan" : "Review Scan")
+            .navigationTitle(Text(model.session.groups.count > 1
+                                  ? LocalizedStringKey("Batch Scan")
+                                  : LocalizedStringKey("Review Scan")))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
             .sheet(isPresented: $model.showingCamera) {
@@ -226,7 +228,7 @@ struct ScanReviewView: View {
                                 isPresented: Binding(get: { pendingPartial != nil },
                                                      set: { if !$0 { pendingPartial = nil } }),
                                 titleVisibility: .visible) {
-                Button(String(localized: "plural.batch_partial_save \(pendingPartial?.saved ?? 0)")) {
+                Button(String(localized: "plural.batch_partial_save \(pendingPartial?.saved ?? 0)", bundle: LanguageManager.bundle)) {
                     finishCreating(heldDocuments)
                     heldDocuments = []
                 }
@@ -235,7 +237,7 @@ struct ScanReviewView: View {
                     heldDocuments = []
                 }
             } message: {
-                Text(String(localized: "plural.batch_partial_detail \(pendingPartial?.failed ?? 0)"))
+                Text(String(localized: "plural.batch_partial_detail \(pendingPartial?.failed ?? 0)", bundle: LanguageManager.bundle))
             }
         }
     }
@@ -311,7 +313,7 @@ struct ScanReviewView: View {
                     HStack {
                         Text(group.name)
                         Spacer()
-                        Text(String(localized: "plural.pages \(group.pageIDs.count)"))
+                        Text(String(localized: "plural.pages \(group.pageIDs.count)", bundle: LanguageManager.bundle))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         Menu {
@@ -357,7 +359,7 @@ struct ScanReviewView: View {
             get: { model.session.pages.first?.enhancement ?? .original },
             set: { newValue in model.session.setEnhancementAllPages(newValue) })) {
             ForEach(ScanEnhancement.allCases) { preset in
-                Text(String(localized: String.LocalizationValue(preset.displayNameKey)))
+                Text(String(localized: String.LocalizationValue(preset.displayNameKey), bundle: LanguageManager.bundle))
                     .tag(preset)
             }
         }
@@ -404,7 +406,7 @@ struct ScanReviewView: View {
         } catch {
             model.isConvertingForUI = false
             // NEVER a silent failure: the user tapped Create and must know.
-            creationErrorMessage = String(localized: "The PDF couldn't be created. Your pages are kept — try again.")
+            creationErrorMessage = String(localized: "The PDF couldn't be created. Your pages are kept — try again.", bundle: LanguageManager.bundle)
         }
     }
 
@@ -422,7 +424,7 @@ struct ScanReviewView: View {
         }
         guard !documents.isEmpty else {
             // Whole batch failed — stay in review so pages are not destroyed.
-            creationErrorMessage = String(localized: "No document could be created. Your pages are kept — try again.")
+            creationErrorMessage = String(localized: "No document could be created. Your pages are kept — try again.", bundle: LanguageManager.bundle)
             return
         }
         if failedGroups > 0 {

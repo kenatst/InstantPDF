@@ -14,17 +14,17 @@ enum ConversionMode: String, Codable, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .quick: return String(localized: "Quick")
-        case .clean: return String(localized: "Clean")
-        case .reader: return String(localized: "Reader")
+        case .quick: return String(localized: "Quick", bundle: LanguageManager.bundle)
+        case .clean: return String(localized: "Clean", bundle: LanguageManager.bundle)
+        case .reader: return String(localized: "Reader", bundle: LanguageManager.bundle)
         }
     }
 
     var description: String {
         switch self {
-        case .quick: return String(localized: "Faithful to the original")
-        case .clean: return String(localized: "Webpage without the clutter")
-        case .reader: return String(localized: "Just the text, beautifully laid out")
+        case .quick: return String(localized: "Faithful to the original", bundle: LanguageManager.bundle)
+        case .clean: return String(localized: "Webpage without the clutter", bundle: LanguageManager.bundle)
+        case .reader: return String(localized: "Just the text, beautifully laid out", bundle: LanguageManager.bundle)
         }
     }
 }
@@ -40,9 +40,9 @@ enum PDFPaperSize: String, Codable, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .automatic: return String(localized: "Auto")
+        case .automatic: return String(localized: "Auto", bundle: LanguageManager.bundle)
         case .a4: return "A4"
-        case .letter: return String(localized: "Letter")
+        case .letter: return String(localized: "Letter", bundle: LanguageManager.bundle)
         }
     }
 
@@ -74,9 +74,9 @@ enum ImageQuality: String, Codable, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .standard: return String(localized: "Smaller files")
-        case .balanced: return String(localized: "Balanced")
-        case .high: return String(localized: "Highest quality")
+        case .standard: return String(localized: "Smaller files", bundle: LanguageManager.bundle)
+        case .balanced: return String(localized: "Balanced", bundle: LanguageManager.bundle)
+        case .high: return String(localized: "Highest quality", bundle: LanguageManager.bundle)
         }
     }
 

@@ -96,7 +96,7 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
     private let modeSelector: UISegmentedControl = {
         let control = UISegmentedControl(items: ConversionMode.allCases.map(\.displayName))
         control.selectedSegmentIndex = 0
-        control.accessibilityLabel = String(localized: "Conversion mode")
+        control.accessibilityLabel = String(localized: "Conversion mode", bundle: LanguageManager.bundle)
         return control
     }()
 
@@ -110,7 +110,7 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
     private let paperRowLabel: UILabel = {
         let label = UILabel()
-        label.text = String(localized: "Page")
+        label.text = String(localized: "Page", bundle: LanguageManager.bundle)
         label.font = .systemFont(ofSize: 13, weight: .medium)
         label.textColor = .secondaryLabel
         return label
@@ -118,19 +118,19 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
     private let paperSelector: UISegmentedControl = {
         let control = UISegmentedControl(items: PDFPaperSize.allCases.map(\.displayName))
-        control.accessibilityLabel = String(localized: "Paper size")
+        control.accessibilityLabel = String(localized: "Paper size", bundle: LanguageManager.bundle)
         return control
     }()
 
     private let createButton: UIButton = {
         var configuration = UIButton.Configuration.filled()
-        configuration.title = String(localized: "Create PDF")
+        configuration.title = String(localized: "Create PDF", bundle: LanguageManager.bundle)
         configuration.cornerStyle = .capsule
         configuration.buttonSize = .large
         configuration.baseBackgroundColor = UIColor(red: 1.0, green: 0.478, blue: 0.102, alpha: 1.0)
         configuration.baseForegroundColor = .white
         let button = UIButton(configuration: configuration)
-        button.accessibilityLabel = String(localized: "Create PDF")
+        button.accessibilityLabel = String(localized: "Create PDF", bundle: LanguageManager.bundle)
         return button
     }()
 
@@ -168,7 +168,7 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         view.clipsToBounds = true
         view.heightAnchor.constraint(equalToConstant: 300).isActive = true
         view.isAccessibilityElement = true
-        view.accessibilityLabel = String(localized: "PDF preview")
+        view.accessibilityLabel = String(localized: "PDF preview", bundle: LanguageManager.bundle)
         return view
     }()
 
@@ -339,16 +339,16 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
         contentIconView.image = UIImage(systemName: "crown.fill")
         contentIconView.tintColor = UIColor(red: 1.0, green: 0.478, blue: 0.102, alpha: 1.0)
-        contentTitleLabel.text = String(localized: "Share Extension is part of PDF It Pro")
-        contentSubtitleLabel.text = String(localized: "Convert content directly from any app with PDF It Pro.")
+        contentTitleLabel.text = String(localized: "Share Extension is part of PDF It Pro", bundle: LanguageManager.bundle)
+        contentSubtitleLabel.text = String(localized: "Convert content directly from any app with PDF It Pro.", bundle: LanguageManager.bundle)
         contentSubtitleLabel.numberOfLines = 0
         [contentIconView, contentTitleLabel, contentSubtitleLabel].forEach { $0.isHidden = false }
 
         setActions([
-            (String(localized: "Open PDF It"), .primary, { [weak self] in
+            (String(localized: "Open PDF It", bundle: LanguageManager.bundle), .primary, { [weak self] in
                 self?.openHostApp()
             }),
-            (String(localized: "Cancel"), .secondary, { [weak self] in
+            (String(localized: "Cancel", bundle: LanguageManager.bundle), .secondary, { [weak self] in
                 self?.model?.cancelConversion()
                 self?.completeRequest(cancelled: true)
             }),
@@ -387,7 +387,7 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
         case .loading:
             activityRow.isHidden = false
             activityIndicator.startAnimating()
-            statusLabel.text = String(localized: "Reading shared content…")
+            statusLabel.text = String(localized: "Reading shared content…", bundle: LanguageManager.bundle)
 
         case .ready(let summary):
             contentIconView.image = UIImage(systemName: summary.symbolName)
@@ -398,8 +398,8 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
             noticeLabel.isHidden = (summary.notice == nil)
             modeSelector.isHidden = summary.availableModes.count <= 1
             paperRow.isHidden = !summary.paperSizeRelevant
-            createButton.configuration?.title = summary.isPDFPassthrough ? String(localized: "Share PDF") : String(localized: "Create PDF")
-            createButton.accessibilityLabel = summary.isPDFPassthrough ? String(localized: "Share PDF") : String(localized: "Create PDF")
+            createButton.configuration?.title = summary.isPDFPassthrough ? String(localized: "Share PDF", bundle: LanguageManager.bundle) : String(localized: "Create PDF", bundle: LanguageManager.bundle)
+            createButton.accessibilityLabel = summary.isPDFPassthrough ? String(localized: "Share PDF", bundle: LanguageManager.bundle) : String(localized: "Create PDF", bundle: LanguageManager.bundle)
             createButton.isHidden = false
 
             if let index = summary.availableModes.firstIndex(of: model?.options.mode ?? .quick) {
@@ -418,7 +418,7 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
             statusLabel.text = Self.statusText(for: stage)
             actionStack.isHidden = false
             setActions([
-                (String(localized: "Cancel"), .secondary, { [weak self] in
+                (String(localized: "Cancel", bundle: LanguageManager.bundle), .secondary, { [weak self] in
                     self?.model?.cancelConversion()
                 }),
             ])
@@ -430,22 +430,22 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
             let sizeText = ByteCountFormatter.string(fromByteCount: Int64(info.byteCount), countStyle: .file)
             let pages = info.document.pageCount
-            let pagesAndSize = String(localized: "preview.pages_and_size \(pages) \(sizeText)")
+            let pagesAndSize = String(localized: "preview.pages_and_size \(pages) \(sizeText)", bundle: LanguageManager.bundle)
             if info.savedToLibrary {
                 previewInfoLabel.text = pagesAndSize
             } else {
                 // Storage failed but the PDF exists: say so plainly instead
                 // of pretending everything saved, without calling it failure.
-                let warning = String(localized: "PDF created, but it couldn't be added to Library.")
+                let warning = String(localized: "PDF created, but it couldn't be added to Library.", bundle: LanguageManager.bundle)
                 previewInfoLabel.text = "\(pagesAndSize)\n\(warning)"
             }
             previewInfoLabel.isHidden = false
             actionStack.isHidden = false
             setActions([
-                (String(localized: "Done"), .secondary, { [weak self] in
+                (String(localized: "Done", bundle: LanguageManager.bundle), .secondary, { [weak self] in
                     self?.model?.complete()
                 }),
-                (String(localized: "Share"), .primary, { [weak self] in
+                (String(localized: "Share", bundle: LanguageManager.bundle), .primary, { [weak self] in
                     self?.sharePreviewedPDF(info)
                 }),
             ])
@@ -458,26 +458,26 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
             var actions: [(String, ActionStyle, () -> Void)] = []
             if model?.readySummary?.failingURL != nil {
-                actions.append((String(localized: "Retry"), .primary, { [weak self] in
+                actions.append((String(localized: "Retry", bundle: LanguageManager.bundle), .primary, { [weak self] in
                     self?.model?.retryFailedWebConversion()
                 }))
                 // Shared text exists: never dead-end — convert it instead.
                 if ShareFlowModel.textFallbackItems(from: model?.readySummary) != nil {
-                    actions.append((String(localized: "Create PDF from Shared Text"), .secondary, { [weak self] in
+                    actions.append((String(localized: "Create PDF from Shared Text", bundle: LanguageManager.bundle), .secondary, { [weak self] in
                         self?.model?.convertSharedTextFallback()
                     }))
                 } else {
-                    actions.append((String(localized: "Save Link as PDF"), .secondary, { [weak self] in
+                    actions.append((String(localized: "Save Link as PDF", bundle: LanguageManager.bundle), .secondary, { [weak self] in
                         self?.model?.saveLinkAsText()
                     }))
                 }
             } else {
-                actions.append((String(localized: "Try Again"), .primary, { [weak self] in
+                actions.append((String(localized: "Try Again", bundle: LanguageManager.bundle), .primary, { [weak self] in
                     guard let self, let model = self.model, let context = self.extensionContext else { return }
                     model.startExtraction(context: context)
                 }))
             }
-            actions.append((String(localized: "Cancel"), .secondary, { [weak self] in
+            actions.append((String(localized: "Cancel", bundle: LanguageManager.bundle), .secondary, { [weak self] in
                 self?.model?.cancelConversion()
             }))
             setActions(actions)
@@ -486,15 +486,15 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
     private static func statusText(for stage: ConversionStage) -> String {
         switch stage {
-        case .analyzing: return String(localized: "Reading shared content…")
+        case .analyzing: return String(localized: "Reading shared content…", bundle: LanguageManager.bundle)
         case .loadingWebPage(let host):
             if let host {
-                return String(localized: "loading.host \(host)")
+                return String(localized: "loading.host \(host)", bundle: LanguageManager.bundle)
             } else {
-                return String(localized: "Loading webpage…")
+                return String(localized: "Loading webpage…", bundle: LanguageManager.bundle)
             }
-        case .optimizingImages: return String(localized: "Optimizing images…")
-        case .creatingPDF: return String(localized: "Creating PDF…")
+        case .optimizingImages: return String(localized: "Optimizing images…", bundle: LanguageManager.bundle)
+        case .creatingPDF: return String(localized: "Creating PDF…", bundle: LanguageManager.bundle)
         }
     }
 

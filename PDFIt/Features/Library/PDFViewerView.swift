@@ -105,7 +105,7 @@ struct PDFViewerView: View {
             }
         } message: {
             if let record {
-                Text(String(localized: "viewer.delete_message \(record.displayName)"))
+                Text(String(localized: "viewer.delete_message \(record.displayName)", bundle: LanguageManager.bundle))
             }
         }
         .fileExporter(isPresented: $showingExporter,

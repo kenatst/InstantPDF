@@ -44,12 +44,18 @@ final class EntitlementCenter: ObservableObject {
     nonisolated static let debugForceProKey = "debug.forcePro"
 
     nonisolated static var debugForceProEnabled: Bool {
-        #if DEBUG
         return UserDefaults(suiteName: AppConfiguration.appGroupIdentifier)?
             .bool(forKey: debugForceProKey) ?? false
-        #else
-        return false
-        #endif
+    }
+
+    /// PRE-LAUNCH DEBUG DEMO MODE
+    /// Remove this method and the Paywall action before App Store production.
+    /// The flag is stored directly in the shared App Group defaults: the host
+    /// and Share Extension therefore read one authoritative debug override.
+    func setDebugProOverride(_ enabled: Bool) {
+        UserDefaults(suiteName: AppConfiguration.appGroupIdentifier)?
+            .set(enabled, forKey: Self.debugForceProKey)
+        objectWillChange.send()
     }
 #endif
 

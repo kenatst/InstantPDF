@@ -11,20 +11,22 @@ struct PDFItApp: App {
             if hasCompletedOnboarding {
                 MainTabView()
                     .environment(\.pdfItLanguage, languageSetting.language)
+                    .environment(\.locale, activeLocale)
                     .environmentObject(languageSetting)
-                    // Identity token: switching language rebuilds the tree so
-                    // every localized string re-resolves immediately — no
-                    // relaunch required.
-                    .id(languageSetting.refreshToken)
             } else {
                 OnboardingView {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         hasCompletedOnboarding = true
                     }
                 }
-                .id(languageSetting.refreshToken)
+                .environment(\.locale, activeLocale)
             }
         }
+    }
+
+    private var activeLocale: Locale {
+        guard let language = languageSetting.language else { return .autoupdatingCurrent }
+        return Locale(identifier: language.rawValue)
     }
 }
 
@@ -34,6 +36,7 @@ struct MainTabView: View {
     @State private var selectedTab = 0
     @State private var showingSettings = false
     @EnvironmentObject var languageSetting: LanguageSetting
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -54,6 +57,8 @@ struct MainTabView: View {
             .tag(1)
         }
         .tint(Theme.Colors.orangePrimary)
+        .toolbarBackground(colorScheme == .dark ? Theme.Colors.darkCard : Theme.Colors.surface, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
         .onAppear {
             // ONE authoritative entitlement startup: transaction listener +
             // product load + recompute. PaywallView.task calls start() too,

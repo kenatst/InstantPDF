@@ -95,12 +95,23 @@ struct PDFToolsHostView: View {
                 }
             }
             .sheet(item: $paywallFeature) { feature in
-                PaywallView(feature: feature) { _ in
+#if DEBUG
+                PaywallView(feature: feature,
+                            onVerifiedPurchase: { _ in
                     // Verified purchase from a locked tool row: run the
                     // activation flow; when it finishes, land back on the
                     // EXACT tool the user originally wanted.
                     showingActivationFlow = true
+                }, onDebugDemoMode: { intent in
+                    // Demo Mode does not impersonate a purchase. Resume the
+                    // exact tool immediately and skip the activation ceremony.
+                    section = Self.section(for: intent)
+                })
+#else
+                PaywallView(feature: feature) { _ in
+                    showingActivationFlow = true
                 }
+#endif
             }
             .sheet(isPresented: $showingActivationFlow) {
                 ProActivationFlow { intent in
@@ -153,12 +164,12 @@ struct PDFToolsHostView: View {
                                          source: source)
         do {
             let saved = try storage.save(document: document)
-            savedMessage = String(localized: "Saved to Library.")
+            savedMessage = String(localized: "Saved to Library.", bundle: LanguageManager.bundle)
             dismiss()
             onOutputCreated(saved.id)
             return saved
         } catch {
-            errorMessage = String(localized: "The result couldn't be saved to your Library.")
+            errorMessage = String(localized: "The result couldn't be saved to your Library.", bundle: LanguageManager.bundle)
             return nil
         }
     }
@@ -244,7 +255,7 @@ struct PDFToolsHostView: View {
     private func runCompression() {
         guard let url = sourceURL(), let record else { return }
         isProcessing = true
-        progressText = String(localized: "Compressing…")
+        progressText = String(localized: "Compressing…", bundle: LanguageManager.bundle)
         Task {
             do {
                 let result = try PDFTools.compress(from: url, preset: compressionPreset)
@@ -259,13 +270,13 @@ struct PDFToolsHostView: View {
                         // Honest outcome: nothing to gain — no bigger "compressed" copy.
                         isProcessing = false
                         section = .menu
-                        savedMessage = String(localized: "This PDF is already well optimized — no smaller copy was created.")
+                        savedMessage = String(localized: "This PDF is already well optimized — no smaller copy was created.", bundle: LanguageManager.bundle)
                     }
                 }
             } catch {
                 await MainActor.run {
                     isProcessing = false
-                    errorMessage = String(localized: "Compression failed.")
+                    errorMessage = String(localized: "Compression failed.", bundle: LanguageManager.bundle)
                 }
             }
         }
@@ -326,7 +337,7 @@ struct PDFToolsHostView: View {
               let signature = signatureImage,
               let png = signature.pngData() else { return }
         isProcessing = true
-        progressText = String(localized: "Placing signature…")
+        progressText = String(localized: "Placing signature…", bundle: LanguageManager.bundle)
         Task {
             let width: CGFloat = 0.32 * signatureScale
             let height: CGFloat = 0.12 * signatureScale
@@ -344,7 +355,7 @@ struct PDFToolsHostView: View {
             } catch {
                 await MainActor.run {
                     isProcessing = false
-                    errorMessage = String(localized: "Signing failed.")
+                    errorMessage = String(localized: "Signing failed.", bundle: LanguageManager.bundle)
                 }
             }
         }
@@ -355,7 +366,7 @@ struct PDFToolsHostView: View {
     private var extractView: some View {
         VStack(spacing: 0) {
             HStack {
-                Text(String(localized: "plural.pages \(selectedPages.count)"))
+                Text(String(localized: "plural.pages \(selectedPages.count)", bundle: LanguageManager.bundle))
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -409,7 +420,7 @@ struct PDFToolsHostView: View {
     private func runExtraction() {
         guard let url = sourceURL(), let record, !selectedPages.isEmpty else { return }
         isProcessing = true
-        progressText = String(localized: "Extracting pages…")
+        progressText = String(localized: "Extracting pages…", bundle: LanguageManager.bundle)
         let ordered = selectedPages.sorted()
         Task {
             do {
@@ -422,7 +433,7 @@ struct PDFToolsHostView: View {
             } catch {
                 await MainActor.run {
                     isProcessing = false
-                    errorMessage = String(localized: "Extraction failed.")
+                    errorMessage = String(localized: "Extraction failed.", bundle: LanguageManager.bundle)
                 }
             }
         }
@@ -451,7 +462,7 @@ struct PDFToolsHostView: View {
     private func runOCR() {
         guard let url = sourceURL(), let record else { return }
         isProcessing = true
-        progressText = String(localized: "Recognizing text…")
+        progressText = String(localized: "Recognizing text…", bundle: LanguageManager.bundle)
         Task {
             do {
                 let searchable = try await OCRRouter.makeSearchablePDF(from: url)
@@ -463,7 +474,7 @@ struct PDFToolsHostView: View {
             } catch {
                 await MainActor.run {
                     isProcessing = false
-                    errorMessage = String(localized: "Text recognition failed.")
+                    errorMessage = String(localized: "Text recognition failed.", bundle: LanguageManager.bundle)
                 }
             }
         }

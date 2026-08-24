@@ -52,7 +52,7 @@ struct CustomizePDFSheet: View {
                             HStack(spacing: 10) {
                                 Image(systemName: "photo")
                                     .foregroundStyle(Theme.Colors.orangePrimary)
-                                Text(String(localized: "Photo \(pair.offset + 1)"))
+                                Text(String(localized: "Photo \(pair.offset + 1)", bundle: LanguageManager.bundle))
                                 Spacer()
                                 Image(systemName: "line.3.horizontal")
                                     .foregroundStyle(.tertiary)

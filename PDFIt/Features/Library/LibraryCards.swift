@@ -9,24 +9,25 @@ struct LibraryGridCard: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             // PDF Preview thumbnail.
             // Hit-test safety contract: the image is an OVERLAY on a sized,
             // clipped container — it can never extend past the card bounds
             // and never intercepts touches (purely visual).
             ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Color(hex: "F2F4F7"))
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Theme.Colors.surfaceMuted)
 
                 if let image = StorageManager.shared.thumbnailImage(for: record) {
                     Color.clear
                         .overlay(
                             Image(uiImage: image)
                                 .resizable()
-                                .scaledToFill()
+                                .scaledToFit()
+                                .padding(9)
                         )
-                        .frame(maxWidth: .infinity, maxHeight: 150)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .frame(maxWidth: .infinity, maxHeight: 164)
+                        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                         .allowsHitTesting(false)
                 } else {
                     Image(systemName: "doc.text.fill")
@@ -35,19 +36,30 @@ struct LibraryGridCard: View {
                         .allowsHitTesting(false)
                 }
             }
-            .frame(height: 150)
+            .frame(height: 164)
             .allowsHitTesting(false)
+            .overlay(alignment: .topLeading) {
+                if showBadge {
+                    Image(systemName: record.contentSource.symbolName)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Theme.Colors.orangePrimary)
+                        .frame(width: 30, height: 30)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .padding(8)
+                        .allowsHitTesting(false)
+                }
+            }
 
             // Details
             VStack(alignment: .leading, spacing: 4) {
                 Text(record.displayName)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
+                    .foregroundStyle(colorScheme == .dark ? .white : Theme.Colors.ink)
                     .lineLimit(1)
 
                 HStack(spacing: 5) {
                     Label {
-                        Text(String(localized: "plural.pages \(record.pageCount)"))
+                        Text(String(localized: "plural.pages \(record.pageCount)", bundle: LanguageManager.bundle))
                     } icon: {
                         Image(systemName: record.contentSource.symbolName)
                     }
@@ -55,22 +67,22 @@ struct LibraryGridCard: View {
                     Text(ByteCountFormatter.string(fromByteCount: record.fileSize, countStyle: .file))
                 }
                 .font(.caption2)
-                .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.55) : Color.secondary)
+                .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.58) : Theme.Colors.inkSecondary)
 
                 Text(record.createdAt.formatted(date: .abbreviated, time: .omitted))
                     .font(.caption2)
-                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.45) : Color.secondary)
+                    .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.48) : Theme.Colors.inkSecondary)
             }
         }
-        .padding(12)
+        .padding(Theme.Spacing.sm)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(colorScheme == .dark ? Theme.Colors.darkCard : Color.white)
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .fill(colorScheme == .dark ? Theme.Colors.darkCard : Theme.Colors.surface)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                        .strokeBorder(colorScheme == .dark ? Theme.Colors.darkStroke : Theme.Colors.stroke.opacity(0.72), lineWidth: 1)
                 )
-                .shadow(color: colorScheme == .dark ? Color.black.opacity(0.2) : Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
+                .shadow(color: colorScheme == .dark ? Color.black.opacity(0.24) : Color(hex: "6F4D35").opacity(0.07), radius: 12, x: 0, y: 6)
         )
     }
 }
