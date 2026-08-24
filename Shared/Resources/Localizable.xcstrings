@@ -36,6 +36,7 @@
       }
     },
     "%lld documents couldn't be saved to your Library. Your pages are kept — try again.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -791,6 +792,7 @@
       }
     },
     "BATCH SCAN": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -894,7 +896,6 @@
       }
     },
     "Batch and organize": {
-      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -998,6 +999,7 @@
       }
     },
     "COMPRESS": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -1032,6 +1034,7 @@
       }
     },
     "CUSTOMIZE": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -1241,7 +1244,6 @@
       }
     },
     "Choose PDF It": {
-      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -2102,6 +2104,7 @@
       }
     },
     "Couldn't save scan": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -2204,6 +2207,7 @@
       }
     },
     "Cover page, metadata, page numbers, watermark, margins.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -3235,6 +3239,7 @@
       }
     },
     "Drag the signature anywhere on the page": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -3303,6 +3308,7 @@
       }
     },
     "Draw once; reuse your saved signature.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -3372,6 +3378,7 @@
       }
     },
     "EXTRACT": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -4195,7 +4202,6 @@
       }
     },
     "If PDF It isn't visible, scroll to the end of the apps row and tap More.": {
-      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -4886,6 +4892,7 @@
       }
     },
     "Meet your full PDF toolkit": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -5846,6 +5853,7 @@
       }
     },
     "ORGANIZE": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -5880,6 +5888,7 @@
       }
     },
     "On-device OCR makes scans searchable and selectable.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -6017,7 +6026,6 @@
       }
     },
     "Open content": {
-      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -6950,6 +6958,7 @@
       }
     },
     "PRIVACY": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -8328,6 +8337,7 @@
       }
     },
     "Quick, Clean and Reader webpage modes.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -8605,6 +8615,7 @@
       }
     },
     "Recommended": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -8776,6 +8787,7 @@
       }
     },
     "Reorder and rotate pages into a new document.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -9118,6 +9130,7 @@
       }
     },
     "SEARCHABLE SCANS": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -9152,6 +9165,7 @@
       }
     },
     "SHARE FROM ANY APP": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -9186,6 +9200,7 @@
       }
     },
     "SIGN": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -9254,7 +9269,6 @@
       }
     },
     "Safari, X, Photos, Notes, Files — anything that offers Share.": {
-      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -9736,7 +9750,6 @@
       }
     },
     "Scan, merge and use unlimited folders.": {
-      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -9978,6 +9991,7 @@
       }
     },
     "Selected pages become their own PDF.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -10082,6 +10096,7 @@
       }
     },
     "Share Extension conversion is part of PDF It Pro.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -10426,6 +10441,7 @@
       }
     },
     "Shrink image-heavy PDFs honestly — never bigger copies.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -11216,7 +11232,6 @@
       }
     },
     "Tap Share": {
-      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -11423,6 +11438,7 @@
       }
     },
     "The Share Extension turns shared content into PDFs.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -12287,6 +12303,7 @@
       }
     },
     "To keep PDF It easy to reach, add it to your Share Sheet favorites. Depending on your iOS version, open More → Edit and add PDF It to Favorites.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -12735,6 +12752,7 @@
       }
     },
     "UNLIMITED ORGANIZATION": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -12804,6 +12822,7 @@
       }
     },
     "Unlimited folders and merging.": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -13079,7 +13098,6 @@
       }
     },
     "Use the system Share button.": {
-      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -13183,6 +13201,7 @@
       }
     },
     "Vertical position": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -13251,6 +13270,7 @@
       }
     },
     "WEB → PDF": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
