@@ -167,15 +167,20 @@ final class DevicePassIntegrationTests: XCTestCase {
 
     @MainActor
     func testSnapshotReflectsRealEntitlementNotDebugOverride() async {
-        #if DEBUG
         let defaults = UserDefaults(suiteName: AppConfiguration.appGroupIdentifier)!
+        EntitlementCenter.clearDemoFlagForTests()
+        #if DEBUG
         defaults.set(true, forKey: EntitlementCenter.debugForceProKey)
         defer { defaults.set(false, forKey: EntitlementCenter.debugForceProKey) }
         #endif
         let center = EntitlementCenter(defaults: defaults)
         await center.recompute() // no purchases → not entitled
+        // Demo Mode is a deliberate, user-facing unlock that DOES publish Pro
+        // (the extension must honor it). Only the silent DEBUG force-Pro flag
+        // must stay out of the persisted snapshot.
+        EntitlementCenter.clearDemoFlagForTests()
         let snapshot = EntitlementCenter.currentSnapshot(fromDefaults: defaults)
         XCTAssertFalse(snapshot?.pro ?? true,
-                       "the extension-facing snapshot must NEVER claim Pro from the debug override")
+                       "with demo mode off, the snapshot reflects real StoreKit state only")
     }
 }

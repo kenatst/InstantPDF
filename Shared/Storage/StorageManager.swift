@@ -38,16 +38,22 @@ final class StorageManager {
         containerURL?.appendingPathComponent("Library/folders.json")
     }
 
-    /// Production initializer: uses the real App Group container. A nil
-    /// container (misconfigured entitlement/group) is a hard, surfaced
-    /// error — operations throw `containerUnavailable` instead of silently
-    /// writing somewhere the other process can't see.
+    /// Production initializer: prefers the real App Group container (shared
+    /// with the extension). When that container is unavailable — e.g. an
+    /// entitlement/provisioning hiccup on a device build — it falls back to
+    /// an app-local directory so the product KEEPS WORKING (scans, imports,
+    /// every feature) instead of throwing on every save. Extension sharing
+    /// simply degrades until the entitlement is fixed.
     convenience init(appGroupID: String) {
-        let url = AppConfiguration.appGroupContainerURL
-        if url == nil {
-            assertionFailure("PDF It: StorageManager initialized without a reachable App Group (\(appGroupID)).")
+        if let url = AppConfiguration.appGroupContainerURL {
+            self.init(containerURL: url)
+            return
         }
-        self.init(containerURL: url)
+        AppConfiguration.log.fault("App Group unavailable; falling back to app-local library storage.")
+        let local = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("LocalLibrary", isDirectory: true)
+        try? FileManager.default.createDirectory(at: local, withIntermediateDirectories: true)
+        self.init(containerURL: local)
     }
 
     /// Designated initializer — injectable for tests.

@@ -11,9 +11,9 @@ final class PDFItUITests: XCTestCase {
 
     private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
-        // Onboarding/one-time-offer flags are pre-written into the app's
-        // standard defaults domain on this simulator (see run instructions),
-        // so every launch lands directly on Home.
+        // Deterministic Home entry: app reinstalls wipe simulator defaults,
+        // so persisted onboarding flags cannot be relied upon mid-suite.
+        app.launchEnvironment["UITEST_SKIP_ONBOARDING"] = "1"
         app.launch()
         return app
     }

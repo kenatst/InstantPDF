@@ -8,7 +8,11 @@ struct PDFItApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if hasCompletedOnboarding {
+            // XCUITest hook: the runner sets this env var so tests land
+            // directly on Home — reinstalling the app wipes simulator
+            // defaults, so persisted onboarding state can't be relied on.
+            if hasCompletedOnboarding
+                || ProcessInfo.processInfo.environment["UITEST_SKIP_ONBOARDING"] == "1" {
                 MainTabView()
                     .environment(\.pdfItLanguage, languageSetting.language)
                     .environment(\.locale, activeLocale)

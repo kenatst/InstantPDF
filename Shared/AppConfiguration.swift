@@ -13,7 +13,7 @@ enum AppConfiguration {
     /// App Group shared by the main app and the Share Extension.
     static let appGroupIdentifier = "group.com.kenatst.pdfit"
 
-    private static let log = Logger(subsystem: appBundleID, category: "configuration")
+    static let log = Logger(subsystem: appBundleID, category: "configuration")
 
     /// True only when BOTH the shared defaults suite and the App Group
     /// container are actually reachable. Data storage checks this and

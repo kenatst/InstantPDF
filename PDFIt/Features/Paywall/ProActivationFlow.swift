@@ -182,12 +182,23 @@ struct ProCelebrationView: View {
 /// shows "Next" and chains into the feature guide; standalone (Settings) it
 /// shows "Done". Both variants carry the Favorites recommendation.
 struct ShareExtensionTutorialView: View {
-    /// Activation mode: primary CTA is "Next"; standalone shows "Done".
+    /// Activation mode: primary CTA is "Next"; standalone shows "Done" and
+    /// owns its dismiss so the button always works in every host context.
     var activationMode = false
     var onNext: () -> Void = {}
     var onSkip: () -> Void = {}
     var onDone: () -> Void = {}
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dismiss) private var dismiss
+
+    private func handleDone() {
+        if activationMode {
+            onNext()
+        } else {
+            onDone()
+            dismiss()
+        }
+    }
 
     var body: some View {
         ScrollView {
@@ -221,7 +232,7 @@ struct ShareExtensionTutorialView: View {
                     .foregroundStyle(.secondary)
                     .padding(.top, 4)
 
-                Button(action: activationMode ? onNext : onDone) {
+                Button(action: handleDone) {
                     Text(activationMode ? LocalizedStringKey("Next") : LocalizedStringKey("Done"))
                         .fontWeight(.bold)
                         .frame(maxWidth: .infinity)
@@ -318,9 +329,21 @@ struct ShareExtensionTutorialView: View {
 
 /// Shown post-purchase and revisitable from Settings. Lists ONLY features
 /// actually implemented in this codebase — no vaporware rows.
+/// Standalone (Settings) mode owns its dismiss so "Done"/"Terminer" always
+/// closes the screen — the CTA is wired to a real action in every context.
 struct ProFeaturesGuideView: View {
     var activationMode = false
     var onFinish: () -> Void = {}
+
+    @Environment(\.dismiss) private var dismiss
+
+    private func finish() {
+        if activationMode {
+            onFinish()
+        } else {
+            dismiss()
+        }
+    }
 
     struct Feature: Identifiable {
         let id = UUID()
@@ -399,7 +422,7 @@ struct ProFeaturesGuideView: View {
                 }
 
                 Button {
-                    onFinish()
+                    finish()
                 } label: {
                     Text(activationMode ? LocalizedStringKey("Start using PDF It") : LocalizedStringKey("Done"))
                         .fontWeight(.bold)

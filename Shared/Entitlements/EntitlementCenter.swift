@@ -70,17 +70,27 @@ final class EntitlementCenter: ObservableObject {
 
     /// Enables or ends the local Pro demo. This is not a StoreKit purchase;
     /// it exists so every gated workflow can be evaluated before checkout.
+    /// Writes through the instance's defaults so tests with isolated storage
+    /// behave exactly like production (which uses the App Group suite).
     func setDemoMode(_ enabled: Bool) {
         defaults.set(enabled, forKey: Self.demoModeKey)
         publishSnapshot()
         objectWillChange.send()
     }
 
+    /// Clears the demo flag WITHOUT republishing — used by tests to isolate
+    /// state without overwriting the snapshot with a fresh verdict.
+    nonisolated static func clearDemoFlagForTests() {
+        AppConfiguration.sharedDefaults.removeObject(forKey: demoModeKey)
+    }
+
     /// Effective Pro state. A local Demo Mode deliberately uses the same
     /// gates as a verified purchase, including the Share Extension.
+    /// Demo mode is read through THIS instance's defaults (production =
+    /// App Group suite) so isolated test storage behaves identically.
     @Published private(set) var _storePro: Bool = false
     var isPro: Bool {
-        if Self.demoModeEnabled { return true }
+        if defaults.bool(forKey: Self.demoModeKey) { return true }
 #if DEBUG
         return _storePro || Self.debugForceProEnabled
 #else
@@ -275,9 +285,11 @@ final class EntitlementCenter: ObservableObject {
     }
 
     private func publishSnapshot() {
-        // The extension does not run StoreKit, so publish the effective
-        // verdict. This keeps a local demo consistent across both processes.
-        let snapshot = Snapshot(pro: isPro,
+        // Publishes the verdict the EXTENSION may act on: real StoreKit state
+        // plus Demo Mode (a deliberate user-facing unlock). The silent DEBUG
+        // force-Pro flag stays out — it must never persist as entitlement.
+        let effective = _storePro || defaults.bool(forKey: Self.demoModeKey)
+        let snapshot = Snapshot(pro: effective,
                                 expires: expiresAt,
                                 updated: Date())
         guard let data = try? JSONEncoder().encode(snapshot),

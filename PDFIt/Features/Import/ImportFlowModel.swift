@@ -351,7 +351,19 @@ struct LinkEntrySheet: View {
                         .font(.caption)
                         .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.secondary)
                         .padding(.horizontal, 4)
-                        .padding(.top, 4)
+
+                    // Honest-expectations disclaimer: some sites resist
+                    // automated capture. Set BEFORE the user waits.
+                    Label {
+                        Text("Some sites (login walls, CAPTCHAs, blurred previews) can't produce clean PDFs. If that happens, PDF It tells you instead of saving a bad file.")
+                            .font(.caption2)
+                            .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.5) : Color.secondary)
+                    } icon: {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(Theme.Colors.orangePrimary)
+                    }
+                    .padding(.horizontal, 4)
+                    .padding(.top, 2)
                 }
                 .premiumCard()
 

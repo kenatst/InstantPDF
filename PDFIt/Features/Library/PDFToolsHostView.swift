@@ -28,6 +28,8 @@ struct PDFToolsHostView: View {
     @State private var signaturePage = 1
     @State private var signatureScale: CGFloat = 1.0
     @State private var signatureVertical: CGFloat = 0.78
+    /// Horizontal placement driven by the drag canvas (0–1 of page width).
+    @State private var signatureHorizontal: CGFloat = 0.5
     @State private var showingSignatureCanvas = false
     // Extract state
     @State private var selectedPages: Set<Int> = []
@@ -306,12 +308,20 @@ struct PDFToolsHostView: View {
                     Stepper(value: $signaturePage, in: 1...max(1, pageCount)) {
                         Text("Page \(signaturePage) of \(max(1, pageCount))")
                     }
-                    VStack(alignment: .leading) {
-                        Text("Vertical position")
-                        Slider(value: $signatureVertical, in: 0.1...0.9)
-                    }
-                    Stepper(value: $signatureScale, in: 0.4...2.0, step: 0.1) {
-                        Text("Size ×\(String(format: "%.1f", signatureScale))")
+                    // REAL visual placement: drag the signature anywhere on a
+                    // live page preview. No more random fixed position.
+                    SignaturePlacementCanvas(recordID: recordID,
+                                             pageNumber: signaturePage,
+                                             signature: signatureImage!,
+                                             normalizedX: $signatureHorizontal,
+                                             normalizedY: $signatureVertical,
+                                             scale: $signatureScale)
+                    .frame(height: 340)
+                    .listRowInsets(EdgeInsets())
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    Stepper(value: $signatureScale, in: 0.4...2.0, step: 0.05) {
+                        Text("Size ×\(String(format: "%.2f", signatureScale))")
                     }
                 }
                 Section {
@@ -333,9 +343,17 @@ struct PDFToolsHostView: View {
         isProcessing = true
         progressText = String(localized: "Placing signature…", bundle: LanguageManager.bundle)
         Task {
-            let width: CGFloat = 0.32 * signatureScale
-            let height: CGFloat = 0.12 * signatureScale
-            let rect = CGRect(x: 0.60, y: max(0.02, signatureVertical - height / 2), width: width, height: min(height, 0.94))
+            // The EXACT rect shown in the drag preview: width follows the
+            // aspect of the real ink image, center = where the user dropped it.
+            let inkAspect = max(signature.size.width / max(signature.size.height, 1), 0.2)
+            let baseHeight: CGFloat = 0.10 * signatureScale
+            let width = min(0.94, baseHeight * inkAspect)
+            let height = min(0.5, baseHeight)
+            let originX = max(0.02, min(0.98 - width,
+                                        signatureHorizontal - width / 2))
+            let originY = max(0.02, min(0.98 - height,
+                                        signatureVertical - height / 2))
+            let rect = CGRect(x: originX, y: originY, width: width, height: height)
             do {
                 let signed = try PDFTools.placeSignature(pngData: png,
                                                          on: url,
@@ -373,7 +391,7 @@ struct PDFToolsHostView: View {
             .padding(.vertical, 10)
 
             ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 12)], spacing: 12) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 14)], spacing: 14) {
                     ForEach(1...max(1, pageCount), id: \.self) { pageNumber in
                         ExtractPageCell(recordID: recordID,
                                         pageNumber: pageNumber,
@@ -500,7 +518,7 @@ private struct ExtractPageCell: View {
                                 .overlay(ProgressView())
                         }
                     }
-                    .frame(height: 120)
+                    .frame(height: 190)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
 
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
@@ -522,7 +540,7 @@ private struct ExtractPageCell: View {
                   let url = StorageManager.shared.fileURL(for: record),
                   let document = PDFDocument(url: url),
                   let page = document.page(at: pageNumber - 1) else { return }
-            let image = page.thumbnail(of: CGSize(width: 220, height: 300), for: .mediaBox)
+            let image = page.thumbnail(of: CGSize(width: 400, height: 533), for: .mediaBox)
             thumbnail = image
         }
     }

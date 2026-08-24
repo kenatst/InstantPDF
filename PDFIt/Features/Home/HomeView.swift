@@ -580,6 +580,9 @@ struct MascotActionCard: View {
     let category: Category
     @Environment(\.colorScheme) private var colorScheme
 
+    /// One shared height for all four cards — identical grid rows everywhere.
+    static let cardHeight: CGFloat = 196
+
     private var title: LocalizedStringKey {
         switch category {
         case .photos: return "Photos"
@@ -599,6 +602,8 @@ struct MascotActionCard: View {
     }
 
     var body: some View {
+        // FIXED-HEIGHT card: all four source cards render identically tall on
+        // Home and in the "Tout → PDF" chooser, whatever their subtitle wraps.
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             MascotView(type: category.mascotType, size: 108, enableFloatingAnimation: false)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -612,15 +617,15 @@ struct MascotActionCard: View {
                     Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.58) : Theme.Colors.inkSecondary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(1)
                 }
                 Spacer(minLength: Theme.Spacing.xxs)
                 categoryBadge
             }
+            .frame(height: 34)
         }
         .padding(Theme.Spacing.sm)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: Self.cardHeight, maxHeight: Self.cardHeight, alignment: .topLeading)
         .background(
             RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                 .fill(colorScheme == .dark ? Theme.Colors.darkCard : Theme.Colors.surface)

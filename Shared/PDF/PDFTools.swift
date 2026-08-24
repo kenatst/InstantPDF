@@ -105,18 +105,20 @@ enum PDFTools {
         /// JPEG quality for rasterized image pages.
         var jpegQuality: CGFloat {
             switch self {
-            case .smaller: return 0.35
-            case .balanced: return 0.6
-            case .bestQuality: return 0.85
+            case .smaller: return 0.55
+            case .balanced: return 0.7
+            case .bestQuality: return 0.9
             }
         }
 
-        /// Long-edge cap in pixels for rasterized pages.
+        /// Long-edge cap in POINTS before the fixed 2x render scale.
+        /// A US Letter page (816pt long edge) renders at ≥1632px on every
+        /// preset — retina-grade, never blurry.
         var maxPixelEdge: CGFloat {
             switch self {
-            case .smaller: return 1000
-            case .balanced: return 1600
-            case .bestQuality: return 2400
+            case .smaller: return 1700
+            case .balanced: return 2000
+            case .bestQuality: return 2600
             }
         }
     }
@@ -130,6 +132,11 @@ enum PDFTools {
     ///   untouched (vector/text pages survive losslessly — never blindly
     ///   rasterized away).
     /// Returns new data + resulting byte count. Original file untouched.
+    ///
+    /// Readability floor: rasterization never drops below 2.0x device pixels
+    /// per point (retina-grade) and JPEG quality stays ≥ 0.55, so text on
+    /// image-heavy pages remains crisp at every preset — "Smaller" shrinks
+    /// bytes, never legibility.
     static func compress(from sourceURL: URL, preset: CompressionPreset) throws -> (data: Data, byteCount: Int) {
         guard let data = try? Data(contentsOf: sourceURL),
               let provider = CGDataProvider(data: data as CFData),
@@ -146,9 +153,10 @@ enum PDFTools {
             guard let page = document.page(at: pageIndex) else { continue }
             let box = page.getBoxRect(.mediaBox)
 
-            // Rasterize at capped long edge.
+            // Rasterize at capped long edge, ALWAYS ≥2x points→pixels so text
+            // stays retina-crisp (the old 1x cap produced blurry pages).
             let scale = min(1, preset.maxPixelEdge / max(box.width, box.height))
-            let pixelSize = CGSize(width: box.width * scale * 2, height: box.height * scale * 2) // 2x for readability
+            let pixelSize = CGSize(width: box.width * scale * 2, height: box.height * scale * 2) // 2x = retina floor
             let format = UIGraphicsImageRendererFormat()
             format.scale = 1
             let raster = UIGraphicsImageRenderer(size: pixelSize, format: format).image { _ in

@@ -17,6 +17,9 @@ enum ConversionError: Error, Equatable {
     case pageUnreachable(reason: String?)
     /// The page loaded but took too long to become stable.
     case pageTooSlow
+    /// The site served a wall/challenge instead of real content (login gate,
+    /// CAPTCHA, bot check, blurred paywall preview). Honest, actionable.
+    case siteBlocked
     /// The web view crashed while rendering.
     case webProcessTerminated
     /// PDF generation produced nothing usable.
@@ -36,6 +39,7 @@ extension ConversionError {
         case .invalidURL: return String(localized: "This link isn't valid", bundle: LanguageManager.bundle)
         case .pageUnreachable: return String(localized: "We couldn't load this page", bundle: LanguageManager.bundle)
         case .pageTooSlow: return String(localized: "This page took too long to load", bundle: LanguageManager.bundle)
+        case .siteBlocked: return String(localized: "This site blocked the conversion", bundle: LanguageManager.bundle)
         case .webProcessTerminated: return String(localized: "The page couldn't be rendered", bundle: LanguageManager.bundle)
         case .generationFailed: return String(localized: "We couldn't create the PDF", bundle: LanguageManager.bundle)
         case .cancelled: return String(localized: "Cancelled", bundle: LanguageManager.bundle)
@@ -67,6 +71,8 @@ extension ConversionError {
             return String(localized: "Check your connection, then retry.", bundle: LanguageManager.bundle)
         case .pageTooSlow:
             return String(localized: "The site never finished loading. Retry, or save the link as text.", bundle: LanguageManager.bundle)
+        case .siteBlocked:
+            return String(localized: "Some sites (login walls, CAPTCHAs, blurred previews) don't allow clean captures. Try Reader mode, or convert the page from your browser instead.", bundle: LanguageManager.bundle)
         case .webProcessTerminated:
             return String(localized: "The site used too much memory to render. Try again, or save the link as text.", bundle: LanguageManager.bundle)
         case .generationFailed:
@@ -79,7 +85,7 @@ extension ConversionError {
     /// Recovery options worth offering in the UI, in display order.
     var recoveryActions: [RecoveryAction] {
         switch self {
-        case .pageUnreachable, .pageTooSlow, .webProcessTerminated:
+        case .pageUnreachable, .pageTooSlow, .webProcessTerminated, .siteBlocked:
             return [.retry, .saveLinkAsText, .cancel]
         case .fileTooLarge, .unreadableFile, .invalidURL, .generationFailed,
              .noUsableContent, .someContentSkipped:

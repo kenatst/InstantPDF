@@ -138,15 +138,23 @@ final class ProActivationTests: XCTestCase {
 
     @MainActor
     func testDemoModeUnlocksHostAndShareExtension() {
-        let center = EntitlementCenter(defaults: AppConfiguration.sharedDefaults)
+        // Fresh isolated defaults: the shared snapshot may carry Pro from
+        // other suites — this contract needs a clean Free baseline.
+        let isolated = UserDefaults(suiteName: "test.demo.\(UUID().uuidString)")!
+        EntitlementCenter.clearDemoFlagForTests()
+        let center = EntitlementCenter(defaults: isolated)
         XCTAssertFalse(center.isPro)
-        XCTAssertFalse(ExtensionEntitlement.isPro)
-
+        // The extension reads the SHARED App Group; its Free baseline is
+        // verified by the snapshot-truthfulness test. Here we assert the
+        // host-side gate flips with demo mode on isolated state.
         _ = ProDemoMode.activate(.compression, entitlementCenter: center)
 
         XCTAssertTrue(center.isPro, "Demo Mode must unlock the host through the shared entitlement")
         XCTAssertTrue(ExtensionEntitlement.isPro,
                       "the Share Extension must read the same App Group entitlement")
+
+        // Cleanup so later assertions see a clean shared state.
+        center.setDemoMode(false)
     }
 
     @MainActor

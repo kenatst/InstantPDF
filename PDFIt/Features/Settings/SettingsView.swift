@@ -129,7 +129,6 @@ struct SettingsView: View {
                 }
                 Link("Privacy Policy", destination: ExternalLinks.privacyPolicy)
                 Link("Terms of Use", destination: ExternalLinks.termsOfUse)
-                Link("Support & Feedback", destination: ExternalLinks.support)
             } header: {
                 SettingsSectionHeader("Privacy & Support", symbol: "lock.shield")
             } footer: {

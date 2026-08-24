@@ -102,6 +102,7 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
         try await stabilize(webView)
         try await triggerLazyContent(webView)
         let height = try await measuredContentHeight(webView)
+        try await Self.rejectBlockedPages(webView, host: url.host)
         let capture = try await renderToPDF(webView, height: height)
         let title = webView.title
 
@@ -169,6 +170,7 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
         let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: Self.captureWidth, height: 900))
         webView.navigationDelegate = self
         webProcessIsDead = false
+        didRetryNavigation = false
         // Attach to a window so layout, media queries and lazy loading behave.
         if webViewWindow == nil {
             let host = UIWindow(frame: CGRect(x: 0, y: 0, width: Self.captureWidth, height: 900))
@@ -196,7 +198,27 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
                     }
 
                     self.navigationTimeoutTask = Task { [weak self] in
+                        // X and other heavy social pages can exceed a single
+                        // 20s window on first load. Two-stage timeout: warn
+                        // at 20s by reloading once, hard-fail at 45s.
                         try? await Task.sleep(nanoseconds: UInt64(WebTiming.navigationTimeout * 1_000_000_000))
+                        if Task.isCancelled { return }
+                        let shouldRetry: Bool = {
+                            guard let self else { return false }
+                            if case .url = request, !self.didRetryNavigation { return true }
+                            return false
+                        }()
+                        if shouldRetry {
+                            self?.didRetryNavigation = true
+                            switch request {
+                            case .url(let url):
+                                webView.load(URLRequest(url: url,
+                                                        cachePolicy: .reloadIgnoringLocalCacheData,
+                                                        timeoutInterval: 30))
+                            default: break
+                            }
+                            return
+                        }
                         // The gate makes this race with didFinish/didFail/
                         // termination/cancellation safe — first finish wins.
                         self?.navigationGate?.fail(ConversionError.pageTooSlow)
@@ -223,6 +245,9 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
 
     private var webViewWindow: UIWindow?
     private var loadedWebViews: [WKWebView] = []
+    /// Set after the first timeout-triggered reload so the hard deadline
+    /// eventually fires (X pages sometimes stall on a single attempt).
+    private var didRetryNavigation = false
 
     private func dismantle(_ webView: WKWebView) {
         webView.stopLoading()
@@ -406,6 +431,36 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
         let height = (dict["height"] as? NSNumber).map { CGFloat(truncating: $0) } ?? 0
         let atBottom = (dict["atBottom"] as? NSNumber)?.boolValue ?? false
         return ScrollState(height: height, isAtBottom: atBottom)
+    }
+
+    // MARK: - Blocked-page detection (honest failures, no garbage PDFs)
+
+    /// Heuristic wall/challenge detection. When a site serves a login gate,
+    /// CAPTCHA or bot check instead of real content, the conversion fails
+    /// with a clear, actionable message INSTEAD of producing a useless PDF.
+    /// Purely DOM-based — no private APIs, no bypass attempts.
+    static func rejectBlockedPages(_ webView: WKWebView, host: String?) async throws {
+        let script = """
+        (function() {
+            var text = (document.body ? document.body.innerText : '') || '';
+            var lower = text.toLowerCase();
+            var markers = ['verify you are human', 'are you a robot', 'captcha',
+                           'access denied', 'enable javascript and cookies to continue',
+                           'checking your browser', 'just a moment', 'attention required',
+                           'log in to continue', 'sign up to continue', 'sign in to continue'];
+            for (var i = 0; i < markers.length; i++) {
+                if (lower.indexOf(markers[i]) !== -1) return true;
+            }
+            var hasChallenge = !!document.querySelector('iframe[src*="challenge"], iframe[src*="captcha"], #challenge-form, .g-recaptcha, #cf-challenge-running');
+            return hasChallenge;
+        })();
+        """
+        let detector = WebPDFConverter()
+        guard let raw = try? await detector.evaluateScript(script, in: webView),
+              let blocked = raw as? Bool, blocked else {
+            return
+        }
+        throw ConversionError.siteBlocked
     }
 
     private func measuredContentHeight(_ webView: WKWebView) async throws -> CGFloat {

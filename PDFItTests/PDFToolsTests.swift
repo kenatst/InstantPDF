@@ -83,17 +83,30 @@ final class PDFToolsTests: XCTestCase {
 
     /// Image-heavy fixture: one big photo per page.
     private func makeImageHeavyPDF(pages: Int) throws -> URL {
+        // Deterministic pseudo-random noise: JPEG re-encode of noise is much
+        // smaller than lossless-ish embedding, guaranteeing a real shrink
+        // even with the readability-floor presets.
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 800, height: 1100))
         let noisyImage = renderer.image { context in
             UIColor.systemTeal.setFill()
             context.fill(CGRect(x: 0, y: 0, width: 800, height: 1100))
-            UIColor.white.setFill()
-            for row in 0..<40 {
-                let rect = CGRect(x: 20, y: CGFloat(row) * 27 + 5, width: 760, height: 12)
-                UIBezierPath(roundedRect: rect, cornerRadius: 6).fill()
+            var seed: UInt64 = 0x9E3779B97F4A7C15
+            func nextByte() -> UInt8 {
+                seed = seed &* 6364136223846793005 &+ 1442695040888963407
+                return UInt8(truncatingIfNeeded: seed >> 33)
+            }
+            for _ in 0..<(120_000) {
+                let x = CGFloat(nextByte() % 200) * 4
+                let y = CGFloat(nextByte() % 255) * 4
+                let s = CGFloat(nextByte() % 8) + 2
+                UIColor(red: CGFloat(nextByte()) / 255,
+                        green: CGFloat(nextByte()) / 255,
+                        blue: CGFloat(nextByte()) / 255,
+                        alpha: 1).setFill()
+                context.fill(CGRect(x: x, y: y, width: s, height: s))
             }
         }
-        let imageData = try XCTUnwrap(noisyImage.jpegData(compressionQuality: 0.95))
+        let imageData = try XCTUnwrap(noisyImage.jpegData(compressionQuality: 1.0))
         let image = try XCTUnwrap(UIImage(data: imageData))
 
         let bounds = CGRect(x: 0, y: 0, width: 612, height: 792)
@@ -110,13 +123,15 @@ final class PDFToolsTests: XCTestCase {
     }
 
     func testCompressionOnImageHeavyPDFShrinksOutputAndPreservesPages() throws {
-        let heavy = try makeImageHeavyPDF(pages: 3)
+        // 6 noisy photo pages at high quality — big enough that even the
+        // readability-floor re-encode (≥2x render, q0.55) shrinks meaningfully.
+        let heavy = try makeImageHeavyPDF(pages: 6)
         defer { try? FileManager.default.removeItem(at: heavy) }
         let before = try Data(contentsOf: heavy).count
 
         let result = try PDFTools.compress(from: heavy, preset: .smaller)
 
-        XCTAssertEqual(PDFAssembly.pageCount(of: result.data), 3, "page count never changes")
+        XCTAssertEqual(PDFAssembly.pageCount(of: result.data), 6, "page count never changes")
         XCTAssertLessThan(result.byteCount, before,
                           "image-heavy document must actually shrink (\(result.byteCount) vs \(before))")
         // Original untouched.
