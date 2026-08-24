@@ -1,13 +1,17 @@
 import SwiftUI
 import StoreKit
 
-/// Contextual paywall. Shown ONLY on user intent (tapping a Pro feature) —
-/// never at launch. Prices come from StoreKit, never hardcoded.
+/// Contextual paywall. Shown on explicit Pro intent and ONCE after
+/// onboarding (with "Continue with Free"). Prices come from StoreKit, never
+/// hardcoded; when no products are configured the state is explicit —
+/// never an endless spinner.
 struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     /// The feature that triggered the paywall — used for the headline.
     var feature: ProFeature = .webConversion
+    /// Post-onboarding presentation gets an explicit "Continue with Free".
+    var showsContinueFree = false
 
     @ObservedObject private var entitlements = EntitlementCenter.shared
     @State private var busyProductID: String?
@@ -17,23 +21,17 @@ struct PaywallView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 18) {
-                    MascotView(type: .success, size: 96, enableFloatingAnimation: false)
-
-                    VStack(spacing: 6) {
-                        Text("PDF It Pro")
-                            .font(.system(size: 26, weight: .heavy, design: .rounded))
-                        Text(LocalizedStringKey(headline))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
+                    heroBlock
+                    featureShowcase
 
                     if entitlements.isPro {
                         alreadyPro
                     } else {
-                        productCards
+                        productSection
                         restoreButton
                     }
+
+                    continueFreeButton
 
                     if let message {
                         Text(message)
@@ -60,6 +58,79 @@ struct PaywallView: View {
         }
         .tint(Theme.Colors.orangePrimary)
         .presentationDetents([.medium, .large])
+    }
+
+    // MARK: - Hero
+
+    private var heroBlock: some View {
+        VStack(spacing: 8) {
+            MascotView(type: .success, size: 96, enableFloatingAnimation: false)
+
+            VStack(spacing: 6) {
+                Text("PDF It Pro")
+                    .font(.system(size: 26, weight: .heavy, design: .rounded))
+                Text("Your complete private PDF toolkit.")
+                    .font(.subheadline.weight(.semibold))
+                Text("Scan, convert, organize and edit PDFs — privately on your device.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+    }
+
+    // MARK: - Feature showcase (visual benefit cards)
+
+    private var featureShowcase: some View {
+        VStack(spacing: 10) {
+            showcaseRow(icon: "square.and.arrow.up",
+                        titleKey: "SHARE FROM ANY APP",
+                        copyKey: "Turn shared content into a PDF without leaving the app.")
+            showcaseRow(icon: "safari",
+                        titleKey: "WEB → PDF",
+                        copyKey: "Capture webpages with Quick, Clean and Reader modes.")
+            showcaseRow(icon: "text.viewfinder",
+                        titleKey: "SEARCHABLE SCANS",
+                        copyKey: "Use on-device OCR to search and copy text.")
+            showcaseRow(icon: "slider.horizontal.3",
+                        titleKey: "PDF TOOLS",
+                        copyKey: "Compress, sign and extract pages in a tap.")
+            showcaseRow(icon: "square.stack.3d.up",
+                        titleKey: "BATCH & ORGANIZE",
+                        copyKey: "Scan several documents at once. Unlimited folders and merge.")
+        }
+    }
+
+    private func showcaseRow(icon: String, titleKey: String, copyKey: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Theme.Colors.orangePrimary)
+                .frame(width: 34, height: 34)
+                .background(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(Theme.Colors.orangePrimary.opacity(0.14))
+                )
+            VStack(alignment: .leading, spacing: 2) {
+                Text(LocalizedStringKey(titleKey))
+                    .font(.caption.weight(.bold))
+                    .kerning(0.4)
+                Text(LocalizedStringKey(copyKey))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(colorScheme == .dark ? Theme.Colors.darkCard : Color.white)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                )
+        )
     }
 
     private var headline: String {
@@ -90,29 +161,64 @@ struct PaywallView: View {
     // MARK: - Products
 
     @ViewBuilder
-    private var productCards: some View {
+    private var productSection: some View {
         if entitlements.products.isEmpty {
-            VStack(spacing: 10) {
+            productUnavailableState
+        } else {
+            VStack(spacing: 6) {
+                // Feature-specific headline above pricing.
+                Text(LocalizedStringKey(headline))
+                    .font(.subheadline.weight(.semibold))
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, 6)
+
+                VStack(spacing: 12) {
+                    if let annual = entitlements.annualProduct {
+                        productRow(annual, badge: "Best Value")
+                    }
+                    if let monthly = entitlements.monthlyProduct {
+                        productRow(monthly, badge: nil)
+                    }
+                    if let lifetime = entitlements.lifetimeProduct {
+                        productRow(lifetime, badge: nil)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Explicit terminal state when App Store Connect has no products yet.
+    /// DEBUG additionally offers the developer force-Pro toggle path hint;
+    /// RELEASE shows only the localized generic message + Retry + Continue.
+    private var productUnavailableState: some View {
+        VStack(spacing: 12) {
+            if entitlements.status == .loading {
                 ProgressView()
                 Text("Loading plans…")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
-        } else {
-            VStack(spacing: 12) {
-                if let annual = entitlements.annualProduct {
-                    productRow(annual, badge: "Best Value")
+            } else {
+                Image(systemName: "wifi.exclamationmark")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+                Text("Purchases are temporarily unavailable.")
+                    .font(.subheadline.weight(.semibold))
+                    .multilineTextAlignment(.center)
+#if DEBUG
+                Text("StoreKit products aren't configured yet. Use Settings → Developer → Force PDF It Pro to test Pro during development.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+#endif
+                Button("Retry") {
+                    entitlements.refreshProducts()
                 }
-                if let monthly = entitlements.monthlyProduct {
-                    productRow(monthly, badge: nil)
-                }
-                if let lifetime = entitlements.lifetimeProduct {
-                    productRow(lifetime, badge: nil)
-                }
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(Theme.Colors.orangePrimary)
             }
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
     }
 
     private func productRow(_ product: Product, badge: String?) -> some View {
@@ -147,6 +253,7 @@ struct PaywallView: View {
                         .foregroundStyle(Theme.Colors.orangePrimary)
                 }
             }
+            .contentShape(Rectangle())
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -193,6 +300,18 @@ struct PaywallView: View {
         .foregroundStyle(Theme.Colors.orangePrimary)
     }
 
+    /// Post-onboarding escape hatch: Free remains a real tier. Hidden once
+    /// the user is Pro (the "already Pro" block replaces it).
+    @ViewBuilder
+    private var continueFreeButton: some View {
+        if showsContinueFree && !entitlements.isPro {
+            Button("Continue with Free") { dismiss() }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.top, 2)
+        }
+    }
+
     @ViewBuilder
     private var alreadyPro: some View {
         VStack(spacing: 8) {
@@ -221,4 +340,8 @@ struct PaywallView: View {
         }
         .padding(.top, 6)
     }
+}
+
+extension ProFeature: Identifiable {
+    public var id: String { rawValue }
 }

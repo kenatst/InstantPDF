@@ -103,7 +103,9 @@
 		A100000000000000236 /* ShareExtensionGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000235 /* ShareExtensionGuideView.swift */; };
 		A100000000000000238 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000237 /* PaywallView.swift */; };
 		A100000000000000241 /* PDFToolsHostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000240 /* PDFToolsHostView.swift */; };
+		A100000000000000247 /* SignatureCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000248 /* SignatureCanvasView.swift */; };
 		A100000000000000243 /* LibraryIdentityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000242 /* LibraryIdentityTests.swift */; };
+		A100000000000000246 /* DevicePassIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000245 /* DevicePassIntegrationTests.swift */; };
 		A100000000000000174 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000172 /* Theme.swift */; };
 /* End PBXBuildFile section */
 
@@ -205,7 +207,9 @@
 		A100000000000000235 /* ShareExtensionGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionGuideView.swift; sourceTree = "<group>"; };
 		A100000000000000237 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		A100000000000000240 /* PDFToolsHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFToolsHostView.swift; sourceTree = "<group>"; };
+		A100000000000000248 /* SignatureCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignatureCanvasView.swift; sourceTree = "<group>"; };
 		A100000000000000242 /* LibraryIdentityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryIdentityTests.swift; sourceTree = "<group>"; };
+		A100000000000000245 /* DevicePassIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicePassIntegrationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -319,6 +323,7 @@
 			isa = PBXGroup;
 			children = (
 				A100000000000000240 /* PDFToolsHostView.swift */,
+				A100000000000000248 /* SignatureCanvasView.swift */,
 				A100000000000000008 /* LibraryView.swift */,
 				A100000000000000010 /* PDFViewerView.swift */,
 				A100000000000000200 /* LibraryCards.swift */,
@@ -478,6 +483,7 @@
 				A100000000000000227 /* PDFToolsTests.swift */,
 				A100000000000000232 /* OCRRouterTests.swift */,
 				A100000000000000242 /* LibraryIdentityTests.swift */,
+				A100000000000000245 /* DevicePassIntegrationTests.swift */,
 			);
 			path = PDFItTests;
 			sourceTree = "<group>";
@@ -675,6 +681,7 @@
 				A100000000000000236 /* ShareExtensionGuideView.swift in Sources */,
 				A100000000000000238 /* PaywallView.swift in Sources */,
 				A100000000000000241 /* PDFToolsHostView.swift in Sources */,
+				A100000000000000247 /* SignatureCanvasView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -733,6 +740,7 @@
 				A100000000000000228 /* PDFToolsTests.swift in Sources */,
 				A100000000000000233 /* OCRRouterTests.swift in Sources */,
 				A100000000000000243 /* LibraryIdentityTests.swift in Sources */,
+				A100000000000000246 /* DevicePassIntegrationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

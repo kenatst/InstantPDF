@@ -148,6 +148,11 @@ struct ScanReviewView: View {
     var onClose: (() -> Void)? = nil
 
     @State private var documentName = ""
+    /// User-visible conversion failure (never silent).
+    @State private var creationErrorMessage: String?
+    /// Partial batch success awaiting the user's keep-or-retry decision.
+    @State private var pendingPartial: PartialBatchResult?
+    @State private var heldDocuments: [ConvertedDocument] = []
     @State private var showingNameField = false
 
     init(model: ScanFlowModel,
@@ -210,6 +215,27 @@ struct ScanReviewView: View {
                     renamingGroupID = nil
                 }
                 Button("Cancel", role: .cancel) { renamingGroupID = nil }
+            }
+            .alert("Couldn't create PDF", isPresented: Binding(get: { creationErrorMessage != nil },
+                                                               set: { if !$0 { creationErrorMessage = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(creationErrorMessage ?? "")
+            }
+            .confirmationDialog("Some documents couldn't be created",
+                                isPresented: Binding(get: { pendingPartial != nil },
+                                                     set: { if !$0 { pendingPartial = nil } }),
+                                titleVisibility: .visible) {
+                Button(String(localized: "plural.batch_partial_save \(pendingPartial?.saved ?? 0)")) {
+                    finishCreating(heldDocuments)
+                    heldDocuments = []
+                }
+                Button("Try Again", role: .cancel) {
+                    // Stay in review; captured pages remain intact.
+                    heldDocuments = []
+                }
+            } message: {
+                Text(String(localized: "plural.batch_partial_detail \(pendingPartial?.failed ?? 0)"))
             }
         }
     }
@@ -377,6 +403,8 @@ struct ScanReviewView: View {
             finishCreating([document])
         } catch {
             model.isConvertingForUI = false
+            // NEVER a silent failure: the user tapped Create and must know.
+            creationErrorMessage = String(localized: "The PDF couldn't be created. Your pages are kept — try again.")
         }
     }
 
@@ -384,15 +412,29 @@ struct ScanReviewView: View {
         model.isConvertingForUI = true
         defer { model.isConvertingForUI = false }
         var documents: [ConvertedDocument] = []
+        var failedGroups = 0
         for group in model.session.groups {
             do {
                 documents.append(try await model.createPDF(for: group, paperSize: selectedPaper))
             } catch {
-                continue
+                failedGroups += 1
             }
+        }
+        guard !documents.isEmpty else {
+            // Whole batch failed — stay in review so pages are not destroyed.
+            creationErrorMessage = String(localized: "No document could be created. Your pages are kept — try again.")
+            return
+        }
+        if failedGroups > 0 {
+            // Partial success is a DECISION, not a silent outcome.
+            pendingPartial = PartialBatchResult(saved: documents.count, failed: failedGroups)
+            heldDocuments = documents
+            return
         }
         finishCreating(documents)
     }
+
+    struct PartialBatchResult { let saved: Int; let failed: Int }
 
     // MARK: - Toolbar
 

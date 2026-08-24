@@ -10,25 +10,33 @@ struct LibraryGridCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // PDF Preview thumbnail
+            // PDF Preview thumbnail.
+            // Hit-test safety contract: the image is an OVERLAY on a sized,
+            // clipped container — it can never extend past the card bounds
+            // and never intercepts touches (purely visual).
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Color(hex: "F2F4F7"))
 
                 if let image = StorageManager.shared.thumbnailImage(for: record) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
+                    Color.clear
+                        .overlay(
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFill()
+                        )
                         .frame(maxWidth: .infinity, maxHeight: 150)
-                        .clipped()
-                        .cornerRadius(12)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .allowsHitTesting(false)
                 } else {
                     Image(systemName: "doc.text.fill")
                         .font(.system(size: 36))
                         .foregroundStyle(Theme.Colors.orangePrimary.opacity(0.8))
+                        .allowsHitTesting(false)
                 }
             }
             .frame(height: 150)
+            .allowsHitTesting(false)
 
             // Details
             VStack(alignment: .leading, spacing: 4) {

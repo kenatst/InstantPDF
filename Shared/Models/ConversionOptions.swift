@@ -144,4 +144,6 @@ enum AppSettingsKeys {
     static let includeSourceURL = "settings.includeSourceURL"
     static let includeCreationDate = "settings.includeCreationDate"
     static let hasCompletedOnboarding = "settings.hasCompletedOnboarding"
+    /// Set once the post-onboarding Pro offer has been shown (Free stays usable).
+    static let hasPresentedInitialProOffer = "settings.hasPresentedInitialProOffer"
 }

@@ -36,6 +36,10 @@ struct LibraryView: View {
     @State private var deleteCandidate: PDFLibraryFolder?
     @State private var showingMergeReorder = false
     @State private var moveSheetRecords: [StoredPDFRecord] = []
+    /// Explicit typed routing: a card tap sets the destination ID and SwiftUI
+    /// presents exactly that document. No NavigationLink/gesture arbitration,
+    /// no index-based identity — one authoritative value drives presentation.
+    @State private var presentedViewerID: UUID?
 
     private let storage = StorageManager.shared
 
@@ -334,16 +338,21 @@ struct LibraryView: View {
             ForEach(visibleRecords) { record in
                 Group {
                     if selectionMode {
-                        Button {
+                        SelectableLibraryCard(record: record,
+                                              isSelected: selectedIDs.contains(record.id)) {
                             toggleSelection(record)
-                        } label: {
-                            SelectableLibraryCard(record: record,
-                                                  isSelected: selectedIDs.contains(record.id))
                         }
-                        .buttonStyle(.plain)
                     } else {
-                        NavigationLink(value: LibraryRoute.viewer(recordID: record.id)) {
+                        // ONE semantic tap target for the whole card. A plain
+                        // Button + typed route replaces the old
+                        // NavigationLink-with-contextMenu stack whose hit
+                        // testing was unreliable on device (thumbnail overflow
+                        // stole touches outside its frame).
+                        Button {
+                            presentedViewerID = record.id
+                        } label: {
                             LibraryGridCard(record: record)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .contextMenu {
@@ -379,6 +388,9 @@ struct LibraryView: View {
                     }
                 }
             }
+        }
+        .navigationDestination(item: $presentedViewerID) { id in
+            PDFViewerView(recordID: id)
         }
     }
 
@@ -538,30 +550,38 @@ struct LibraryView: View {
 
 // MARK: - Selectable card
 
+/// Selection-mode card. Self-contained tap target (selection only — no
+/// viewer navigation can leak through while selecting).
 private struct SelectableLibraryCard: View {
     let record: StoredPDFRecord
     let isSelected: Bool
+    let onTap: () -> Void
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        LibraryGridCard(record: record, showBadge: false)
-            .overlay(alignment: .topTrailing) {
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? Theme.Colors.orangePrimary : Color.white.opacity(colorScheme == .dark ? 0.25 : 0.9))
-                    if isSelected {
-                        Image(systemName: "checkmark")
-                            .font(.caption.weight(.black))
-                            .foregroundStyle(.white)
+        Button(action: onTap) {
+            LibraryGridCard(record: record, showBadge: false)
+                .overlay(alignment: .topTrailing) {
+                    ZStack {
+                        Circle()
+                            .fill(isSelected ? Theme.Colors.orangePrimary : Color.white.opacity(colorScheme == .dark ? 0.25 : 0.9))
+                        if isSelected {
+                            Image(systemName: "checkmark")
+                                .font(.caption.weight(.black))
+                                .foregroundStyle(.white)
+                        }
                     }
+                    .frame(width: 26, height: 26)
+                    .overlay(Circle().strokeBorder(colorScheme == .dark ? Color.white.opacity(0.4) : Color.black.opacity(0.15), lineWidth: 1))
+                    .padding(8)
+                    .allowsHitTesting(false)
                 }
-                .frame(width: 26, height: 26)
-                .overlay(Circle().strokeBorder(colorScheme == .dark ? Color.white.opacity(0.4) : Color.black.opacity(0.15), lineWidth: 1))
-                .padding(8)
-            }
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(isSelected ? Theme.Colors.orangePrimary : .clear, lineWidth: 2)
-            )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(isSelected ? Theme.Colors.orangePrimary : .clear, lineWidth: 2)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }

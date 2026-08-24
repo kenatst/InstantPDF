@@ -54,6 +54,12 @@ struct MainTabView: View {
             .tag(1)
         }
         .tint(Theme.Colors.orangePrimary)
+        .onAppear {
+            // ONE authoritative entitlement startup: transaction listener +
+            // product load + recompute. PaywallView.task calls start() too,
+            // but this guarantees gating state exists before any Pro intent.
+            EntitlementCenter.shared.start()
+        }
         .sheet(isPresented: $showingSettings) {
             NavigationStack {
                 SettingsView(languageSetting: languageSetting)

@@ -14,8 +14,17 @@ struct HomeView: View {
     /// Hero tap opens the polished source chooser instead of guessing.
     @State private var showingSourceChooser = false
     @State private var showingScanner = false
+    /// Post-scan persistence failure count (user-facing alert).
+    @State private var scanSaveFailureCount = 0
+    /// Typed viewer routing: the exact created/tapped document ID.
+    @State private var presentedViewerID: UUID?
+    /// One-time Pro offer right after onboarding (Free stays fully usable).
+    @AppStorage(AppSettingsKeys.hasPresentedInitialProOffer)
+    private var hasPresentedInitialProOffer = false
+    @State private var showingOnboardingPaywall = false
 
     private let storage = StorageManager.shared
+    @ObservedObject private var entitlements = EntitlementCenter.shared
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
 
@@ -48,11 +57,54 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showingScanner) {
             ScanFlowSheet(model: scanModel) { documents in
+                // REAL persistence: every document must be saved or the user
+                // hears about it. No silent `try?`. The scan sheet keeps its
+                // generated PDFs alive until each save is acknowledged, so a
+                // failed write is retryable instead of silently destroyed.
+                var failures = 0
+                var lastSavedID: UUID?
                 for document in documents {
-                    _ = try? storage.save(document: document)
+                    do {
+                        let record = try storage.save(document: document)
+                        lastSavedID = record.id
+                    } catch {
+                        failures += 1
+                    }
+                }
+                if failures > 0 {
+                    scanSaveFailureCount = failures
+                }
+                reloadRecords()
+                if let id = lastSavedID {
+                    // Open the exact created document.
+                    showingScanner = false
+                    presentedViewerID = id
                 }
             }
             .interactiveDismissDisabled(scanModel.isConvertingForUI)
+        }
+        .navigationDestination(item: $presentedViewerID) { id in
+            PDFViewerView(recordID: id)
+        }
+        .alert("Couldn't save scan", isPresented: Binding(get: { scanSaveFailureCount > 0 },
+                                                          set: { if !$0 { scanSaveFailureCount = 0 } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(scanSaveFailureCount == 1
+                 ? "The scanned PDF couldn't be saved to your Library. Your pages are kept — try again."
+                 : "\(scanSaveFailureCount) documents couldn't be saved to your Library. Your pages are kept — try again.")
+        }
+        .sheet(isPresented: $showingOnboardingPaywall) {
+            PaywallView(feature: .webConversion,
+                        showsContinueFree: true)
+        }
+        .onAppear {
+            if !hasPresentedInitialProOffer {
+                hasPresentedInitialProOffer = true
+                if !EntitlementCenter.shared.isPro {
+                    showingOnboardingPaywall = true
+                }
+            }
         }
         .sheet(isPresented: $importer.showingPaywall) {
             PaywallView(feature: importer.requiresPro ?? .webConversion)
@@ -305,8 +357,11 @@ struct HomeView: View {
 
                 VStack(spacing: 8) {
                     ForEach(records.prefix(5)) { record in
-                        NavigationLink(value: LibraryRoute.viewer(recordID: record.id)) {
+                        Button {
+                            presentedViewerID = record.id
+                        } label: {
                             RecentPDFRow(record: record)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }

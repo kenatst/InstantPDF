@@ -22,6 +22,11 @@ final class EntitlementCenter: ObservableObject {
         case pending
         /// StoreKit unreachable or failed — treated as Free, never crashes.
         case unavailable(String)
+
+        var isUnavailable: Bool {
+            if case .unavailable = self { return true }
+            return false
+        }
     }
 
     nonisolated static let productIDs = [
@@ -30,8 +35,35 @@ final class EntitlementCenter: ObservableObject {
         "com.kenatst.pdfit.pro.lifetime",
     ]
     nonisolated static let snapshotKey = "entitlement.snapshot"
+#if DEBUG
+    /// DEBUG-ONLY developer override ("Settings → Developer → Force PDF It Pro").
+    /// Stored in the APP GROUP so the Share Extension honors it too, letting the
+    /// tester exercise Pro flows before App Store Connect products exist.
+    /// The Release compile of this property is hardcoded `false` — no user
+    /// default can ever unlock Pro in production.
+    nonisolated static let debugForceProKey = "debug.forcePro"
 
-    @Published private(set) var isPro: Bool = false
+    nonisolated static var debugForceProEnabled: Bool {
+        #if DEBUG
+        return UserDefaults(suiteName: AppConfiguration.appGroupIdentifier)?
+            .bool(forKey: debugForceProKey) ?? false
+        #else
+        return false
+        #endif
+    }
+#endif
+
+    /// Effective Pro state. The stored verdict comes from StoreKit
+    /// recomputation; in DEBUG builds the developer force-Pro toggle is OR-ed
+    /// at read time (never persisted into the extension-facing snapshot).
+    @Published private(set) var _storePro: Bool = false
+    var isPro: Bool {
+#if DEBUG
+        return _storePro || Self.debugForceProEnabled
+#else
+        return _storePro
+#endif
+    }
     @Published private(set) var status: Status = .idle
     @Published private(set) var products: [Product] = []
     @Published private(set) var expiresAt: Date?
@@ -49,7 +81,7 @@ final class EntitlementCenter: ObservableObject {
         // Adopt the last known state immediately so cold launch shows the
         // previous verdict before StoreKit answers.
         if let stored = Self.decodeSnapshot(defaults.string(forKey: Self.snapshotKey)) {
-            isPro = stored.pro
+            _storePro = stored.pro
             snapshotExpiration = stored.expires
         }
     }
@@ -96,7 +128,7 @@ final class EntitlementCenter: ObservableObject {
                 expiration = max(expiration ?? .distantPast, exp)
             }
         }
-        isPro = pro
+        _storePro = pro
         expiresAt = expiration
         status = pro ? .entitled : .notEntitled
         publishSnapshot()
@@ -156,26 +188,46 @@ final class EntitlementCenter: ObservableObject {
     private func loadProducts() {
         productsTask?.cancel()
         productsTask = Task { [weak self] in
+            // Bounded retry policy. An empty product list (App Store Connect
+            // products not yet created) is TERMINAL, not a transient error —
+            // the UI must show "unavailable", never an endless spinner.
             var attempt = 0
+            let maxAttempts = 3
             while !Task.isCancelled {
                 do {
                     let loaded = try await Product.products(for: Self.productIDs)
                     guard let self else { return }
+                    if loaded.isEmpty && attempt < maxAttempts - 1 {
+                        attempt += 1
+                        self.status = .loading
+                        let seconds = UInt64(pow(2.0, Double(attempt))) * 1_000_000_000
+                        try? await Task.sleep(nanoseconds: seconds)
+                        continue
+                    }
                     self.products = Self.sorted(loaded)
-                    if self.status == .loading || self.status == .idle {
+                    if self.status == .loading || self.status == .idle || self.status.isUnavailable {
                         self.status = self.isPro ? .entitled : .notEntitled
                     }
                     return
                 } catch {
                     attempt += 1
                     guard let self else { return }
+                    if attempt >= maxAttempts {
+                        self.status = .unavailable(error.localizedDescription)
+                        return
+                    }
                     self.status = .unavailable(error.localizedDescription)
-                    // Backoff: 2s, 4s, 8s… capped at 60s. No retry storm.
-                    let seconds = min(60, UInt64(pow(2.0, Double(attempt))) * 1_000_000_000)
+                    // Backoff: 2s, 4s… capped. No retry storm.
+                    let seconds = min(8, UInt64(pow(2.0, Double(attempt))) * 1_000_000_000)
                     try? await Task.sleep(nanoseconds: seconds)
                 }
             }
         }
+    }
+
+    /// Manual re-fetch (paywall Retry button).
+    func refreshProducts() {
+        loadProducts()
     }
 
     private static func sorted(_ products: [Product]) -> [Product] {
@@ -198,7 +250,10 @@ final class EntitlementCenter: ObservableObject {
     }
 
     private func publishSnapshot() {
-        let snapshot = Snapshot(pro: isPro,
+        // The snapshot reflects the REAL StoreKit verdict only — the DEBUG
+        // force-Pro override is a host/dev-side convenience and must never be
+        // persisted as an entitlement.
+        let snapshot = Snapshot(pro: _storePro,
                                 expires: expiresAt,
                                 updated: Date())
         guard let data = try? JSONEncoder().encode(snapshot),
@@ -222,9 +277,14 @@ final class EntitlementCenter: ObservableObject {
 extension EntitlementCenter: EntitlementReading {}
 
 /// Extension-side entitlement view: reads ONLY the App Group snapshot.
+/// In DEBUG builds the developer force-Pro toggle (host app → Settings →
+/// Developer) is honored so the tester can exercise Pro conversion before
+/// App Store Connect products exist. Release builds ignore it entirely.
 enum ExtensionEntitlement {
-    /// True when the latest snapshot says Pro AND it hasn't expired.
     static var isPro: Bool {
+#if DEBUG
+        if EntitlementCenter.debugForceProEnabled { return true }
+#endif
         guard let defaults = UserDefaults(suiteName: AppConfiguration.appGroupIdentifier),
               let snapshot = EntitlementCenter.currentSnapshot(fromDefaults: defaults) else {
             return false

@@ -122,6 +122,10 @@ struct SettingsView: View {
                 LabeledContent("Version", value: appVersion)
                 LabeledContent("Creator Tag", value: String(localized: "PDFs are tagged “PDF It” in their metadata"))
             }
+
+#if DEBUG
+            developerSection
+#endif
         }
         .scrollContentBackground(colorScheme == .dark ? .hidden : .visible)
         .background(colorScheme == .dark ? Theme.Colors.darkBackground.ignoresSafeArea() : Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
@@ -159,4 +163,34 @@ struct SettingsView: View {
         recordCount = records.count
         totalBytes = records.reduce(0) { $0 + $1.fileSize }
     }
+
+#if DEBUG
+    /// DEBUG-ONLY developer surface. Lets the tester run the whole app —
+    /// including the Share Extension via the App Group flag — as Pro before
+    /// App Store Connect products exist. Compiled out of Release entirely.
+    @State private var forcePro = EntitlementCenter.debugForceProEnabled
+
+    @ViewBuilder
+    private var developerSection: some View {
+        Section {
+            Toggle("Force PDF It Pro", isOn: $forcePro)
+                .tint(Theme.Colors.orangePrimary)
+                .onChange(of: forcePro) { _, enabled in
+                    UserDefaults(suiteName: AppConfiguration.appGroupIdentifier)?
+                        .set(enabled, forKey: EntitlementCenter.debugForceProKey)
+                    // Refresh gating everywhere + republish extension-visible state.
+                    Task {
+                        await EntitlementCenter.shared.recompute()
+                        // isPro may not change (force-Pro is a read-time OR);
+                        // nudge observers so gates re-evaluate immediately.
+                        EntitlementCenter.shared.objectWillChange.send()
+                    }
+                }
+        } header: {
+            Text("Developer")
+        } footer: {
+            Text("DEBUG builds only. Forces every Pro feature, in the app and the Share Extension. Not present in release.")
+        }
+    }
+#endif
 }

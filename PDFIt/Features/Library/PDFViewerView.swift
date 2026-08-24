@@ -1,7 +1,18 @@
 import SwiftUI
 import PDFKit
-import UIKit
 import UniformTypeIdentifiers
+
+/// The tool a user activated from the Viewer. Identifiable so
+/// `.sheet(item:)` presentation carries stable context.
+enum PDFToolKind: String, CaseIterable, Identifiable {
+    case tools
+    case compress
+    case sign
+    case extract
+    case recognizeText
+
+    var id: String { rawValue }
+}
 
 /// Refined dark-chrome PDF Viewer with floating action bar and native document controls.
 /// Identity contract: constructed with a persistent record ID, the viewer
@@ -20,6 +31,8 @@ struct PDFViewerView: View {
     @State private var newName = ""
     @State private var showingExporter = false
     @State private var activeTool: PDFToolKind?
+    /// A tool just produced a new document — navigate straight to it.
+    @State private var outputID: UUID?
 
     private let storage = StorageManager.shared
 
@@ -68,10 +81,14 @@ struct PDFViewerView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .onAppear { resolve() }
         .sheet(item: $activeTool) { tool in
-            PDFToolsHostView(recordID: recordID) {
-                // A tool produced a new document — refresh title/state.
-                resolve()
+            PDFToolsHostView(recordID: recordID) { createdID in
+                // The tool's output IS the next screen — no back-back-Library.
+                activeTool = nil
+                outputID = createdID
             }
+        }
+        .navigationDestination(item: $outputID) { id in
+            PDFViewerView(recordID: id)
         }
         .alert("Rename", isPresented: $showingRename) {
             TextField("Name", text: $newName)

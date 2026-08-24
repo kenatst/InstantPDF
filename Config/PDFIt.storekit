@@ -1,0 +1,91 @@
+{
+  "identifier" : "PDFItStoreKitConfig",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "24.99",
+      "familyShareable" : false,
+      "internalID" : "A10000000000000001",
+      "localizations" : [
+        {
+          "description" : "Every Pro feature, forever. One purchase.",
+          "displayName" : "PDF It Pro Lifetime",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.kenatst.pdfit.pro.lifetime",
+      "referenceName" : "Pro Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "A100000000000000F1",
+      "localizations" : [
+
+      ],
+      "name" : "PDF It Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "14.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "A10000000000000002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "All Pro features for a full year.",
+              "displayName" : "PDF It Pro Annual",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.kenatst.pdfit.pro.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Pro Annual",
+          "subscriptionGroupID" : "A100000000000000F1",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "1.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "A10000000000000003",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "All Pro features, billed monthly.",
+              "displayName" : "PDF It Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.kenatst.pdfit.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Pro Monthly",
+          "subscriptionGroupID" : "A100000000000000F1",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

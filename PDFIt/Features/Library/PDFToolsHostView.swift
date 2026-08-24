@@ -1,24 +1,15 @@
 import SwiftUI
 import PDFKit
 
-/// The tool a user activated from the Viewer. Identifiable so
-/// `.sheet(item:)` presentation carries stable context.
-enum PDFToolKind: String, CaseIterable, Identifiable {
-    case tools
-    case compress
-    case sign
-    case extract
-    case recognizeText
-
-    var id: String { rawValue }
-}
-
 /// Host sheet for all PDF tools operating on one document (by persistent ID).
 /// Every tool writes its output as a NEW Library record; the original file
-/// bytes are never modified.
+/// bytes are never modified. On success the host reports the NEW record UUID
+/// through `onOutputCreated`, and the presenting viewer navigates straight
+/// to the result — no manual back-back-find-your-output dance.
 struct PDFToolsHostView: View {
     let recordID: UUID
-    var onDocumentCreated: () -> Void = {}
+    /// Called with the freshly created document's persistent ID.
+    var onOutputCreated: (UUID) -> Void = { _ in }
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
@@ -31,8 +22,8 @@ struct PDFToolsHostView: View {
     @State private var compressionPreset: PDFTools.CompressionPreset = .balanced
     @State private var compressionResultSize: Int?
     @State private var compressionOriginalSize: Int?
-    @State private var pendingCompressedData: Data?
     // Signature state
+    @ObservedObject private var signatureStore = SignatureStore.shared
     @State private var signatureImage: UIImage?
     @State private var signaturePage = 1
     @State private var signatureScale: CGFloat = 1.0
@@ -44,6 +35,9 @@ struct PDFToolsHostView: View {
     // Shared output name
     @State private var outputName = ""
     @State private var savedMessage: String?
+    @State private var errorMessage: String?
+    // Paywall (locked tool tapped)
+    @State private var paywallFeature: ProFeature?
 
     private let storage = StorageManager.shared
 
@@ -83,9 +77,17 @@ struct PDFToolsHostView: View {
                 SignatureCanvasView { image in
                     signatureImage = image
                     showingSignatureCanvas = false
-                } onClear: {
-                    signatureImage = nil
+                    outputName = "\(record?.displayName ?? "Document") — Signed"
                 }
+            }
+            .sheet(item: $paywallFeature) { feature in
+                PaywallView(feature: feature)
+            }
+            .alert("Tool failed", isPresented: Binding(get: { errorMessage != nil },
+                                                       set: { if !$0 { errorMessage = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage ?? "")
             }
         }
         .onAppear(perform: load)
@@ -112,7 +114,8 @@ struct PDFToolsHostView: View {
         return "\(base) — \(suffix)"
     }
 
-    /// Saves finished data as a NEW library record.
+    /// Saves finished data as a NEW library record and hands its UUID to the
+    /// presenter for immediate navigation. A failed save is USER-VISIBLE.
     @discardableResult
     private func saveOutput(_ data: Data, source: ContentSource) -> StoredPDFRecord? {
         let document = ConvertedDocument(data: data,
@@ -120,12 +123,16 @@ struct PDFToolsHostView: View {
                                          suggestedTitle: outputName,
                                          sourceURL: record.map { URL(string: $0.sourceURL ?? "") }.flatMap { $0 },
                                          source: source)
-        let saved = try? storage.save(document: document)
-        if saved != nil {
+        do {
+            let saved = try storage.save(document: document)
             savedMessage = String(localized: "Saved to Library.")
-            onDocumentCreated()
+            dismiss()
+            onOutputCreated(saved.id)
+            return saved
+        } catch {
+            errorMessage = String(localized: "The result couldn't be saved to your Library.")
+            return nil
         }
-        return saved
     }
 
     // MARK: - Menu
@@ -153,10 +160,12 @@ struct PDFToolsHostView: View {
         let locked = feature.map { !FeaturePolicy.isUnlocked($0, entitlement: entitlements) } ?? false
         return Button {
             if locked {
-                // Route through the host app paywall by presenting inline gate.
-                section = section // no-op; the row shows PRO badge and opens paywall below
+                // Contextual paywall ON INTENT — never a silent no-op, never
+                // executing a gated action anyway.
+                paywallFeature = feature
+            } else {
+                action()
             }
-            action()
         } label: {
             HStack {
                 Label(LocalizedStringKey(title), systemImage: symbol)
@@ -216,20 +225,19 @@ struct PDFToolsHostView: View {
                     let originalBytes = (try? Data(contentsOf: url).count) ?? 0
                     if result.byteCount < originalBytes {
                         outputName = "\(record.displayName) — Compressed"
+                        isProcessing = false
                         _ = saveOutput(result.data, source: record.contentSource)
                     } else {
-                        // Honest outcome: nothing to gain.
-                        progressText = ""
+                        // Honest outcome: nothing to gain — no bigger "compressed" copy.
+                        isProcessing = false
+                        section = .menu
                         savedMessage = String(localized: "This PDF is already well optimized — no smaller copy was created.")
-                        pendingCompressedData = nil
                     }
-                    isProcessing = false
-                    if pendingCompressedData == nil { /* stay on results */ }
                 }
             } catch {
                 await MainActor.run {
                     isProcessing = false
-                    savedMessage = String(localized: "Compression failed.")
+                    errorMessage = String(localized: "Compression failed.")
                 }
             }
         }
@@ -247,6 +255,15 @@ struct PDFToolsHostView: View {
                         .frame(height: 80)
                         .background(Color.white.cornerRadius(8))
                     Button("Redraw") { showingSignatureCanvas = true }
+                } else if let saved = signatureStore.savedImage {
+                    Image(uiImage: saved)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 60)
+                        .background(Color.white.cornerRadius(8))
+                    Button("Use Saved Signature") { signatureImage = saved }
+                    Button("Create New Signature") { showingSignatureCanvas = true }
+                    Button("Delete Signature", role: .destructive) { signatureStore.delete() }
                 } else {
                     Button("Create Signature") { showingSignatureCanvas = true }
                 }
@@ -274,11 +291,6 @@ struct PDFToolsHostView: View {
                 }
             }
         }
-        .onChange(of: showingSignatureCanvas) { _, showing in
-            if !showing && signatureImage != nil {
-                outputName = "\(record?.displayName ?? "Document") — Signed"
-            }
-        }
     }
 
     private func applySignature() {
@@ -298,14 +310,13 @@ struct PDFToolsHostView: View {
                                                          normalizedRect: rect)
                 await MainActor.run {
                     outputName = "\(record.displayName) — Signed"
-                    _ = saveOutput(signed, source: record.contentSource)
                     isProcessing = false
-                    section = .menu
+                    _ = saveOutput(signed, source: record.contentSource)
                 }
             } catch {
                 await MainActor.run {
                     isProcessing = false
-                    savedMessage = String(localized: "Signing failed.")
+                    errorMessage = String(localized: "Signing failed.")
                 }
             }
         }
@@ -377,14 +388,13 @@ struct PDFToolsHostView: View {
                 let extracted = try PDFTools.extractPages(from: url, pageNumbers: ordered)
                 await MainActor.run {
                     outputName = "\(record.displayName) — Extract"
-                    _ = saveOutput(extracted, source: record.contentSource)
                     isProcessing = false
-                    section = .menu
+                    _ = saveOutput(extracted, source: record.contentSource)
                 }
             } catch {
                 await MainActor.run {
                     isProcessing = false
-                    savedMessage = String(localized: "Extraction failed.")
+                    errorMessage = String(localized: "Extraction failed.")
                 }
             }
         }
@@ -419,14 +429,13 @@ struct PDFToolsHostView: View {
                 let searchable = try await OCRRouter.makeSearchablePDF(from: url)
                 await MainActor.run {
                     outputName = "\(record.displayName) — Searchable"
-                    _ = saveOutput(searchable, source: record.contentSource)
                     isProcessing = false
-                    section = .menu
+                    _ = saveOutput(searchable, source: record.contentSource)
                 }
             } catch {
                 await MainActor.run {
                     isProcessing = false
-                    savedMessage = String(localized: "Text recognition failed.")
+                    errorMessage = String(localized: "Text recognition failed.")
                 }
             }
         }
@@ -466,11 +475,13 @@ private struct ExtractPageCell: View {
                         .foregroundStyle(isSelected ? Theme.Colors.orangePrimary : Color.white)
                         .shadow(radius: 2)
                         .padding(4)
+                        .allowsHitTesting(false)
                 }
                 Text("\(pageNumber)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .task {
@@ -483,151 +494,3 @@ private struct ExtractPageCell: View {
         }
     }
 }
-
-// MARK: - Signature drawing canvas
-
-struct SignatureCanvasView: View {
-    @Environment(\.dismiss) private var dismiss
-    var onDone: (UIImage) -> Void
-    var onClear: () -> Void = {}
-
-    @State private var strokes: [[CGPoint]] = []
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Text("Sign below with your finger or Apple Pencil.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                Canvas { context, size in
-                    for stroke in strokes where stroke.count > 1 {
-                        var path = Path()
-                        path.move(to: stroke[0])
-                        for point in stroke.dropFirst() {
-                            path.addLine(to: point)
-                        }
-                        context.stroke(path, with: .color(.black),
-                                       style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                    }
-                }
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            if strokes.last != nil, value.translation.width != .zero || true {
-                                strokes[strokes.count - 1].append(value.location)
-                            }
-                        }
-                        .onEnded { _ in }
-                )
-                .background(
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(Color.white)
-                        .shadow(color: .black.opacity(0.08), radius: 6, y: 2)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .strokeBorder(Color.secondary.opacity(0.35),
-                                      style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
-                )
-                .padding(.horizontal, 20)
-
-                HStack(spacing: 14) {
-                    Button("Clear") {
-                        strokes.removeAll()
-                        onClear()
-                    }
-                    .secondaryDarkButton()
-
-                    Button("Done") {
-                        renderSignature { image in
-                            if let image {
-                                onDone(image)
-                                dismiss()
-                            }
-                        }
-                    }
-                    .primaryOrangeButton()
-                    .disabled(strokes.isEmpty)
-                }
-                .padding(.horizontal, 20)
-            }
-            .themeBackground()
-            .navigationTitle("Create Signature")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-        }
-    }
-
-    /// Renders strokes to a transparent PNG trimmed to ink bounds.
-    private func renderSignature(completion: @escaping (UIImage?) -> Void) {
-        let canvasSize = CGSize(width: 800, height: 320)
-        let renderer = UIGraphicsImageRenderer(size: canvasSize, format: {
-            let f = UIGraphicsImageRendererFormat()
-            f.scale = 2
-            f.opaque = false
-            return f
-        }())
-        let image = renderer.image { ctx in
-            UIColor.clear.setFill()
-            ctx.fill(CGRect(origin: .zero, size: canvasSize))
-            UIColor.black.setStroke()
-            for stroke in strokes where stroke.count > 1 {
-                let path = UIBezierPath()
-                // Map from view coordinates to canvas coordinates.
-                let viewSize = CGSize(width: UIScreen.main.bounds.width - 40,
-                                      height: UIScreen.main.bounds.height * 0.4)
-                path.move(to: CGPoint(x: stroke[0].x / max(viewSize.width, 1) * canvasSize.width,
-                                      y: stroke[0].y / max(viewSize.height, 1) * canvasSize.height))
-                for point in stroke.dropFirst() {
-                    path.addLine(to: CGPoint(x: point.x / max(viewSize.width, 1) * canvasSize.width,
-                                             y: point.y / max(viewSize.height, 1) * canvasSize.height))
-                }
-                path.lineWidth = 6
-                path.lineCapStyle = .round
-                path.stroke()
-            }
-        }
-        completion(image.trimmedToInk())
-    }
-}
-
-extension UIImage {
-    /// Crops fully-transparent margins so signature placement scales
-    /// predictably. Falls back to the original image when ink bounds cannot
-    /// be determined.
-    func trimmedToInk() -> UIImage? {
-        guard let cgImage = self.cgImage else { return nil }
-        let width = cgImage.width
-        let height = cgImage.height
-        guard let data = cgImage.dataProvider?.data,
-              let bytes = CFDataGetBytePtr(data) else { return self }
-        let bytesPerPixel = cgImage.bitsPerPixel / 8
-        let bytesPerRow = cgImage.bytesPerRow
-
-        var minX = width, minY = height, maxX = 0, maxY = 0
-        for y in 0..<height {
-            for x in 0..<width {
-                let offset = y * bytesPerRow + x * bytesPerPixel
-                let alpha = bytesPerPixel == 4 ? bytes[offset + 3] : 255
-                if alpha > 8 {
-                    minX = min(minX, x); minY = min(minY, y)
-                    maxX = max(maxX, x); maxY = max(maxY, y)
-                }
-            }
-        }
-        guard maxX >= minX, maxY >= minY else { return nil } // no ink at all
-        let inset = 4
-        minX = max(0, minX - inset); minY = max(0, minY - inset)
-        maxX = min(width - 1, maxX + inset); maxY = min(height - 1, maxY + inset)
-        let cropRect = CGRect(x: minX, y: minY,
-                              width: maxX - minX + 1, height: maxY - minY + 1)
-        guard let cropped = cgImage.cropping(to: cropRect) else { return self }
-        return UIImage(cgImage: cropped)
-    }
-}
-
