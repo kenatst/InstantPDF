@@ -120,22 +120,16 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $importer.showingPaywall) {
-#if DEBUG
             PaywallView(feature: importer.requiresPro ?? .webConversion,
                         onVerifiedPurchase: { feature in
                 // Contextual purchase (Link, etc.): run the activation flow,
                 // then RESUME the exact action that was requested.
                 showingProActivation = true
-            }, onDebugDemoMode: { intent in
+            }, onDemoMode: { intent in
                 // Demo Mode is not a purchase: resume immediately without
                 // celebration or changing real purchase state.
                 handleProActivationCompletion(intent)
             })
-#else
-            PaywallView(feature: importer.requiresPro ?? .webConversion) { _ in
-                showingProActivation = true
-            }
-#endif
         }
         .fileImporter(isPresented: $importer.showingFileImporter,
                       allowedContentTypes: [.image, .pdf, .text, .plainText, .html, .rtf],
@@ -219,7 +213,7 @@ struct HomeView: View {
                 .font(.system(size: 23, weight: .black, design: .rounded))
                 .kerning(1.2)
                 .foregroundStyle(colorScheme == .dark ? .white : Theme.Colors.ink)
-                .accessibilityLabel("PDF It")
+                .accessibilityLabel("PDFIT")
 
             HStack {
                 Spacer()

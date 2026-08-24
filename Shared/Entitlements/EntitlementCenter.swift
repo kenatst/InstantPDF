@@ -35,6 +35,15 @@ final class EntitlementCenter: ObservableObject {
         "com.kenatst.pdfit.pro.lifetime",
     ]
     nonisolated static let snapshotKey = "entitlement.snapshot"
+    /// A user-facing local demo. It is deliberately stored in the App Group
+    /// so the host app and Share Extension expose the same unlocked feature
+    /// set while someone evaluates PDFIT Pro on their own device.
+    nonisolated static let demoModeKey = "entitlement.demoMode"
+
+    nonisolated static var demoModeEnabled: Bool {
+        UserDefaults(suiteName: AppConfiguration.appGroupIdentifier)?
+            .bool(forKey: demoModeKey) ?? false
+    }
 #if DEBUG
     /// DEBUG-ONLY developer override ("Settings → Developer → Force PDF It Pro").
     /// Stored in the APP GROUP so the Share Extension honors it too, letting the
@@ -59,11 +68,19 @@ final class EntitlementCenter: ObservableObject {
     }
 #endif
 
-    /// Effective Pro state. The stored verdict comes from StoreKit
-    /// recomputation; in DEBUG builds the developer force-Pro toggle is OR-ed
-    /// at read time (never persisted into the extension-facing snapshot).
+    /// Enables or ends the local Pro demo. This is not a StoreKit purchase;
+    /// it exists so every gated workflow can be evaluated before checkout.
+    func setDemoMode(_ enabled: Bool) {
+        defaults.set(enabled, forKey: Self.demoModeKey)
+        publishSnapshot()
+        objectWillChange.send()
+    }
+
+    /// Effective Pro state. A local Demo Mode deliberately uses the same
+    /// gates as a verified purchase, including the Share Extension.
     @Published private(set) var _storePro: Bool = false
     var isPro: Bool {
+        if Self.demoModeEnabled { return true }
 #if DEBUG
         return _storePro || Self.debugForceProEnabled
 #else
@@ -73,6 +90,8 @@ final class EntitlementCenter: ObservableObject {
     @Published private(set) var status: Status = .idle
     @Published private(set) var products: [Product] = []
     @Published private(set) var expiresAt: Date?
+
+    var isDemoMode: Bool { Self.demoModeEnabled }
 
     /// Expiration instant carried in the last published snapshot (if any).
     private(set) var snapshotExpiration: Date?
@@ -256,10 +275,9 @@ final class EntitlementCenter: ObservableObject {
     }
 
     private func publishSnapshot() {
-        // The snapshot reflects the REAL StoreKit verdict only — the DEBUG
-        // force-Pro override is a host/dev-side convenience and must never be
-        // persisted as an entitlement.
-        let snapshot = Snapshot(pro: _storePro,
+        // The extension does not run StoreKit, so publish the effective
+        // verdict. This keeps a local demo consistent across both processes.
+        let snapshot = Snapshot(pro: isPro,
                                 expires: expiresAt,
                                 updated: Date())
         guard let data = try? JSONEncoder().encode(snapshot),
@@ -282,12 +300,11 @@ final class EntitlementCenter: ObservableObject {
 
 extension EntitlementCenter: EntitlementReading {}
 
-/// Extension-side entitlement view: reads ONLY the App Group snapshot.
-/// In DEBUG builds the developer force-Pro toggle (host app → Settings →
-/// Developer) is honored so the tester can exercise Pro conversion before
-/// App Store Connect products exist. Release builds ignore it entirely.
+/// Extension-side entitlement view: reads the shared snapshot plus the local
+/// Demo Mode flag. In DEBUG builds it also honors the developer override.
 enum ExtensionEntitlement {
     static var isPro: Bool {
+        if EntitlementCenter.demoModeEnabled { return true }
 #if DEBUG
         if EntitlementCenter.debugForceProEnabled { return true }
 #endif

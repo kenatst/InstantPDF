@@ -19,15 +19,20 @@ struct LibraryGridCard: View {
                     .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Theme.Colors.surfaceMuted)
 
                 if let image = StorageManager.shared.thumbnailImage(for: record) {
-                    Color.clear
+                    // A fixed paper viewport prevents very tall PDFs (such
+                    // as phone screenshots) from collapsing into a thin,
+                    // unreadable vertical strip. The preview crops only its
+                    // thumbnail; the original PDF remains untouched.
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 112, height: 146)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         .overlay(
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFit()
-                                .padding(9)
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.16 : 0.74), lineWidth: 1)
                         )
-                        .frame(maxWidth: .infinity, maxHeight: 164)
-                        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                        .shadow(color: Color.black.opacity(0.16), radius: 5, y: 3)
                         .allowsHitTesting(false)
                 } else {
                     Image(systemName: "doc.text.fill")

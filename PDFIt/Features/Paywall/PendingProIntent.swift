@@ -31,25 +31,24 @@ enum PendingProIntent {
     }
 }
 
-#if DEBUG
-/// PRE-LAUNCH DEBUG DEMO MODE
-/// Remove before App Store production release.
-///
-/// Activates the same App Group debug entitlement used by Settings, returns
-/// the exact staged intent so the presenting feature can resume immediately,
-/// and clears the transient intent without recording a purchase or activation.
+/// Activates the local Pro demo, returns the exact staged intent so the
+/// presenting feature can resume immediately, and clears the transient intent
+/// without recording a purchase or activation.
 @MainActor
-enum DebugProDemoMode {
+enum ProDemoMode {
     static func activate(_ feature: ProFeature,
                          entitlementCenter: EntitlementCenter) -> ProIntent {
         PendingProIntent.stage(feature)
-        entitlementCenter.setDebugProOverride(true)
+        entitlementCenter.setDemoMode(true)
         let intent = PendingProIntent.current ?? feature
         PendingProIntent.clear()
         return intent
     }
 }
-#endif
+
+/// Source compatibility for internal test targets written before Demo Mode
+/// was made available in release builds.
+typealias DebugProDemoMode = ProDemoMode
 
 /// One-time activation-walkthrough bookkeeping.
 ///

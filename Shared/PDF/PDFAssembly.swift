@@ -38,7 +38,7 @@ enum PDFAssembly {
         guard let document = PDFDocument(data: data) else { return data }
         var attributes = document.documentAttributes ?? [:]
         attributes[PDFDocumentAttribute.titleAttribute] = title
-        attributes[PDFDocumentAttribute.creatorAttribute] = "PDF It"
+        attributes[PDFDocumentAttribute.creatorAttribute] = "PDFIT"
         if let urlString = sourceURL?.absoluteString {
             // Subject, not keywords — stays out of Spotlight-hungry fields.
             attributes[PDFDocumentAttribute.subjectAttribute] = "Source: \(urlString)"

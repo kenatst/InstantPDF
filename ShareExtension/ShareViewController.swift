@@ -49,7 +49,7 @@ final class ShareViewController: UIViewController, UIGestureRecognizerDelegate {
 
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.text = "PDF It"
+        label.text = "PDFIT"
         label.font = .systemFont(ofSize: 12, weight: .semibold)
         label.textColor = .secondaryLabel
         label.textAlignment = .center

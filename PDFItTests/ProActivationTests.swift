@@ -3,7 +3,7 @@ import XCTest
 
 /// Contracts for the Pro activation experience: trigger discipline
 /// (verified purchase ONLY), pending-intent preservation across the flow,
-/// one-time persistence, and DEBUG-only QA surfaces.
+/// one-time persistence, and local Demo Mode.
 final class ProActivationTests: XCTestCase {
 
     @MainActor
@@ -11,6 +11,7 @@ final class ProActivationTests: XCTestCase {
         super.setUp()
         ProActivationState.resetWelcomeState()
         PendingProIntent.clear()
+        AppConfiguration.sharedDefaults.set(false, forKey: EntitlementCenter.demoModeKey)
 #if DEBUG
         let defaults = AppConfiguration.sharedDefaults
         defaults.set(false, forKey: EntitlementCenter.debugForceProKey)
@@ -21,6 +22,7 @@ final class ProActivationTests: XCTestCase {
     override func tearDown() {
         ProActivationState.resetWelcomeState()
         PendingProIntent.clear()
+        AppConfiguration.sharedDefaults.removeObject(forKey: EntitlementCenter.demoModeKey)
 #if DEBUG
         AppConfiguration.sharedDefaults.removeObject(forKey: EntitlementCenter.debugForceProKey)
 #endif
@@ -118,7 +120,7 @@ final class ProActivationTests: XCTestCase {
         XCTAssertNil(PendingProIntent.current)
     }
 
-    // MARK: - DEBUG surfaces
+    // MARK: - Demo Mode
 
 #if DEBUG
     @MainActor
@@ -135,22 +137,22 @@ final class ProActivationTests: XCTestCase {
     }
 
     @MainActor
-    func testDebugDemoModeUnlocksHostAndShareExtension() {
+    func testDemoModeUnlocksHostAndShareExtension() {
         let center = EntitlementCenter(defaults: AppConfiguration.sharedDefaults)
         XCTAssertFalse(center.isPro)
         XCTAssertFalse(ExtensionEntitlement.isPro)
 
-        _ = DebugProDemoMode.activate(.compression, entitlementCenter: center)
+        _ = ProDemoMode.activate(.compression, entitlementCenter: center)
 
-        XCTAssertTrue(center.isPro, "Demo Mode must unlock the host through the shared DEBUG entitlement")
+        XCTAssertTrue(center.isPro, "Demo Mode must unlock the host through the shared entitlement")
         XCTAssertTrue(ExtensionEntitlement.isPro,
-                      "the Share Extension must read the same App Group DEBUG entitlement")
+                      "the Share Extension must read the same App Group entitlement")
     }
 
     @MainActor
-    func testDebugDemoModeReturnsAndClearsExactPendingIntent() {
+    func testDemoModeReturnsAndClearsExactPendingIntent() {
         let center = EntitlementCenter(defaults: AppConfiguration.sharedDefaults)
-        let resumed = DebugProDemoMode.activate(.signature, entitlementCenter: center)
+        let resumed = ProDemoMode.activate(.signature, entitlementCenter: center)
 
         XCTAssertEqual(resumed, .signature)
         XCTAssertEqual(PDFToolsHostView.section(for: resumed), .sign)
@@ -160,7 +162,7 @@ final class ProActivationTests: XCTestCase {
     }
 
     @MainActor
-    func testDebugDemoModeResumesExactStagedWebRequest() {
+    func testDemoModeResumesExactStagedWebRequest() {
         let model = ImportFlowModel()
         let url = URL(string: "https://example.com/exact-demo-request")!
         var options = ConversionOptions.fromSharedDefaults()
@@ -177,7 +179,7 @@ final class ProActivationTests: XCTestCase {
         XCTAssertEqual(model.debugPendingProRequest?.options.mode, .reader)
         XCTAssertEqual(model.debugPendingProRequest?.options.paperSize, .letter)
 
-        _ = DebugProDemoMode.activate(.webConversion, entitlementCenter: .shared)
+        _ = ProDemoMode.activate(.webConversion, entitlementCenter: .shared)
         XCTAssertTrue(model.resumePendingProConversion())
         XCTAssertTrue(model.isConverting)
         XCTAssertFalse(model.showingPaywall)
@@ -186,7 +188,7 @@ final class ProActivationTests: XCTestCase {
         model.cancel()
     }
 
-    func testDemoModeProductionPathsAreCompilerGated() throws {
+    func testDemoModeUsesAReleaseVisibleSharedEntitlement() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         for relativePath in [
             "PDFIt/Features/Paywall/PaywallView.swift",
@@ -194,12 +196,8 @@ final class ProActivationTests: XCTestCase {
             "Shared/Entitlements/EntitlementCenter.swift"
         ] {
             let source = try String(contentsOf: root.appendingPathComponent(relativePath), encoding: .utf8)
-            guard let demoRange = source.range(of: "PRE-LAUNCH DEBUG DEMO MODE") else {
-                return XCTFail("Missing documented removal marker in \(relativePath)")
-            }
-            let prefix = source[..<demoRange.lowerBound]
-            XCTAssertNotNil(prefix.range(of: "#if DEBUG", options: .backwards),
-                            "Demo Mode must be inside a DEBUG compiler block in \(relativePath)")
+            XCTAssertTrue(source.contains("Demo Mode") || source.contains("demoMode"),
+                          "Demo Mode must remain available in \(relativePath)")
         }
     }
 #endif

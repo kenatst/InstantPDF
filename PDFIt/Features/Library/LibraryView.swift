@@ -19,7 +19,7 @@ struct LibraryView: View {
     @State private var activeFolderID: UUID?
     @State private var renamingRecord: StoredPDFRecord?
     @State private var newName = ""
-    @State private var showingImporter = false
+    @StateObject private var importer = ImportFlowModel()
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.pdfItLanguage) private var languageOverride
@@ -146,6 +146,13 @@ struct LibraryView: View {
             Button("Save") { performRenameFolder() }
             Button("Cancel", role: .cancel) { renamingFolder = nil }
         }
+        .confirmationDialog("Delete Folder",
+                            isPresented: Binding(get: { deleteCandidate != nil },
+                                                 set: { if !$0 { deleteCandidate = nil } }),
+                            titleVisibility: .visible) {
+            Button("Delete Folder", role: .destructive) { performDeleteFolder(deletingDocuments: false) }
+            Button("Cancel", role: .cancel) { deleteCandidate = nil }
+        }
         .sheet(isPresented: $showingMergeReorder) {
             if let ordered = orderedSelectionForMerge() {
                 MergeReorderSheet(records: ordered) { mergedOrder in
@@ -172,6 +179,27 @@ struct LibraryView: View {
             case .viewer(let recordID):
                 PDFViewerView(recordID: recordID)
             }
+        }
+        .fileImporter(isPresented: $importer.showingFileImporter,
+                      allowedContentTypes: [.pdf],
+                      allowsMultipleSelection: true) { result in
+            importer.handleFileImporter(result: result)
+        }
+        .sheet(isPresented: $importer.showingResult) {
+            if let result = importer.result {
+                ConversionResultSheet(document: result)
+            }
+        }
+        .sheet(isPresented: $importer.showingError) {
+            if let error = importer.failure {
+                ConversionErrorSheet(error: error,
+                                     onRetry: { importer.retry() },
+                                     offerLinkAsPDF: false,
+                                     onSaveLinkAsPDF: nil)
+            }
+        }
+        .onChange(of: importer.showingResult) { _, isShowing in
+            if isShowing { reload() }
         }
     }
 
@@ -233,7 +261,7 @@ struct LibraryView: View {
             } else {
                 Menu {
                     Button {
-                        showingImporter = true
+                        importer.showingFileImporter = true
                     } label: {
                         Label("Import PDF", systemImage: "square.and.arrow.down")
                     }
@@ -323,12 +351,13 @@ struct LibraryView: View {
                             selected: Bool,
                             isRoot: Bool,
                             folder: PDFLibraryFolder? = nil) -> some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                activeFolderID = isRoot ? nil : folder?.id
-            }
-        } label: {
-            HStack(spacing: Theme.Spacing.sm) {
+        HStack(spacing: Theme.Spacing.sm) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    activeFolderID = isRoot ? nil : folder?.id
+                }
+            } label: {
+                HStack(spacing: Theme.Spacing.sm) {
                 Image(systemName: symbol)
                     .font(.system(size: 18, weight: .semibold))
                     .frame(width: 36, height: 36)
@@ -344,27 +373,31 @@ struct LibraryView: View {
                         .font(.caption2)
                         .opacity(0.65)
                 }
-                if let folder {
-                    Menu {
-                        Button {
-                            renamedFolderName = folder.name
-                            renamingFolder = folder
-                        } label: {
-                            Label("Rename", systemImage: "pencil")
-                        }
-                        Button(role: .destructive) {
-                            deleteCandidate = folder
-                        } label: {
-                            Label("Delete Folder", systemImage: "trash")
-                        }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            if let folder {
+                Menu {
+                    Button {
+                        renamedFolderName = folder.name
+                        renamingFolder = folder
                     } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.caption2.weight(.bold))
-                            .padding(6)
-                            .contentShape(Circle())
+                        Label("Rename", systemImage: "pencil")
                     }
+                    Button(role: .destructive) {
+                        deleteCandidate = folder
+                    } label: {
+                        Label("Delete Folder", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.caption2.weight(.bold))
+                        .padding(6)
+                        .contentShape(Circle())
                 }
             }
+        }
             .padding(.horizontal, Theme.Spacing.sm)
             .padding(.vertical, Theme.Spacing.sm)
             .frame(minWidth: 142, minHeight: 64, alignment: .leading)
@@ -378,7 +411,6 @@ struct LibraryView: View {
                     )
                     .shadow(color: colorScheme == .dark ? .black.opacity(0.22) : Color(hex: "6F4D35").opacity(0.065), radius: 10, y: 5)
             )
-        }
         .buttonStyle(.plain)
     }
 
@@ -521,6 +553,18 @@ struct LibraryView: View {
         _ = try? storage.renameFolder(folder, to: renamedFolderName)
         renamingFolder = nil
         reload()
+    }
+
+    private func performDeleteFolder(deletingDocuments: Bool) {
+        guard let folder = deleteCandidate else { return }
+        do {
+            try storage.deleteFolder(folder, deletingDocuments: deletingDocuments)
+            if activeFolderID == folder.id { activeFolderID = nil }
+            deleteCandidate = nil
+            reload()
+        } catch {
+            deleteCandidate = nil
+        }
     }
 
     // MARK: - Selection

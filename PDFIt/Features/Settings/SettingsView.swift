@@ -164,6 +164,17 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.Colors.orangePrimary)
             }
         }
+        // Keep sheet presenters on the stable root view. Attaching them to
+        // `proSection` made its identity change when the entitlement updated,
+        // which is why the Settings paywall could immediately dismiss.
+        .sheet(isPresented: $showingProPaywall) {
+            PaywallView(feature: .webConversion, onVerifiedPurchase: { _ in
+                showingActivationPreview = true
+            })
+        }
+        .sheet(isPresented: $showingActivationPreview) {
+            ProActivationFlow { _ in }
+        }
         .onAppear {
             languageOverride = LanguageManager.current
             reloadStorage()
@@ -197,7 +208,7 @@ struct SettingsView: View {
         totalBytes = records.reduce(0) { $0 + $1.fileSize }
     }
 
-    // MARK: - PDF It Pro section (the user's control center entry)
+    // MARK: - PDFIT Pro section (the user's control center entry)
 
     @State private var showingProPaywall = false
     @State private var showingActivationPreview = false
@@ -210,9 +221,9 @@ struct SettingsView: View {
                 HStack(spacing: Theme.Spacing.sm) {
                     proIcon
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("PDF It Pro")
+                        Text("PDFIT Pro")
                             .font(.headline.weight(.bold))
-                        Text("Active")
+                        Text(entitlements.isDemoMode ? "Demo Mode" : "Active")
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(.green)
                     }
@@ -231,6 +242,13 @@ struct SettingsView: View {
                     Label("Manage Subscription", systemImage: "arrow.triangle.2.circlepath")
                 }
 #endif
+                if entitlements.isDemoMode {
+                    Button(role: .destructive) {
+                        entitlements.setDemoMode(false)
+                    } label: {
+                        Label("End Demo Mode", systemImage: "xmark.circle")
+                    }
+                }
             } else {
                 Button {
                     showingProPaywall = true
@@ -238,7 +256,7 @@ struct SettingsView: View {
                     HStack(spacing: Theme.Spacing.sm) {
                         proIcon
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("PDF It Pro")
+                            Text("PDFIT Pro")
                                 .font(.headline.weight(.bold))
                                 .foregroundStyle(.primary)
                             Text("Unlock Pro")
@@ -268,16 +286,6 @@ struct SettingsView: View {
             if showStoreKitUnavailableNote {
                 Text("Purchases are temporarily unavailable.")
             }
-        }
-        .sheet(isPresented: $showingProPaywall) {
-            // Settings-initiated purchase: celebrate on verified success,
-            // then simply land back (no pending intent to resume).
-            PaywallView(feature: .webConversion, onVerifiedPurchase: { _ in
-                showingActivationPreview = true
-            })
-        }
-        .sheet(isPresented: $showingActivationPreview) {
-            ProActivationFlow { _ in } // no intent side effects
         }
     }
 

@@ -21,6 +21,38 @@ final class ConversionTests: XCTestCase {
 
     // MARK: - Text PDF
 
+    func testSharedDefaultsPopulateEveryExposedConversionPreference() {
+        let defaults = AppConfiguration.sharedDefaults
+        let keys = [AppSettingsKeys.defaultMode,
+                    AppSettingsKeys.defaultPaperSize,
+                    AppSettingsKeys.imageQuality,
+                    AppSettingsKeys.includeSourceURL,
+                    AppSettingsKeys.includeCreationDate]
+        let previous = keys.map { ($0, defaults.object(forKey: $0)) }
+        defer {
+            for (key, value) in previous {
+                if let value {
+                    defaults.set(value, forKey: key)
+                } else {
+                    defaults.removeObject(forKey: key)
+                }
+            }
+        }
+
+        defaults.set(ConversionMode.reader.rawValue, forKey: AppSettingsKeys.defaultMode)
+        defaults.set(PDFPaperSize.letter.rawValue, forKey: AppSettingsKeys.defaultPaperSize)
+        defaults.set(ImageQuality.high.rawValue, forKey: AppSettingsKeys.imageQuality)
+        defaults.set(true, forKey: AppSettingsKeys.includeSourceURL)
+        defaults.set(true, forKey: AppSettingsKeys.includeCreationDate)
+
+        let options = ConversionOptions.fromSharedDefaults()
+        XCTAssertEqual(options.mode, .reader)
+        XCTAssertEqual(options.paperSize, .letter)
+        XCTAssertEqual(options.imageQuality, .high)
+        XCTAssertTrue(options.includeSourceURL)
+        XCTAssertTrue(options.includeCreationDate)
+    }
+
     func testLongTextPaginatesIntoMultiplePages() throws {
         let paragraph = String(repeating: "The quick brown fox jumps over the lazy dog. ", count: 40)
         let text = Array(repeating: paragraph, count: 20).joined(separator: "\n\n")
@@ -228,7 +260,7 @@ final class ConversionTests: XCTestCase {
         let document = try XCTUnwrap(PDFDocument(data: stamped))
         let attributes = try XCTUnwrap(document.documentAttributes)
         XCTAssertEqual(attributes[PDFDocumentAttribute.titleAttribute] as? String, "Test Title")
-        XCTAssertEqual(attributes[PDFDocumentAttribute.creatorAttribute] as? String, "PDF It")
+        XCTAssertEqual(attributes[PDFDocumentAttribute.creatorAttribute] as? String, "PDFIT")
         XCTAssertNotNil(attributes[PDFDocumentAttribute.subjectAttribute])
     }
 

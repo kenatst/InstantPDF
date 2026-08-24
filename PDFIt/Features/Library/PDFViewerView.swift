@@ -204,12 +204,15 @@ struct PDFViewerView: View {
     }
 
     private func printDocument() {
-        guard let url = fileURL, let document = PDFDocument(url: url) else { return }
+        guard let url = fileURL else { return }
         let controller = UIPrintInteractionController.shared
         let info = UIPrintInfo(dictionary: nil)
         info.outputType = .general
+        info.jobName = record?.displayName ?? "PDFIT"
         controller.printInfo = info
-        controller.printingItem = document
+        // Pass the original file URL to UIKit. Supplying a PDFDocument makes
+        // iOS treat some otherwise printable PDFs as protected objects.
+        controller.printingItem = url
         controller.present(animated: true)
     }
 }

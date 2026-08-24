@@ -95,23 +95,17 @@ struct PDFToolsHostView: View {
                 }
             }
             .sheet(item: $paywallFeature) { feature in
-#if DEBUG
                 PaywallView(feature: feature,
                             onVerifiedPurchase: { _ in
                     // Verified purchase from a locked tool row: run the
                     // activation flow; when it finishes, land back on the
                     // EXACT tool the user originally wanted.
                     showingActivationFlow = true
-                }, onDebugDemoMode: { intent in
+                }, onDemoMode: { intent in
                     // Demo Mode does not impersonate a purchase. Resume the
                     // exact tool immediately and skip the activation ceremony.
                     section = Self.section(for: intent)
                 })
-#else
-                PaywallView(feature: feature) { _ in
-                    showingActivationFlow = true
-                }
-#endif
             }
             .sheet(isPresented: $showingActivationFlow) {
                 ProActivationFlow { intent in

@@ -227,14 +227,15 @@ final class ImportFlowModel: ObservableObject {
                 let document = try await coordinator.convert(items: effectiveItems,
                                                              options: options,
                                                              customization: self?.customization ?? PDFCustomization())
-                _ = try? self?.storage.save(document: document)
+                guard let self else { return }
+                _ = try self.storage.save(document: document)
                 // Success: staged files are no longer needed.
-                self?.cleanStaging()
-                self?.result = document
-                self?.isConverting = false
-                self?.showingResult = true
-                self?.customization = PDFCustomization()
-                self?.pendingImageOrder = []
+                self.cleanStaging()
+                self.result = document
+                self.isConverting = false
+                self.showingResult = true
+                self.customization = PDFCustomization()
+                self.pendingImageOrder = []
             } catch is CancellationError {
                 self?.isConverting = false
             } catch let error as ConversionError where error == .cancelled {

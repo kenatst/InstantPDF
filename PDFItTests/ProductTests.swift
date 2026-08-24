@@ -397,7 +397,7 @@ final class ProductTests: XCTestCase {
         let attrs = PDFDocument(data: stamped)?.documentAttributes ?? [:]
         XCTAssertEqual(attrs[PDFDocumentAttribute.titleAttribute] as? String, "My Title")
         XCTAssertEqual(attrs[PDFDocumentAttribute.authorAttribute] as? String, "Kénaël")
-        XCTAssertEqual(attrs[PDFDocumentAttribute.creatorAttribute] as? String, "PDF It")
+        XCTAssertEqual(attrs[PDFDocumentAttribute.creatorAttribute] as? String, "PDFIT")
     }
 
     func testQuickPDFPassthroughNeverPersonalized() async throws {

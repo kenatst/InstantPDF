@@ -232,7 +232,7 @@ enum PersonalizationApplier {
         if let author, !author.isEmpty {
             attributes[PDFDocumentAttribute.authorAttribute] = author
         }
-        attributes[PDFDocumentAttribute.creatorAttribute] = "PDF It"
+        attributes[PDFDocumentAttribute.creatorAttribute] = "PDFIT"
         if let urlString = sourceURL?.absoluteString {
             attributes[PDFDocumentAttribute.subjectAttribute] = "Source: \(urlString)"
         }
