@@ -111,13 +111,16 @@ enum URLPayloadNormalizer {
             candidate.removeLast()
         }
         guard !candidate.isEmpty else { return nil }
+        // The range belongs to the ORIGINAL text. Record its length before
+        // adding a synthetic scheme, otherwise caption text after a bare
+        // x.com link is accidentally swallowed.
+        let matchedLength = candidate.count
         if !(candidate.hasPrefix("http://") || candidate.hasPrefix("https://")) {
             candidate = "https://" + candidate
         }
         guard let url = URL(string: candidate), isHTTPURL(url) else { return nil }
         // Shrink the reported range to exclude the trimmed punctuation.
-        let urlLength = candidate.count
-        let adjustedEnd = text.index(matchRange.lowerBound, offsetBy: urlLength, limitedBy: text.endIndex) ?? text.endIndex
+        let adjustedEnd = text.index(matchRange.lowerBound, offsetBy: matchedLength, limitedBy: text.endIndex) ?? text.endIndex
         return DetectedLink(url: url, range: matchRange.lowerBound..<adjustedEnd)
     }
 

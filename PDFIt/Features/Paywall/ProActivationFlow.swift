@@ -188,7 +188,6 @@ struct ShareExtensionTutorialView: View {
     var onNext: () -> Void = {}
     var onSkip: () -> Void = {}
     var onDone: () -> Void = {}
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
 
     private func handleDone() {
@@ -201,128 +200,85 @@ struct ShareExtensionTutorialView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                stepRow(number: "1",
-                        titleKey: "Open content",
-                        copyKey: "Safari, X, Photos, Notes, Files — anything that offers Share.",
-                        symbol: "doc.text.magnifyingglass")
-                stepRow(number: "2",
-                        titleKey: "Tap Share",
-                        copyKey: "Use the system Share button.",
-                        symbol: "square.and.arrow.up")
-                stepRow(number: "3",
-                        titleKey: "Choose PDF It",
-                        copyKey: "If PDF It isn't visible, scroll to the end of the apps row and tap More.",
-                        symbol: "square.on.square.intersection.filled")
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 28, weight: .semibold))
+                            .foregroundStyle(Theme.Colors.orangePrimary)
+                        Text("Use PDF It from any app")
+                            .font(.largeTitle.weight(.bold))
+                        Text("How to turn shared content into PDFs from Safari, X, Photos and more.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
 
-                favoritesCard
+                    VStack(spacing: 0) {
+                        instructionRow(symbol: "doc.text.magnifyingglass",
+                                       title: "Open content",
+                                       detail: "Safari, X, Photos, Notes, Files — anything that offers Share.")
+                        Divider().padding(.leading, 44)
+                        instructionRow(symbol: "square.and.arrow.up",
+                                       title: "Tap Share",
+                                       detail: "Use the system Share button.")
+                        Divider().padding(.leading, 44)
+                        instructionRow(symbol: "doc.text.fill",
+                                       title: "Choose PDF It",
+                                       detail: "If PDF It isn't visible, scroll to the end of the apps row and tap More.")
+                    }
 
-                stepRow(number: "4",
-                        titleKey: "Choose a mode",
-                        copyKey: "Quick keeps everything. Clean and Reader produce polished article PDFs.",
-                        symbol: "wand.and.stars")
-                stepRow(number: "5",
-                        titleKey: "Create PDF",
-                        copyKey: "The result lands in your PDF It Library.",
-                        symbol: "checkmark.circle.fill")
+                    Label("Add PDF It to your Share Sheet favorites", systemImage: "star.fill")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.Colors.orangePrimary)
 
-                Text("PDF It receives only the content the source app chooses to share.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 4)
+                    Text("PDF It receives only the content the source app chooses to share.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(24)
+            }
 
+            VStack(spacing: 6) {
                 Button(action: handleDone) {
                     Text(activationMode ? LocalizedStringKey("Next") : LocalizedStringKey("Done"))
                         .fontWeight(.bold)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 56)
                 }
                 .primaryOrangeButton()
-                .padding(.top, 6)
-
                 if activationMode {
                     Button("Skip", action: onSkip)
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: 44)
+                        .frame(minHeight: 40)
                 }
             }
-            .padding(20)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(.bar)
         }
         .themeBackground()
         .navigationTitle(Text(activationMode ? LocalizedStringKey("") : LocalizedStringKey("Use PDF It from any app")))
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    /// ★ Recommended — teach favoriting without promising one exact iOS menu.
-    private var favoritesCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label {
-                Text("Add PDF It to your Share Sheet favorites")
-                    .font(.subheadline.weight(.bold))
-            } icon: {
-                Image(systemName: "star.fill")
-                    .foregroundStyle(Theme.Colors.orangePrimary)
-            }
-            Text("To keep PDF It easy to reach, add it to your Share Sheet favorites. Depending on your iOS version, open More → Edit and add PDF It to Favorites.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-            HStack(spacing: 6) {
-                Image(systemName: "star.fill")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(Theme.Colors.orangePrimary)
-                Text("Recommended")
-                    .font(.caption2.weight(.black))
-                    .kerning(0.5)
-            }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 4)
-            .background(Capsule().fill(Theme.Colors.orangePrimary.opacity(0.14)))
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(colorScheme == .dark ? Theme.Colors.darkCard : Theme.Colors.surface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Theme.Colors.orangePrimary.opacity(0.4), lineWidth: 1.5)
-                )
-                .shadow(color: Theme.Colors.orangePrimary.opacity(0.12), radius: 8, y: 3)
-        )
-    }
-
-    private func stepRow(number: String, titleKey: String, copyKey: String, symbol: String) -> some View {
-        HStack(alignment: .top, spacing: 13) {
-            Text(number)
-                .font(.subheadline.weight(.black).monospacedDigit())
+    private func instructionRow(symbol: String,
+                                title: LocalizedStringKey,
+                                detail: LocalizedStringKey) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Theme.Colors.orangePrimary)
-                .frame(width: 30, height: 30)
-                .background(
-                    Circle().fill(Theme.Colors.orangePrimary.opacity(0.13))
-                )
+                .frame(width: 30)
             VStack(alignment: .leading, spacing: 3) {
-                Text(LocalizedStringKey(titleKey))
-                    .font(.subheadline.weight(.bold))
-                Text(LocalizedStringKey(copyKey))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                Text(title).font(.body.weight(.semibold))
+                Text(detail).font(.footnote).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
-            Image(systemName: symbol)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Theme.Colors.orangePrimary)
         }
-        .padding(13)
-        .frame(maxWidth: .infinity, minHeight: 44)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.primary.opacity(0.04))
-        )
+        .padding(.vertical, 14)
     }
+
 }
 
 // MARK: - Page 2 · Everything you unlocked (shared with Settings)
@@ -345,97 +301,65 @@ struct ProFeaturesGuideView: View {
         }
     }
 
-    struct Feature: Identifiable {
-        let id = UUID()
-        let symbol: String
-        let titleKey: LocalizedStringKey
-        let copyKey: LocalizedStringKey
-    }
-
-    private let features: [Feature] = [
-        Feature(symbol: "square.and.arrow.up",
-                titleKey: "SHARE FROM ANY APP",
-                copyKey: "The Share Extension turns shared content into PDFs."),
-        Feature(symbol: "safari",
-                titleKey: "WEB → PDF",
-                copyKey: "Quick, Clean and Reader webpage modes."),
-        Feature(symbol: "text.viewfinder",
-                titleKey: "SEARCHABLE SCANS",
-                copyKey: "On-device OCR makes scans searchable and selectable."),
-        Feature(symbol: "arrow.down.doc",
-                titleKey: "COMPRESS",
-                copyKey: "Shrink image-heavy PDFs honestly — never bigger copies."),
-        Feature(symbol: "signature",
-                titleKey: "SIGN",
-                copyKey: "Draw once; reuse your saved signature."),
-        Feature(symbol: "doc.badge.plus",
-                titleKey: "EXTRACT",
-                copyKey: "Selected pages become their own PDF."),
-        Feature(symbol: "arrow.up.arrow.down.square",
-                titleKey: "ORGANIZE",
-                copyKey: "Reorder and rotate pages into a new document."),
-        Feature(symbol: "square.stack.3d.up",
-                titleKey: "BATCH SCAN",
-                copyKey: "Scan several documents in one pass."),
-        Feature(symbol: "slider.horizontal.3",
-                titleKey: "CUSTOMIZE",
-                copyKey: "Cover page, metadata, page numbers, watermark, margins."),
-        Feature(symbol: "folder",
-                titleKey: "UNLIMITED ORGANIZATION",
-                copyKey: "Unlimited folders and merging."),
-        Feature(symbol: "lock.shield.fill",
-                titleKey: "PRIVACY",
-                copyKey: "On-device processing. No account. Nothing uploaded to PDF It."),
-    ]
-
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                MascotView(type: .hero, size: 96, enableFloatingAnimation: false)
-                    .padding(.bottom, 2)
-                Text("Meet your full PDF toolkit")
-                    .font(.title3.weight(.heavy))
-                    .multilineTextAlignment(.center)
-
-                ForEach(features) { feature in
-                    HStack(spacing: 12) {
-                        Image(systemName: feature.symbol)
-                            .font(.system(size: 15, weight: .semibold))
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Image(systemName: "crown.fill")
+                            .font(.system(size: 26, weight: .semibold))
                             .foregroundStyle(Theme.Colors.orangePrimary)
-                            .frame(width: 34, height: 34)
-                            .background(RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .fill(Theme.Colors.orangePrimary.opacity(0.14)))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(feature.titleKey)
-                                .font(.caption.weight(.bold))
-                                .kerning(0.4)
-                            Text(feature.copyKey)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: 0)
+                        Text("PDFIT Pro")
+                            .font(.largeTitle.weight(.bold))
+                        Text("Your complete private PDF toolkit.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.primary.opacity(0.04)))
-                }
 
-                Button {
-                    finish()
-                } label: {
-                    Text(activationMode ? LocalizedStringKey("Start using PDF It") : LocalizedStringKey("Done"))
-                        .fontWeight(.bold)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
+                    VStack(spacing: 0) {
+                        guideRow(symbol: "square.and.arrow.up", title: "Share from any app", copy: "Create PDFs from the Share Sheet.")
+                        Divider().padding(.leading, 44)
+                        guideRow(symbol: "signature", title: "Complete PDF tools", copy: "Compress, sign and extract pages.")
+                        Divider().padding(.leading, 44)
+                        guideRow(symbol: "square.stack.3d.up", title: "Batch and organize", copy: "Scan, merge and use unlimited folders.")
+                        Divider().padding(.leading, 44)
+                        guideRow(symbol: "lock.shield.fill", title: "Local Processing Only", copy: "On-device processing. No account. Nothing uploaded to PDF It.")
+                    }
                 }
-                .primaryOrangeButton()
-                .padding(.top, 8)
+                .padding(24)
             }
-            .padding(20)
+
+            Button {
+                finish()
+            } label: {
+                Text(activationMode ? LocalizedStringKey("Start using PDF It") : LocalizedStringKey("Done"))
+                    .fontWeight(.bold)
+                    .frame(maxWidth: .infinity)
+            }
+            .primaryOrangeButton()
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(.bar)
         }
         .themeBackground()
         .navigationTitle(Text(activationMode ? LocalizedStringKey("") : LocalizedStringKey("Explore Pro Features")))
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func guideRow(symbol: String,
+                          title: LocalizedStringKey,
+                          copy: LocalizedStringKey) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Theme.Colors.orangePrimary)
+                .frame(width: 30)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.body.weight(.semibold))
+                Text(copy).font(.footnote).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 14)
     }
 }

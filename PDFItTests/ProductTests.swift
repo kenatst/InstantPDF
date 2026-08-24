@@ -71,6 +71,20 @@ final class ProductTests: XCTestCase {
         XCTAssertEqual(url.host, "x.com")
     }
 
+    func testBareXComCaptionIsNotSwallowedBySyntheticScheme() throws {
+        let text = "x.com/elon/status/17788 keep this caption"
+        let item = IncomingItem(kind: .text(text), index: 0)
+        let normalized = URLPayloadNormalizer.normalize([item])
+
+        XCTAssertEqual(normalized.count, 1)
+        guard case .url(let url)? = normalized.first?.kind else {
+            return XCTFail("bare x.com link must become web content")
+        }
+        XCTAssertEqual(url.absoluteString, "https://x.com/elon/status/17788")
+        XCTAssertTrue(normalized[0].attachedText?.contains("keep this caption") == true,
+                      "adding https:// must not corrupt the source-text range")
+    }
+
     func testShortenedTCoLinkIsDetected() throws {
         let text = "https://t.co/abcDEF123"
         let url = try XCTUnwrap(URLPayloadNormalizer.firstURL(in: text)?.url)

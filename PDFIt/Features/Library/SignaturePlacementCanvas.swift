@@ -16,8 +16,13 @@ struct SignaturePlacementCanvas: View {
     @State private var pageSize: CGSize = CGSize(width: 612, height: 792)
     @State private var pageImage: UIImage?
 
-    /// Signature display width as a fraction of the page preview width.
-    private var relativeWidth: CGFloat { 0.32 * scale }
+    private var inkAspect: CGFloat {
+        max(signature.size.width / max(signature.size.height, 1), 0.2)
+    }
+    /// These are the exact normalized dimensions used by PDFToolsHostView
+    /// when stamping the PNG. Preview and output therefore share one geometry.
+    private var relativeHeight: CGFloat { min(0.5, 0.10 * scale) }
+    private var relativeWidth: CGFloat { min(0.94, relativeHeight * inkAspect) }
 
     var body: some View {
         GeometryReader { geo in
@@ -35,6 +40,8 @@ struct SignaturePlacementCanvas: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: drawWidth, height: drawHeight)
+                        .position(x: origin.x + drawWidth / 2,
+                                  y: origin.y + drawHeight / 2)
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                         .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
                 } else {
@@ -47,21 +54,25 @@ struct SignaturePlacementCanvas: View {
                 Image(uiImage: signature)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: drawWidth * relativeWidth)
+                    .frame(width: drawWidth * relativeWidth,
+                           height: drawHeight * relativeHeight)
                     .position(x: origin.x + normalizedX * drawWidth,
                               y: origin.y + normalizedY * drawHeight)
                     .gesture(
-                        DragGesture()
+                        DragGesture(coordinateSpace: .named("signaturePage"))
                             .onChanged { value in
-                                let x = origin.x + value.location.x
-                                let y = origin.y + value.location.y
-                                normalizedX = min(1, max(0, x / max(drawWidth, 1)))
-                                normalizedY = min(1, max(0, y / max(drawHeight, 1)))
+                                let x = (value.location.x - origin.x) / max(drawWidth, 1)
+                                let y = (value.location.y - origin.y) / max(drawHeight, 1)
+                                let halfWidth = relativeWidth / 2
+                                let halfHeight = relativeHeight / 2
+                                normalizedX = min(1 - halfWidth, max(halfWidth, x))
+                                normalizedY = min(1 - halfHeight, max(halfHeight, y))
                             }
                     )
             }
             .frame(width: canvasSize.width, height: canvasSize.height)
             .background(Color.secondary.opacity(0.06))
+            .coordinateSpace(name: "signaturePage")
         }
         .task(id: pageNumber) {
             loadPage()

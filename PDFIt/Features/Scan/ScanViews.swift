@@ -65,7 +65,9 @@ struct ScanFlowSheet: View {
     @StateObject private var model: ScanFlowModel
     @Environment(\.dismiss) private var dismiss
     /// Documents produced by the flow; HomeView persists them.
-    var onFinish: ([ConvertedDocument]) -> Void
+    /// Returns only the documents that could not be persisted. Successful
+    /// ones are never retried or duplicated.
+    var onFinish: ([ConvertedDocument]) -> [ConvertedDocument]
 
     @State private var phase: Phase = .launching
     @State private var unavailabilityMessage: String?
@@ -74,7 +76,7 @@ struct ScanFlowSheet: View {
 
     enum Phase { case launching, camera, review, batchGate }
 
-    init(model: ScanFlowModel, onFinish: @escaping ([ConvertedDocument]) -> Void) {
+    init(model: ScanFlowModel, onFinish: @escaping ([ConvertedDocument]) -> [ConvertedDocument]) {
         _model = StateObject(wrappedValue: model)
         self.onFinish = onFinish
     }
@@ -103,10 +105,7 @@ struct ScanFlowSheet: View {
             case .review:
                 ScanReviewView(model: model,
                                batchEnabled: model.advancedBatchEnabled && entitlements.isPro,
-                               onFinish: { documents in
-                                   onFinish(documents)
-                                   dismiss()
-                               },
+                               onFinish: onFinish,
                                onClose: { dismiss() })
             case .batchGate:
                 PaywallView(feature: .advancedBatch)
@@ -144,7 +143,9 @@ struct ScanReviewView: View {
     /// Whether the Pro batch workflow is unlocked for this session.
     var batchEnabled: Bool = true
     /// Documents produced by the flow; caller persists them.
-    var onFinish: ([ConvertedDocument]) -> Void
+    /// Persistence acknowledgement from the Library owner. A non-empty
+    /// return keeps only failed documents ready for another save attempt.
+    var onFinish: ([ConvertedDocument]) -> [ConvertedDocument]
     var onClose: (() -> Void)? = nil
 
     @State private var documentName = ""
@@ -157,7 +158,7 @@ struct ScanReviewView: View {
 
     init(model: ScanFlowModel,
          batchEnabled: Bool = true,
-         onFinish: @escaping ([ConvertedDocument]) -> Void,
+         onFinish: @escaping ([ConvertedDocument]) -> [ConvertedDocument],
          onClose: (() -> Void)? = nil) {
         _model = StateObject(wrappedValue: model)
         self.batchEnabled = batchEnabled
@@ -170,6 +171,7 @@ struct ScanReviewView: View {
 
     private func finishCreating(_ documents: [ConvertedDocument]) {
         // Apply the user-edited smart name when creating a single document.
+        let output: [ConvertedDocument]
         if documents.count == 1, !documentName.trimmingCharacters(in: .whitespaces).isEmpty {
             let original = documents[0]
             let renamed = ConvertedDocument(data: original.data,
@@ -177,9 +179,15 @@ struct ScanReviewView: View {
                                             suggestedTitle: documentName,
                                             sourceURL: original.sourceURL,
                                             source: original.source)
-            onFinish([renamed])
+            output = [renamed]
         } else {
-            onFinish(documents)
+            output = documents
+        }
+        let failed = onFinish(output)
+        guard failed.isEmpty else {
+            heldDocuments = failed
+            creationErrorMessage = String(localized: "The scanned PDF couldn't be saved to your Library. Your pages are kept — try again.", bundle: LanguageManager.bundle)
+            return
         }
         model.cleanUp()
         onClose?()
@@ -220,6 +228,13 @@ struct ScanReviewView: View {
             }
             .alert("Couldn't create PDF", isPresented: Binding(get: { creationErrorMessage != nil },
                                                                set: { if !$0 { creationErrorMessage = nil } })) {
+                if !heldDocuments.isEmpty {
+                    Button("Try Again") {
+                        let pending = heldDocuments
+                        heldDocuments = []
+                        finishCreating(pending)
+                    }
+                }
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(creationErrorMessage ?? "")
@@ -342,13 +357,11 @@ struct ScanReviewView: View {
 
             Section {
                 paperPicker
-                ForEach(model.session.groups, id: \.id) { group in
-                    createButton(titleKey: "Save All Documents") {
-                        await saveAll()
-                    }
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
+                createButton(titleKey: "Save All Documents") {
+                    await saveAll()
                 }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
             }
         }
         .environment(\.editMode, .constant(.active))

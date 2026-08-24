@@ -227,6 +227,22 @@ final class ScanFlowTests: XCTestCase {
         model.cleanUp()
         XCTAssertTrue(model.session.isEmpty, "cancel wipes the review session")
     }
+
+    @MainActor
+    func testSuccessfulConversionKeepsScanSessionUntilPersistenceConfirmation() async throws {
+        let model = ScanFlowModel()
+        let data = try makeJPEGData()
+        let url = try model.stagingForTesting.stage(data: data, fileExtension: "jpg")
+        model.ingestFromTesting([url])
+
+        let document = try await model.createPDF(for: nil, paperSize: .a4)
+
+        XCTAssertFalse(document.data.isEmpty)
+        XCTAssertFalse(model.session.isEmpty,
+                       "conversion alone must not destroy scans before Library save succeeds")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+        model.cleanUp()
+    }
 }
 
 // MARK: - Test hooks (main-actor isolated accessors)

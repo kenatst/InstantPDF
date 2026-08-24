@@ -124,9 +124,9 @@ final class ScanFlowModel: ObservableObject {
         let coordinator = ConversionCoordinator()
         let document = try await coordinator.convert(items: items, options: options)
 
-        if group == nil || session.groups.count <= 1 {
-            cleanUp()
-        }
+        // Conversion success is not persistence success. The review session
+        // stays alive until the caller confirms every document was written
+        // to the Library; otherwise a failed save would destroy the scans.
         return document
     }
 

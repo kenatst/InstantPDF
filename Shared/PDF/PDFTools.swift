@@ -152,11 +152,16 @@ enum PDFTools {
         for pageIndex in 1...total {
             guard let page = document.page(at: pageIndex) else { continue }
             let box = page.getBoxRect(.mediaBox)
+            let rotation = ((Int(page.rotationAngle) % 360) + 360) % 360
+            let pageSize = (rotation == 90 || rotation == 270)
+                ? CGSize(width: box.height, height: box.width)
+                : box.size
 
             // Rasterize at capped long edge, ALWAYS ≥2x points→pixels so text
             // stays retina-crisp (the old 1x cap produced blurry pages).
-            let scale = min(1, preset.maxPixelEdge / max(box.width, box.height))
-            let pixelSize = CGSize(width: box.width * scale * 2, height: box.height * scale * 2) // 2x = retina floor
+            let scale = min(1, preset.maxPixelEdge / max(pageSize.width, pageSize.height))
+            let pixelSize = CGSize(width: pageSize.width * scale * 2,
+                                   height: pageSize.height * scale * 2)
             let format = UIGraphicsImageRendererFormat()
             format.scale = 1
             let raster = UIGraphicsImageRenderer(size: pixelSize, format: format).image { _ in
@@ -166,7 +171,11 @@ enum PDFTools {
                 cgContext?.saveGState()
                 cgContext?.translateBy(x: 0, y: pixelSize.height)
                 cgContext?.scaleBy(x: 1, y: -1)
-                cgContext?.scaleBy(x: pixelSize.width / box.width, y: pixelSize.height / box.height)
+                let transform = page.getDrawingTransform(.mediaBox,
+                                                         rect: CGRect(origin: .zero, size: pixelSize),
+                                                         rotate: 0,
+                                                         preserveAspectRatio: true)
+                cgContext?.concatenate(transform)
                 cgContext?.drawPDFPage(page)
                 cgContext?.restoreGState()
             }
@@ -174,27 +183,33 @@ enum PDFTools {
 
             // Keep raster ONLY when it actually shrinks this page meaningfully.
             if Double(jpeg.count) < Double(averagePageSize) * 0.9 {
-                let pageSize = CGSize(width: box.width, height: box.height)
                 let pdfFormat = UIGraphicsPDFRendererFormat()
                 let renderer = UIGraphicsPDFRenderer(bounds: CGRect(origin: .zero, size: pageSize),
                                                      format: pdfFormat)
                 let chunk = renderer.pdfData { context in
                     context.beginPage(withBounds: CGRect(origin: .zero, size: pageSize), pageInfo: [:])
-                    if let image = UIImage(data: jpeg)?.cgImage {
-                        UIGraphicsGetCurrentContext()?.draw(image, in: CGRect(origin: .zero, size: pageSize))
+                    if let image = UIImage(data: jpeg) {
+                        // UIImage drawing respects UIKit's top-left image
+                        // orientation. CGContext.draw(CGImage) flipped every
+                        // rasterized compression result vertically.
+                        image.draw(in: CGRect(origin: .zero, size: pageSize))
                     }
                 }
                 chunks.append(chunk)
             } else {
                 // Vector/text page or already-optimal: pass through untouched.
                 let pdfFormat = UIGraphicsPDFRendererFormat()
-                let renderer = UIGraphicsPDFRenderer(bounds: box, format: pdfFormat)
+                let renderer = UIGraphicsPDFRenderer(bounds: CGRect(origin: .zero, size: pageSize), format: pdfFormat)
                 let chunk = renderer.pdfData { context in
-                    context.beginPage(withBounds: box, pageInfo: [:])
+                    context.beginPage(withBounds: CGRect(origin: .zero, size: pageSize), pageInfo: [:])
                     guard let cgContext = UIGraphicsGetCurrentContext() else { return }
                     cgContext.saveGState()
-                    cgContext.translateBy(x: 0, y: box.height)
+                    cgContext.translateBy(x: 0, y: pageSize.height)
                     cgContext.scaleBy(x: 1, y: -1)
+                    cgContext.concatenate(page.getDrawingTransform(.mediaBox,
+                                                                    rect: CGRect(origin: .zero, size: pageSize),
+                                                                    rotate: 0,
+                                                                    preserveAspectRatio: true))
                     cgContext.drawPDFPage(page)
                     cgContext.restoreGState()
                 }
@@ -215,7 +230,7 @@ enum PDFTools {
                                on sourceURL: URL,
                                pages: [Int],
                                normalizedRect: CGRect) throws -> Data {
-        guard let signature = UIImage(data: pngData)?.cgImage else {
+        guard let signature = UIImage(data: pngData) else {
             throw ConversionError.generationFailed
         }
         guard let data = try? Data(contentsOf: sourceURL),
@@ -229,23 +244,36 @@ enum PDFTools {
         for pageIndex in 1...document.numberOfPages {
             guard let page = document.page(at: pageIndex) else { continue }
             let box = page.getBoxRect(.mediaBox)
+            let rotation = ((Int(page.rotationAngle) % 360) + 360) % 360
+            let pageSize = (rotation == 90 || rotation == 270)
+                ? CGSize(width: box.height, height: box.width)
+                : box.size
+            let outputBounds = CGRect(origin: .zero, size: pageSize)
             let format = UIGraphicsPDFRendererFormat()
-            let renderer = UIGraphicsPDFRenderer(bounds: box, format: format)
+            let renderer = UIGraphicsPDFRenderer(bounds: outputBounds, format: format)
             let chunk = renderer.pdfData { context in
-                context.beginPage(withBounds: box, pageInfo: [:])
+                context.beginPage(withBounds: outputBounds, pageInfo: [:])
                 guard let cgContext = UIGraphicsGetCurrentContext() else { return }
                 cgContext.saveGState()
-                cgContext.translateBy(x: 0, y: box.height)
+                cgContext.translateBy(x: 0, y: pageSize.height)
                 cgContext.scaleBy(x: 1, y: -1)
+                cgContext.concatenate(page.getDrawingTransform(.mediaBox,
+                                                                rect: outputBounds,
+                                                                rotate: 0,
+                                                                preserveAspectRatio: true))
                 cgContext.drawPDFPage(page)
                 cgContext.restoreGState()
 
                 if targets.contains(pageIndex) {
-                    let rect = CGRect(x: normalizedRect.origin.x * box.width,
-                                      y: (1 - normalizedRect.origin.y - normalizedRect.height) * box.height,
-                                      width: normalizedRect.width * box.width,
-                                      height: normalizedRect.height * box.height)
-                    cgContext.draw(signature, in: rect)
+                    // UIGraphicsPDFRenderer uses UIKit's top-left coordinates,
+                    // exactly like SignaturePlacementCanvas. UIImage drawing
+                    // also preserves the PNG orientation; raw CGImage drawing
+                    // inverted the saved ink and mirrored the preview's Y.
+                    let rect = CGRect(x: normalizedRect.origin.x * pageSize.width,
+                                      y: normalizedRect.origin.y * pageSize.height,
+                                      width: normalizedRect.width * pageSize.width,
+                                      height: normalizedRect.height * pageSize.height)
+                    signature.draw(in: rect)
                 }
             }
             chunks.append(chunk)

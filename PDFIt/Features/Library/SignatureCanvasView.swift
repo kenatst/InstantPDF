@@ -78,7 +78,10 @@ struct SignatureCanvasView: View {
                     .padding(.horizontal, 20)
 
                 HStack(spacing: 14) {
-                    Button("Clear") { hasInk = false }
+                    Button("Clear") {
+                        PencilKitCanvas.clearInk()
+                        hasInk = false
+                    }
                         .secondaryDarkButton()
                     Button("Done") { finish() }
                         .primaryOrangeButton()

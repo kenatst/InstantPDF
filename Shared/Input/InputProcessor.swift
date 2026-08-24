@@ -85,20 +85,36 @@ final class InputProcessor {
         // advertise public.file-url whose representation is URL metadata, not
         // the payload itself. Loading by concrete type always yields bytes.
         if provider.hasItemConformingToTypeIdentifier(UTType.pdf.identifier) {
-            return await loadAsFile(provider: provider,
-                                    type: .pdf,
-                                    itemTitle: itemTitle,
-                                    index: index,
-                                    store: store)
+            if let item = await loadAsFile(provider: provider,
+                                           type: .pdf,
+                                           itemTitle: itemTitle,
+                                           index: index,
+                                           store: store) {
+                return item
+            }
         }
 
         if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
-            return await loadImage(provider: provider, itemTitle: itemTitle, index: index, store: store)
+            if let item = await loadImage(provider: provider,
+                                          itemTitle: itemTitle,
+                                          index: index,
+                                          store: store) {
+                return item
+            }
         }
 
         // Remaining files arrive as a file URL — big payloads stay out of RAM.
         if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
-            return await loadFileURL(provider: provider, itemTitle: itemTitle, index: index, store: store)
+            // Social apps sometimes advertise `public.file-url` even though
+            // the representation is remote URL metadata, not a readable
+            // local file. A failed file load must fall through to URL/text
+            // recovery instead of dropping the entire share.
+            if let item = await loadFileURL(provider: provider,
+                                            itemTitle: itemTitle,
+                                            index: index,
+                                            store: store) {
+                return item
+            }
         }
 
         // Webpage intent beats everything textual: Safari and most browsers

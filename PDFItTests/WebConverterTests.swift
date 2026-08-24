@@ -8,6 +8,21 @@ import PDFKit
 /// every continuation wrapper here is real, not stubbed.
 final class WebConverterTests: XCTestCase {
 
+    func testXStatusURLUsesOfficialOEmbedEndpoint() throws {
+        let endpoint = try XCTUnwrap(
+            WebPDFConverter.xEmbedURL(for: URL(string: "https://x.com/example/status/123?s=20")!)
+        )
+        let components = try XCTUnwrap(URLComponents(url: endpoint, resolvingAgainstBaseURL: false))
+        XCTAssertEqual(components.host, "publish.twitter.com")
+        let postURL = components.queryItems?.first(where: { $0.name == "url" })?.value
+        XCTAssertEqual(postURL, "https://twitter.com/example/status/123?s=20")
+    }
+
+    func testXProfileURLDoesNotUsePostEmbed() {
+        XCTAssertNil(WebPDFConverter.xEmbedURL(for: URL(string: "https://x.com/example")!))
+        XCTAssertNil(WebPDFConverter.xEmbedURL(for: URL(string: "https://example.com/status/123")!))
+    }
+
     private func tallHTML(sections: Int = 40) -> String {
         var body = ""
         for index in 0..<sections {

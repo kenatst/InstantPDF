@@ -14,8 +14,6 @@ struct HomeView: View {
     /// Hero tap opens the polished source chooser instead of guessing.
     @State private var showingSourceChooser = false
     @State private var showingScanner = false
-    /// Post-scan persistence failure count (user-facing alert).
-    @State private var scanSaveFailureCount = 0
     /// Typed viewer routing: the exact created/tapped document ID.
     @State private var presentedViewerID: UUID?
     /// One-time Pro offer right after onboarding (Free stays fully usable).
@@ -65,16 +63,19 @@ struct HomeView: View {
                 // failed write is retryable instead of silently destroyed.
                 var failures = 0
                 var lastSavedID: UUID?
+                var failedDocuments: [ConvertedDocument] = []
                 for document in documents {
                     do {
                         let record = try storage.save(document: document)
                         lastSavedID = record.id
                     } catch {
                         failures += 1
+                        failedDocuments.append(document)
                     }
                 }
                 if failures > 0 {
-                    scanSaveFailureCount = failures
+                    reloadRecords()
+                    return failedDocuments
                 }
                 reloadRecords()
                 if let id = lastSavedID {
@@ -82,19 +83,12 @@ struct HomeView: View {
                     showingScanner = false
                     presentedViewerID = id
                 }
+                return []
             }
             .interactiveDismissDisabled(scanModel.isConvertingForUI)
         }
         .navigationDestination(item: $presentedViewerID) { id in
             PDFViewerView(recordID: id)
-        }
-        .alert("Couldn't save scan", isPresented: Binding(get: { scanSaveFailureCount > 0 },
-                                                          set: { if !$0 { scanSaveFailureCount = 0 } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(scanSaveFailureCount == 1
-                 ? "The scanned PDF couldn't be saved to your Library. Your pages are kept — try again."
-                 : "\(scanSaveFailureCount) documents couldn't be saved to your Library. Your pages are kept — try again.")
         }
         .sheet(isPresented: $showingOnboardingPaywall) {
             PaywallView(feature: .webConversion,

@@ -96,6 +96,15 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
     /// sliced into sensible pages. Auto paper size keeps a single full-height
     /// page; fixed sizes paginate. Never a viewport-only screenshot.
     func captureWebPage(url: URL, options: ConversionOptions) async throws -> Capture {
+        // X's normal webpage commonly serves a login wall to an offscreen
+        // browser. Its public oEmbed response is the supported, stable route
+        // for a single public post and works identically for pasted links and
+        // Share Extension payloads. If unavailable, continue with normal web
+        // capture so deleted/private posts surface the honest blocked error.
+        if let embedHTML = try? await Self.xPostEmbedHTML(for: url) {
+            return try await captureHTML(embedHTML, baseURL: url, options: options)
+        }
+
         let webView = try await loadInWebView(.url(url))
         defer { dismantle(webView) }
 
@@ -139,6 +148,7 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
         defer { dismantle(webView) }
 
         try await stabilize(webView)
+        try await Self.rejectBlockedPages(webView, host: url.host)
 
         let raw = try? await evaluateScript(WebContentExtractor.extractionScript, in: webView)
         guard let article = WebContentExtractor.article(fromScriptResult: raw, url: url),
@@ -217,7 +227,11 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
                                                         timeoutInterval: 30))
                             default: break
                             }
-                            return
+                            // The original task used to return here, leaving
+                            // the continuation suspended forever if the retry
+                            // also stalled. Arm a real bounded second window.
+                            try? await Task.sleep(nanoseconds: 25_000_000_000)
+                            if Task.isCancelled { return }
                         }
                         // The gate makes this race with didFinish/didFail/
                         // termination/cancellation safe — first finish wins.
@@ -248,6 +262,67 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
     /// Set after the first timeout-triggered reload so the hard deadline
     /// eventually fires (X pages sometimes stall on a single attempt).
     private var didRetryNavigation = false
+
+    // MARK: - Public X post rendering
+
+    private struct XEmbedResponse: Decodable {
+        let html: String
+        let authorName: String?
+
+        enum CodingKeys: String, CodingKey {
+            case html
+            case authorName = "author_name"
+        }
+    }
+
+    /// Returns the official public oEmbed endpoint only for a concrete
+    /// X/Twitter status URL. Internal for deterministic URL unit tests.
+    nonisolated static func xEmbedURL(for sourceURL: URL) -> URL? {
+        guard var source = URLComponents(url: sourceURL, resolvingAgainstBaseURL: false),
+              let rawHost = source.host?.lowercased() else { return nil }
+        let host = rawHost.hasPrefix("www.") ? String(rawHost.dropFirst(4)) : rawHost
+        guard ["x.com", "twitter.com", "mobile.twitter.com", "m.twitter.com"].contains(host),
+              source.path.lowercased().contains("/status/") else { return nil }
+
+        // publish.twitter.com accepts the canonical twitter.com form most
+        // consistently even when the user supplied an x.com URL.
+        source.scheme = "https"
+        source.host = "twitter.com"
+        guard let canonicalPost = source.url,
+              var endpoint = URLComponents(string: "https://publish.twitter.com/oembed") else { return nil }
+        endpoint.queryItems = [
+            URLQueryItem(name: "url", value: canonicalPost.absoluteString),
+            URLQueryItem(name: "omit_script", value: "true"),
+            URLQueryItem(name: "dnt", value: "true"),
+        ]
+        return endpoint.url
+    }
+
+    private static func xPostEmbedHTML(for sourceURL: URL) async throws -> String? {
+        guard let endpoint = xEmbedURL(for: sourceURL) else { return nil }
+        var request = URLRequest(url: endpoint)
+        request.timeoutInterval = 15
+        request.cachePolicy = .reloadRevalidatingCacheData
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse,
+              (200..<300).contains(http.statusCode) else { return nil }
+        let payload = try JSONDecoder().decode(XEmbedResponse.self, from: data)
+        guard !payload.html.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        let title = (payload.authorName?.isEmpty == false ? payload.authorName! : "X Post")
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+        return """
+        <!doctype html><html><head><meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>\(title)</title>
+        <style>
+        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#171717;background:white;margin:0;padding:42px}
+        main{max-width:680px;margin:0 auto}.twitter-tweet{font-size:20px;line-height:1.55;margin:0!important}
+        a{color:#e86f20;text-decoration:none}p{white-space:pre-wrap}footer{margin-top:28px;font-size:12px;color:#777}
+        </style></head><body><main>\(payload.html)<footer>\(sourceURL.absoluteString)</footer></main></body></html>
+        """
+    }
 
     private func dismantle(_ webView: WKWebView) {
         webView.stopLoading()
@@ -447,12 +522,23 @@ final class WebPDFConverter: NSObject, WKNavigationDelegate {
             var markers = ['verify you are human', 'are you a robot', 'captcha',
                            'access denied', 'enable javascript and cookies to continue',
                            'checking your browser', 'just a moment', 'attention required',
-                           'log in to continue', 'sign up to continue', 'sign in to continue'];
+                           'log in to continue', 'sign up to continue', 'sign in to continue',
+                           'unsupported browser', 'temporarily blocked', 'content is unavailable'];
             for (var i = 0; i < markers.length; i++) {
                 if (lower.indexOf(markers[i]) !== -1) return true;
             }
             var hasChallenge = !!document.querySelector('iframe[src*="challenge"], iframe[src*="captcha"], #challenge-form, .g-recaptcha, #cf-challenge-running');
-            return hasChallenge;
+            var passwordGate = !!document.querySelector('input[type="password"]') && text.length < 2200;
+            var blurredWall = false;
+            var candidates = document.querySelectorAll('main, article, [role="main"], .paywall, [class*="blur"]');
+            for (var j = 0; j < candidates.length && j < 80; j++) {
+                var style = window.getComputedStyle(candidates[j]);
+                var rect = candidates[j].getBoundingClientRect();
+                if (style && style.filter && style.filter.indexOf('blur') !== -1 && rect.width * rect.height > 60000) {
+                    blurredWall = true; break;
+                }
+            }
+            return hasChallenge || passwordGate || blurredWall;
         })();
         """
         let detector = WebPDFConverter()

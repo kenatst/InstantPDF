@@ -349,9 +349,9 @@ struct PDFToolsHostView: View {
             let baseHeight: CGFloat = 0.10 * signatureScale
             let width = min(0.94, baseHeight * inkAspect)
             let height = min(0.5, baseHeight)
-            let originX = max(0.02, min(0.98 - width,
+            let originX = max(0, min(1 - width,
                                         signatureHorizontal - width / 2))
-            let originY = max(0.02, min(0.98 - height,
+            let originY = max(0, min(1 - height,
                                         signatureVertical - height / 2))
             let rect = CGRect(x: originX, y: originY, width: width, height: height)
             do {
@@ -511,13 +511,14 @@ private struct ExtractPageCell: View {
                         if let thumbnail {
                             Image(uiImage: thumbnail)
                                 .resizable()
-                                .scaledToFit()
+                                .scaledToFill()
                         } else {
                             RoundedRectangle(cornerRadius: 8)
                                 .fill(Color.secondary.opacity(0.15))
                                 .overlay(ProgressView())
                         }
                     }
+                    .frame(maxWidth: .infinity)
                     .frame(height: 190)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
 
