@@ -32,7 +32,7 @@ enum AppConfiguration {
     /// surfaced loudly so it cannot ship unnoticed.
     static var sharedDefaults: UserDefaults {
         guard let suite = UserDefaults(suiteName: appGroupIdentifier) else {
-            assertionFailure("PDF It: App Group '\(appGroupIdentifier)' is unavailable. Falling back to local defaults — settings will NOT be shared with the extension.")
+            assertionFailure("PDFIT: App Group '\(appGroupIdentifier)' is unavailable. Falling back to local defaults — settings will NOT be shared with the extension.")
             log.fault("App Group \(self.appGroupIdentifier, privacy: .public) unavailable; using local defaults.")
             return .standard
         }
@@ -46,7 +46,7 @@ enum AppConfiguration {
     static var appGroupContainerURL: URL? {
         let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier)
         if url == nil {
-            assertionFailure("PDF It: App Group container '\(appGroupIdentifier)' is unavailable. Library data cannot be shared between the app and the extension.")
+            assertionFailure("PDFIT: App Group container '\(appGroupIdentifier)' is unavailable. Library data cannot be shared between the app and the extension.")
             log.fault("App Group container unavailable; Library persistence disabled.")
         }
         return url
@@ -67,7 +67,7 @@ enum ExternalLinks {
     /// Validated Privacy Policy URL.
     static var privacyPolicy: URL {
         guard let url = URL(string: privacyPolicyURLString), url.scheme == "https", url.host != nil else {
-            fatalError("PDF It: Invalid Privacy Policy URL configuration: '\(privacyPolicyURLString)'")
+            fatalError("PDFIT: Invalid Privacy Policy URL configuration: '\(privacyPolicyURLString)'")
         }
         return url
     }
@@ -75,7 +75,7 @@ enum ExternalLinks {
     /// Validated Terms of Use URL.
     static var termsOfUse: URL {
         guard let url = URL(string: termsOfUseURLString), url.scheme == "https", url.host != nil else {
-            fatalError("PDF It: Invalid Terms of Use URL configuration: '\(termsOfUseURLString)'")
+            fatalError("PDFIT: Invalid Terms of Use URL configuration: '\(termsOfUseURLString)'")
         }
         return url
     }
@@ -83,7 +83,7 @@ enum ExternalLinks {
     /// Validated Support URL.
     static var support: URL {
         guard let url = URL(string: supportURLString), url.scheme == "https", url.host != nil else {
-            fatalError("PDF It: Invalid Support URL configuration: '\(supportURLString)'")
+            fatalError("PDFIT: Invalid Support URL configuration: '\(supportURLString)'")
         }
         return url
     }

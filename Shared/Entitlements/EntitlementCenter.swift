@@ -41,11 +41,15 @@ final class EntitlementCenter: ObservableObject {
     nonisolated static let demoModeKey = "entitlement.demoMode"
 
     nonisolated static var demoModeEnabled: Bool {
+#if DEBUG
         UserDefaults(suiteName: AppConfiguration.appGroupIdentifier)?
             .bool(forKey: demoModeKey) ?? false
+#else
+        false
+#endif
     }
 #if DEBUG
-    /// DEBUG-ONLY developer override ("Settings → Developer → Force PDF It Pro").
+    /// DEBUG-ONLY developer override ("Settings → Developer → Force PDFIT PRO").
     /// Stored in the APP GROUP so the Share Extension honors it too, letting the
     /// tester exercise Pro flows before App Store Connect products exist.
     /// The Release compile of this property is hardcoded `false` — no user
@@ -73,9 +77,11 @@ final class EntitlementCenter: ObservableObject {
     /// Writes through the instance's defaults so tests with isolated storage
     /// behave exactly like production (which uses the App Group suite).
     func setDemoMode(_ enabled: Bool) {
+#if DEBUG
         defaults.set(enabled, forKey: Self.demoModeKey)
         publishSnapshot()
         objectWillChange.send()
+#endif
     }
 
     /// Clears the demo flag WITHOUT republishing — used by tests to isolate
@@ -90,8 +96,8 @@ final class EntitlementCenter: ObservableObject {
     /// App Group suite) so isolated test storage behaves identically.
     @Published private(set) var _storePro: Bool = false
     var isPro: Bool {
-        if defaults.bool(forKey: Self.demoModeKey) { return true }
 #if DEBUG
+        if defaults.bool(forKey: Self.demoModeKey) { return true }
         return _storePro || Self.debugForceProEnabled
 #else
         return _storePro
@@ -288,7 +294,11 @@ final class EntitlementCenter: ObservableObject {
         // Publishes the verdict the EXTENSION may act on: real StoreKit state
         // plus Demo Mode (a deliberate user-facing unlock). The silent DEBUG
         // force-Pro flag stays out — it must never persist as entitlement.
+#if DEBUG
         let effective = _storePro || defaults.bool(forKey: Self.demoModeKey)
+#else
+        let effective = _storePro
+#endif
         let snapshot = Snapshot(pro: effective,
                                 expires: expiresAt,
                                 updated: Date())
@@ -316,8 +326,8 @@ extension EntitlementCenter: EntitlementReading {}
 /// Demo Mode flag. In DEBUG builds it also honors the developer override.
 enum ExtensionEntitlement {
     static var isPro: Bool {
-        if EntitlementCenter.demoModeEnabled { return true }
 #if DEBUG
+        if EntitlementCenter.demoModeEnabled { return true }
         if EntitlementCenter.debugForceProEnabled { return true }
 #endif
         guard let defaults = UserDefaults(suiteName: AppConfiguration.appGroupIdentifier),

@@ -9,6 +9,28 @@ import UniformTypeIdentifiers
 @MainActor
 final class ImportFlowModel: ObservableObject {
 
+    private enum BackgroundConversionResult {
+        case success(ConvertedDocument, UUID)
+        case failure(ConversionError)
+        case cancelled
+    }
+
+    struct PhotoImportIssue: Equatable {
+        let loadedCount: Int
+        let failedCount: Int
+        let totalCount: Int
+    }
+
+    private struct IndexedPhotoSelection {
+        let index: Int
+        let item: PhotosPickerItem
+    }
+
+    private enum PhotoStagingOutcome {
+        case success(IncomingItem)
+        case failure(IndexedPhotoSelection)
+    }
+
     @Published var showingFileImporter = false
     @Published var showingPhotoPicker = false
     @Published var photoSelections: [PhotosPickerItem] = []
@@ -17,8 +39,16 @@ final class ImportFlowModel: ObservableObject {
     @Published var showingResult = false
     @Published var showingError = false
     @Published var isConverting = false
+    @Published var isLoadingPhotos = false
+    @Published var loadedPhotoCount = 0
+    @Published var totalPhotoCount = 0
+    @Published var photoImportIssue: PhotoImportIssue?
     @Published var stage: ConversionStage = .analyzing
     @Published var result: ConvertedDocument?
+    /// Identity returned by StorageManager for the exact document just saved.
+    /// Consumed by the presenting surface after the success sheet closes so
+    /// navigation never relies on title matching or library ordering.
+    @Published private(set) var savedRecordID: UUID?
     @Published var failure: ConversionError?
     /// Staged by the Customize sheet; applied to the NEXT conversion.
     @Published var customization = PDFCustomization()
@@ -36,33 +66,187 @@ final class ImportFlowModel: ObservableObject {
     /// Explicit per-conversion options (Link sheet). nil = shared defaults.
     private var optionsOverride: ConversionOptions?
     private var conversionTask: Task<Void, Never>?
+    private var photoLoadingTask: Task<Void, Never>?
     private let storage = StorageManager.shared
     /// Owns staged files for the current import. Kept alive while items may
     /// still be read (conversion, retry); cleaned on success, cancellation,
     /// or when a new import starts.
     private var stagingSession: TempFileStore?
+    private var stagedPhotoItems: [IncomingItem] = []
+    private var failedPhotoSelections: [IndexedPhotoSelection] = []
 
     func handlePhotoSelections() {
         let selections = photoSelections
         photoSelections = []
         guard !selections.isEmpty else { return }
 
+        photoLoadingTask?.cancel()
         beginNewStagingSession()
         guard let store = stagingSession else { return }
-        Task { [weak self] in
-            var items: [IncomingItem] = []
-            for (index, selection) in selections.enumerated() {
-                guard let data = try? await selection.loadTransferable(type: Data.self),
-                      let url = try? store.stage(data: data, fileExtension: "img") else {
-                    continue
-                }
-                items.append(IncomingItem(kind: .image(url),
-                                          originalFilename: nil,
-                                          source: .photos,
-                                          index: index))
-            }
-            await MainActor.run { self?.convert(items: items) }
+        showingPhotoPicker = false
+        isLoadingPhotos = true
+        loadedPhotoCount = 0
+        totalPhotoCount = selections.count
+        photoImportIssue = nil
+        stagedPhotoItems = []
+        failedPhotoSelections = []
+
+        let indexed = selections.enumerated().map {
+            IndexedPhotoSelection(index: $0.offset, item: $0.element)
         }
+        photoLoadingTask = Task { [weak self] in
+            let outcomes = await Self.stagePhotos(indexed,
+                                                  in: store,
+                                                  progress: { completed in
+                await MainActor.run {
+                    self?.loadedPhotoCount = completed
+                }
+            })
+            guard !Task.isCancelled, let self else { return }
+            self.finishPhotoStaging(outcomes, totalCount: indexed.count)
+        }
+    }
+
+    /// Retries only the assets Photos could not deliver (commonly iCloud
+    /// downloads), while keeping already-staged files and their original
+    /// selection indices intact.
+    func retryFailedPhotos() {
+        guard !failedPhotoSelections.isEmpty,
+              let store = stagingSession else { return }
+        let retrySelections = failedPhotoSelections
+        photoImportIssue = nil
+        isLoadingPhotos = true
+        loadedPhotoCount = 0
+        totalPhotoCount = retrySelections.count
+
+        photoLoadingTask?.cancel()
+        photoLoadingTask = Task { [weak self] in
+            let outcomes = await Self.stagePhotos(retrySelections,
+                                                  in: store,
+                                                  progress: { completed in
+                await MainActor.run { self?.loadedPhotoCount = completed }
+            })
+            guard !Task.isCancelled, let self else { return }
+            self.finishPhotoStaging(outcomes,
+                                    totalCount: self.stagedPhotoItems.count + retrySelections.count,
+                                    appending: true)
+        }
+    }
+
+    func continueWithLoadedPhotos() {
+        guard !stagedPhotoItems.isEmpty else { return }
+        photoImportIssue = nil
+        failedPhotoSelections = []
+        convert(items: stagedPhotoItems.sorted { $0.index < $1.index })
+    }
+
+    func cancelPhotoImport() {
+        photoLoadingTask?.cancel()
+        photoLoadingTask = nil
+        isLoadingPhotos = false
+        photoImportIssue = nil
+        stagedPhotoItems = []
+        failedPhotoSelections = []
+        cleanStaging()
+    }
+
+    private func finishPhotoStaging(_ outcomes: [PhotoStagingOutcome],
+                                    totalCount: Int,
+                                    appending: Bool = false) {
+        let loaded = outcomes.compactMap { outcome -> IncomingItem? in
+            if case .success(let item) = outcome { return item }
+            return nil
+        }
+        let failed = outcomes.compactMap { outcome -> IndexedPhotoSelection? in
+            if case .failure(let selection) = outcome { return selection }
+            return nil
+        }
+
+        if appending {
+            stagedPhotoItems.append(contentsOf: loaded)
+        } else {
+            stagedPhotoItems = loaded
+        }
+        stagedPhotoItems.sort { $0.index < $1.index }
+        failedPhotoSelections = failed.sorted { $0.index < $1.index }
+        isLoadingPhotos = false
+
+        if failed.isEmpty {
+            let items = stagedPhotoItems
+            stagedPhotoItems = []
+            convert(items: items)
+        } else {
+            photoImportIssue = PhotoImportIssue(loadedCount: stagedPhotoItems.count,
+                                                failedCount: failed.count,
+                                                totalCount: max(totalCount, stagedPhotoItems.count + failed.count))
+        }
+    }
+
+    /// Loads at most three full-resolution assets at once. Each Data value is
+    /// immediately staged to disk inside the worker task, so SwiftUI state
+    /// never retains decoded UIImages or a collection of camera-sized blobs.
+    nonisolated private static func stagePhotos(
+        _ selections: [IndexedPhotoSelection],
+        in store: TempFileStore,
+        progress: @escaping @Sendable (Int) async -> Void
+    ) async -> [PhotoStagingOutcome] {
+        guard !selections.isEmpty else { return [] }
+        let concurrencyLimit = min(3, selections.count)
+
+        return await withTaskGroup(of: PhotoStagingOutcome.self,
+                                   returning: [PhotoStagingOutcome].self) { group in
+            var next = 0
+            for _ in 0..<concurrencyLimit {
+                let selection = selections[next]
+                next += 1
+                group.addTask { await stagePhoto(selection, in: store) }
+            }
+
+            var outcomes: [PhotoStagingOutcome] = []
+            outcomes.reserveCapacity(selections.count)
+            var completed = 0
+
+            while let outcome = await group.next() {
+                outcomes.append(outcome)
+                completed += 1
+                await progress(completed)
+
+                if next < selections.count {
+                    let selection = selections[next]
+                    next += 1
+                    group.addTask { await stagePhoto(selection, in: store) }
+                }
+            }
+            return outcomes
+        }
+    }
+
+    nonisolated private static func stagePhoto(
+        _ selection: IndexedPhotoSelection,
+        in store: TempFileStore
+    ) async -> PhotoStagingOutcome {
+        do {
+            try Task.checkCancellation()
+            guard let data = try await selection.item.loadTransferable(type: Data.self),
+                  !data.isEmpty else {
+                return .failure(selection)
+            }
+            try Task.checkCancellation()
+            let fileExtension = preferredFileExtension(for: selection.item)
+            let url = try store.stage(data: data, fileExtension: fileExtension)
+            return .success(IncomingItem(kind: .image(url),
+                                         originalFilename: nil,
+                                         source: .photos,
+                                         index: selection.index))
+        } catch {
+            return .failure(selection)
+        }
+    }
+
+    nonisolated private static func preferredFileExtension(for item: PhotosPickerItem) -> String {
+        item.supportedContentTypes
+            .first(where: { $0.conforms(to: .image) })?
+            .preferredFilenameExtension ?? "img"
     }
 
     func handleFileImporter(result: Result<[URL], Error>) {
@@ -208,48 +392,70 @@ final class ImportFlowModel: ObservableObject {
     /// conversion reuse the exact same path.
     private func runConversion(items: [IncomingItem]) {
         pendingItems = items
+        savedRecordID = nil
 
         var options = optionsOverride ?? ConversionOptions.fromSharedDefaults()
         options.includeSourceURL = options.includeSourceURL || customization.includeSourceURLFooter
         options.includeCreationDate = options.includeCreationDate || customization.includeCreationDateFooter
-        let coordinator = ConversionCoordinator()
         isConverting = true
         stage = .analyzing
 
         // Reordered images replace the original item order.
         let effectiveItems = orderedImageItems(original: items)
 
+        let customization = self.customization
+        let storage = self.storage
         conversionTask = Task { [weak self] in
-            coordinator.onStageChange = { stage in
-                Task { @MainActor in self?.stage = stage }
+            let worker = Task.detached(priority: .userInitiated) { () -> BackgroundConversionResult in
+                let coordinator = ConversionCoordinator()
+                do {
+                    let document = try await coordinator.convert(items: effectiveItems,
+                                                                 options: options,
+                                                                 customization: customization)
+                    let record = try storage.save(document: document)
+                    return .success(document, record.id)
+                } catch is CancellationError {
+                    return .cancelled
+                } catch let error as ConversionError where error == .cancelled {
+                    return .cancelled
+                } catch let error as ConversionError {
+                    return .failure(error)
+                } catch {
+                    return .failure(.generationFailed)
+                }
             }
-            do {
-                let document = try await coordinator.convert(items: effectiveItems,
-                                                             options: options,
-                                                             customization: self?.customization ?? PDFCustomization())
-                guard let self else { return }
-                _ = try self.storage.save(document: document)
-                // Success: staged files are no longer needed.
+
+            let outcome = await withTaskCancellationHandler(operation: {
+                await worker.value
+            }, onCancel: {
+                worker.cancel()
+            })
+            guard let self else { return }
+
+            switch outcome {
+            case .success(let document, let recordID):
                 self.cleanStaging()
                 self.result = document
+                self.savedRecordID = recordID
                 self.isConverting = false
                 self.showingResult = true
                 self.customization = PDFCustomization()
                 self.pendingImageOrder = []
-            } catch is CancellationError {
-                self?.isConverting = false
-            } catch let error as ConversionError where error == .cancelled {
-                self?.isConverting = false
-            } catch let error as ConversionError {
-                self?.failure = error
-                self?.isConverting = false
-                self?.showingError = true
-            } catch {
-                self?.failure = .generationFailed
-                self?.isConverting = false
-                self?.showingError = true
+            case .failure(let error):
+                self.failure = error
+                self.isConverting = false
+                self.showingError = true
+            case .cancelled:
+                self.isConverting = false
             }
         }
+    }
+
+    /// Returns and clears the exact saved record identity after the result
+    /// sheet has fully dismissed.
+    func consumeSavedRecordID() -> UUID? {
+        defer { savedRecordID = nil }
+        return savedRecordID
     }
 
     /// Applies the user's image ordering (if any) to the item list.
@@ -290,8 +496,10 @@ final class ImportFlowModel: ObservableObject {
     }
 
     func cancel() {
+        photoLoadingTask?.cancel()
         conversionTask?.cancel()
         cleanStaging()
+        isLoadingPhotos = false
         isConverting = false
     }
 
@@ -316,6 +524,15 @@ struct LinkEntrySheet: View {
 
     /// Staged for the customize flow; consumed by HomeView.
     @State private var pendingCustomizeURL: URL?
+
+    init(onConvert: @escaping (URL, ConversionMode, PDFPaperSize) -> Void,
+         onCustomize: ((URL, ConversionMode, PDFPaperSize) -> Void)? = nil) {
+        self.onConvert = onConvert
+        self.onCustomize = onCustomize
+        let defaults = ConversionOptions.fromSharedDefaults()
+        _mode = State(initialValue: defaults.mode)
+        _paperSize = State(initialValue: defaults.paperSize)
+    }
 
     var body: some View {
         NavigationStack {
@@ -355,7 +572,7 @@ struct LinkEntrySheet: View {
                     // Honest-expectations disclaimer: some sites resist
                     // automated capture. Set BEFORE the user waits.
                     Label {
-                        Text("Some sites (login walls, CAPTCHAs, blurred previews) can't produce clean PDFs. If that happens, PDF It tells you instead of saving a bad file.")
+                        Text("Some sites (login walls, CAPTCHAs, blurred previews) don't allow clean captures. Try Reader mode, or convert the page from your browser instead.")
                             .font(.caption2)
                             .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.5) : Color.secondary)
                     } icon: {
@@ -564,15 +781,11 @@ struct ConversionResultSheet: View {
             VStack(spacing: 16) {
                 Spacer(minLength: 10)
 
-                // Mascot Celebratory Hero with Particle Sparks
-                ZStack {
-                    AmberSparkParticles()
-                    MascotView(type: .hero, size: 145)
-                }
+                MascotView(type: .hero, size: 145, enableFloatingAnimation: false)
                 .frame(height: 155)
 
                 VStack(spacing: 6) {
-                    Text("PDF Created! 🎉")
+                    Text("PDF Ready")
                         .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundStyle(colorScheme == .dark ? .white : Color(hex: "111215"))
 

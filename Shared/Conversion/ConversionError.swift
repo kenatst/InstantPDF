@@ -50,7 +50,7 @@ extension ConversionError {
     var message: String {
         switch self {
         case .noUsableContent:
-            return String(localized: "The app didn't share content PDF It can work with.", bundle: LanguageManager.bundle)
+            return String(localized: "The app didn't share content PDFIT can work with.", bundle: LanguageManager.bundle)
         case .someContentSkipped:
             return String(localized: "Videos and audio aren't supported — everything else was converted.", bundle: LanguageManager.bundle)
         case .fileTooLarge(let name):

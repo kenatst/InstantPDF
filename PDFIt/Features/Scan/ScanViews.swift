@@ -70,8 +70,9 @@ struct ScanFlowSheet: View {
     @State private var unavailabilityMessage: String?
     @ObservedObject private var entitlements = EntitlementCenter.shared
     @State private var showingBatchPaywall = false
+    @State private var pendingBatchStart = false
 
-    enum Phase { case launching, camera, review, batchGate }
+    enum Phase { case launching, camera, review }
 
     init(model: ScanFlowModel, onFinish: @escaping ([ConvertedDocument]) -> [ConvertedDocument]) {
         self.model = model
@@ -103,12 +104,25 @@ struct ScanFlowSheet: View {
                 ScanReviewView(model: model,
                                batchEnabled: model.advancedBatchEnabled && entitlements.isPro,
                                onFinish: onFinish,
-                               onClose: { dismiss() })
-            case .batchGate:
-                PaywallView(feature: .advancedBatch)
+                               onClose: { dismiss() },
+                               onRequestBatch: { showingBatchPaywall = true })
             }
         }
         .onAppear(perform: begin)
+        .sheet(isPresented: $showingBatchPaywall) {
+            PaywallView(feature: .advancedBatch,
+                        onVerifiedPurchase: { _ in
+                PendingProIntent.clear()
+                pendingBatchStart = true
+            }, onDemoMode: { _ in
+                pendingBatchStart = true
+            })
+        }
+        .onChange(of: showingBatchPaywall) { _, isShowing in
+            guard !isShowing, pendingBatchStart else { return }
+            pendingBatchStart = false
+            model.startNewBatchDocument()
+        }
         .alert("Scanning unavailable", isPresented: Binding(
             get: { unavailabilityMessage != nil },
             set: { if !$0 { unavailabilityMessage = nil } })) {
@@ -144,6 +158,7 @@ struct ScanReviewView: View {
     /// return keeps only failed documents ready for another save attempt.
     var onFinish: ([ConvertedDocument]) -> [ConvertedDocument]
     var onClose: (() -> Void)? = nil
+    var onRequestBatch: (() -> Void)? = nil
 
     @State private var documentName = ""
     /// User-visible conversion failure (never silent).
@@ -156,11 +171,13 @@ struct ScanReviewView: View {
     init(model: ScanFlowModel,
          batchEnabled: Bool = true,
          onFinish: @escaping ([ConvertedDocument]) -> [ConvertedDocument],
-         onClose: (() -> Void)? = nil) {
+         onClose: (() -> Void)? = nil,
+         onRequestBatch: (() -> Void)? = nil) {
         self.model = model
         self.batchEnabled = batchEnabled
         self.onFinish = onFinish
         self.onClose = onClose
+        self.onRequestBatch = onRequestBatch
         // Seed the smart suggestion once, from the group/document name.
         _documentName = State(initialValue: OCRRouter.suggestedName(ocrText: nil,
                                                                     fallbackTitle: nil))
@@ -207,7 +224,11 @@ struct ScanReviewView: View {
             .toolbar { toolbar }
             .sheet(isPresented: $model.showingCamera) {
                 ScanCameraView { images in
-                    model.ingest(images: images)
+                    if images.isEmpty {
+                        model.cancelPendingBatchDocument()
+                    } else {
+                        model.ingest(images: images)
+                    }
                 } onError: { message in
                     // surfaced through alert below
                 }
@@ -459,10 +480,26 @@ struct ScanReviewView: View {
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
-            Button {
-                model.showingCamera = true
+            Menu {
+                Button {
+                    model.showingCamera = true
+                } label: {
+                    Label("Add more pages", systemImage: "plus.viewfinder")
+                }
+                Button {
+                    if batchEnabled {
+                        model.startNewBatchDocument()
+                    } else {
+                        onRequestBatch?()
+                    }
+                } label: {
+                    HStack {
+                        Label("Batch Scan", systemImage: "doc.badge.plus")
+                        if !batchEnabled { Text("PRO") }
+                    }
+                }
             } label: {
-                Image(systemName: "plus.viewfinder")
+                Image(systemName: "plus")
             }
             .accessibilityLabel("Add more pages")
         }

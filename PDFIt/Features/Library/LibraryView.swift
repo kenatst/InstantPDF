@@ -23,6 +23,7 @@ struct LibraryView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.pdfItLanguage) private var languageOverride
+    @ObservedObject private var entitlements = EntitlementCenter.shared
 
     // Selection state
     @State private var selectionMode = false
@@ -40,8 +41,15 @@ struct LibraryView: View {
     /// presents exactly that document. No NavigationLink/gesture arbitration,
     /// no index-based identity — one authoritative value drives presentation.
     @State private var presentedViewerID: UUID?
+    @State private var paywallFeature: ProFeature?
+    @State private var pendingProAction: PendingLibraryProAction?
 
     private let storage = StorageManager.shared
+
+    private enum PendingLibraryProAction {
+        case createFolder
+        case mergeSelection
+    }
 
     enum FilterCategory: String, CaseIterable, Identifiable {
         case all = "All"
@@ -188,7 +196,7 @@ struct LibraryView: View {
                       allowsMultipleSelection: true) { result in
             importer.handleFileImporter(result: result)
         }
-        .sheet(isPresented: $importer.showingResult) {
+        .sheet(isPresented: $importer.showingResult, onDismiss: openSavedImport) {
             if let result = importer.result {
                 ConversionResultSheet(document: result)
             }
@@ -200,6 +208,11 @@ struct LibraryView: View {
                                      offerLinkAsPDF: false,
                                      onSaveLinkAsPDF: nil)
             }
+        }
+        .sheet(item: $paywallFeature) { feature in
+            PaywallView(feature: feature,
+                        onVerifiedPurchase: { _ in resumePendingProAction() },
+                        onDemoMode: { _ in resumePendingProAction() })
         }
         .onChange(of: importer.showingResult) { _, isShowing in
             if isShowing { reload() }
@@ -218,10 +231,18 @@ struct LibraryView: View {
                     .foregroundStyle(Theme.Colors.orangePrimary)
             }
             Spacer(minLength: 8)
-            // Documents-first header: no mascot in the chrome — it lives in
-            // the empty state and contextual illustration only.
+            MascotView(type: .library, size: 72, enableFloatingAnimation: false)
+                .frame(width: 82, height: 62)
+                .clipped()
+                .accessibilityHidden(true)
         }
         .padding(.horizontal, Theme.Spacing.xs)
+    }
+
+    private func openSavedImport() {
+        guard let id = importer.consumeSavedRecordID() else { return }
+        reload()
+        presentedViewerID = id
     }
 
     // MARK: - Toolbar
@@ -240,7 +261,7 @@ struct LibraryView: View {
                     .disabled(selectedIDs.isEmpty)
 
                     Button {
-                        showingMergeReorder = true
+                        beginMerge()
                     } label: {
                         Label("Merge into One PDF", systemImage: "square.on.square")
                     }
@@ -546,9 +567,38 @@ struct LibraryView: View {
     }
 
     private func performCreateFolder() {
+        if let limit = FeaturePolicy.folderLimit(isPro: entitlements.isPro),
+           folders.count >= limit {
+            pendingProAction = .createFolder
+            paywallFeature = .unlimitedFolders
+            return
+        }
         _ = try? storage.createFolder(named: newFolderName)
         newFolderName = ""
         reload()
+    }
+
+    private func beginMerge() {
+        if let limit = FeaturePolicy.mergeLimit(isPro: entitlements.isPro),
+           selectedIDs.count > limit {
+            pendingProAction = .mergeSelection
+            paywallFeature = .unlimitedMerge
+            return
+        }
+        showingMergeReorder = true
+    }
+
+    private func resumePendingProAction() {
+        guard entitlements.isPro, let action = pendingProAction else { return }
+        PendingProIntent.clear()
+        pendingProAction = nil
+        paywallFeature = nil
+        switch action {
+        case .createFolder:
+            performCreateFolder()
+        case .mergeSelection:
+            showingMergeReorder = true
+        }
     }
 
     private func performRenameFolder() {

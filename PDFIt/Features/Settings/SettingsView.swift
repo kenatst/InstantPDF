@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// PDF It's organized product control center. Every preference below is wired
+/// PDFIT's organized product control center. Every preference below is wired
 /// to a real behavior; product education and DEBUG tooling stay clearly apart.
 @MainActor
 struct SettingsView: View {
@@ -54,7 +54,7 @@ struct SettingsView: View {
                     ProFeaturesGuideView(activationMode: false)
                 } label: {
                     HStack {
-                        Label("Explore Pro Features", systemImage: "crown.fill")
+                        Label("Explore Pro Features", systemImage: "list.bullet.rectangle")
                         Spacer()
                         if !entitlements.isPro {
                             ProBadge()
@@ -62,7 +62,7 @@ struct SettingsView: View {
                     }
                 }
             } header: {
-                SettingsSectionHeader("Using PDFIT", symbol: "sparkles.rectangle.stack")
+                SettingsSectionHeader("Using PDFIT", symbol: "square.stack.3d.up")
             } footer: {
                 Text("How to turn shared content into PDFs from Safari, X, Photos and more.")
             }
@@ -143,7 +143,7 @@ struct SettingsView: View {
             Section {
                 LabeledContent("Version", value: shortVersion)
                 LabeledContent("Build", value: buildVersion)
-                LabeledContent("Creator Tag", value: String(localized: "PDFs are tagged “PDF It” in their metadata", bundle: LanguageManager.bundle))
+                LabeledContent("Creator Tag", value: "PDFIT")
             } header: {
                 SettingsSectionHeader("About", symbol: "info.circle")
             }
@@ -225,7 +225,7 @@ struct SettingsView: View {
                 HStack(spacing: Theme.Spacing.sm) {
                     proIcon
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("PDFIT Pro")
+                        Text("PDFIT PRO")
                             .font(.headline.weight(.bold))
                         Text(entitlements.isDemoMode ? "Demo Mode" : "Active")
                             .font(.footnote.weight(.semibold))
@@ -246,6 +246,7 @@ struct SettingsView: View {
                     Label("Manage Subscription", systemImage: "arrow.triangle.2.circlepath")
                 }
 #endif
+#if DEBUG
                 if entitlements.isDemoMode {
                     Button(role: .destructive) {
                         entitlements.setDemoMode(false)
@@ -253,6 +254,7 @@ struct SettingsView: View {
                         Label("End Demo Mode", systemImage: "xmark.circle")
                     }
                 }
+#endif
             } else {
                 Button {
                     showingProPaywall = true
@@ -260,7 +262,7 @@ struct SettingsView: View {
                     HStack(spacing: Theme.Spacing.sm) {
                         proIcon
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("PDFIT Pro")
+                            Text("PDFIT PRO")
                                 .font(.headline.weight(.bold))
                                 .foregroundStyle(.primary)
                             Text("Unlock Pro")
@@ -284,7 +286,7 @@ struct SettingsView: View {
                 Text("Restore Purchases")
             }
         } header: {
-            SettingsSectionHeader("PDF IT PRO", symbol: "crown")
+            SettingsSectionHeader("PDFIT PRO", symbol: "doc.text")
                 .accessibilityIdentifier("pdf_settings_pro_header")
         } footer: {
             if showStoreKitUnavailableNote {
@@ -294,8 +296,9 @@ struct SettingsView: View {
     }
 
     private var proIcon: some View {
-        Image(systemName: "crown.fill")
-            .font(.system(size: 18, weight: .bold))
+        Text("PRO")
+            .font(.system(size: 10, weight: .black, design: .rounded))
+            .tracking(0.8)
             .foregroundStyle(Theme.Colors.orangePrimary)
             .frame(width: 40, height: 40)
             .background(
@@ -315,7 +318,7 @@ struct SettingsView: View {
     @ViewBuilder
     private var developerSection: some View {
         Section {
-            Toggle("Force PDF It Pro", isOn: $forcePro)
+            Toggle("Force PDFIT PRO", isOn: $forcePro)
                 .tint(Theme.Colors.orangePrimary)
                 .onChange(of: forcePro) { _, enabled in
                     EntitlementCenter.shared.setDebugProOverride(enabled)

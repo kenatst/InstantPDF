@@ -71,46 +71,32 @@ struct ProCelebrationView: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var mascotIn = false
-    @State private var documentsIn = false
-    @State private var raysIn = false
     @State private var textIn = false
-    @State private var finished = false
 
     private let generator = UINotificationFeedbackGenerator()
 
     var body: some View {
         ZStack {
-            // Dark premium backdrop with a warm gold/amber glow.
             Theme.Colors.darkBackground.ignoresSafeArea()
-            RadialGradient(colors: [Theme.Colors.orangePrimary.opacity(raysIn ? 0.35 : 0.0),
-                                    .clear],
-                           center: .center, startRadius: 10, endRadius: 360)
-                .ignoresSafeArea()
 
             VStack(spacing: 22) {
                 Spacer()
-                ZStack {
-                    // Rising sparkle and document particles around the crown mascot.
-                    ForEach(0..<6, id: \.self) { i in
-                        Image(systemName: ["doc.fill", "sparkle", "crown.fill"][i % 3])
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(Theme.Colors.orangeLight.opacity(documentsIn ? 0.75 : 0.0))
-                            .offset(x: documentsIn ? docOffset(i).x : 0,
-                                    y: documentsIn ? docOffset(i).y : 40)
-                    }
-
-                    MascotView(type: .crown, size: 160, enableFloatingAnimation: true)
-                        .scaleEffect(mascotIn ? 1 : (reduceMotion ? 1 : 0.4))
-                        .opacity(mascotIn ? 1 : 0)
-                }
+                MascotView(type: .crown, size: 190, enableFloatingAnimation: false)
+                    .scaleEffect(mascotIn ? 1 : (reduceMotion ? 1 : 0.82))
+                    .opacity(mascotIn ? 1 : 0)
 
                 VStack(spacing: 8) {
-                    Text("PDFIT Pro unlocked")
-                        .font(.system(size: 28, weight: .heavy, design: .rounded))
+                    Text("PDFIT PRO")
+                        .font(.system(size: 12, weight: .black, design: .rounded))
+                        .tracking(2.4)
+                        .foregroundStyle(Theme.Colors.orangePrimary)
+                    Text("Every Pro feature is unlocked on this device.")
+                        .font(.system(size: 29, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
-                    Text("Everything is yours. Private, on-device power.")
+                    Text("No uploads. No account. Everything stays on your device.")
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(.white.opacity(0.62))
+                        .multilineTextAlignment(.center)
                 }
                 .opacity(textIn ? 1 : 0)
                 .offset(y: textIn || reduceMotion ? 0 : 14)
@@ -142,21 +128,10 @@ struct ProCelebrationView: View {
                 return
             }
             withAnimation(.spring(response: 0.45, dampingFraction: 0.7)) { mascotIn = true }
-            try? await Task.sleep(nanoseconds: 200_000_000)
-            withAnimation(.easeOut(duration: 0.5)) { documentsIn = true }
-            try? await Task.sleep(nanoseconds: 200_000_000)
-            withAnimation(.easeOut(duration: 0.6)) { raysIn = true }
             generator.notificationOccurred(.success)
-            try? await Task.sleep(nanoseconds: 250_000_000)
+            try? await Task.sleep(nanoseconds: 220_000_000)
             withAnimation(.easeOut(duration: 0.45)) { textIn = true }
         }
-    }
-
-    private func docOffset(_ i: Int) -> CGPoint {
-        let angles: [CGFloat] = [-150, -110, -70, 70, 115, 155]
-        let radius: CGFloat = 105
-        let rad = angles[i] * .pi / 180
-        return CGPoint(x: cos(rad) * radius, y: sin(rad) * radius * 0.72)
     }
 }
 
@@ -186,39 +161,34 @@ struct ShareExtensionTutorialView: View {
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 28) {
                     VStack(alignment: .leading, spacing: 10) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(Theme.Colors.orangePrimary)
                         Text("Use PDFIT from any app")
-                            .font(.largeTitle.weight(.bold))
-                        Text("How to turn shared content into PDFs from Safari, X, Photos and more.")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                        Text("Turn shared content into a PDF without leaving the app.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
 
+                    shareWorkflow
+
                     VStack(spacing: 0) {
-                        instructionRow(symbol: "doc.text.magnifyingglass",
-                                       title: "Open content",
-                                       detail: "Safari, X, Photos, Notes, Files — anything that offers Share.")
-                        Divider().padding(.leading, 44)
-                        instructionRow(symbol: "square.and.arrow.up",
-                                       title: "Tap Share",
-                                       detail: "Use the system Share button.")
-                        Divider().padding(.leading, 44)
-                        instructionRow(symbol: "doc.text.fill",
-                                       title: "Choose PDFIT",
-                                       detail: "If PDFIT isn't visible, scroll to the end of the apps row and tap More.")
+                        instructionRow(number: "1", title: "Open content", detail: "Use the Share Sheet from compatible apps.")
+                        Divider().padding(.leading, 48)
+                        instructionRow(number: "2", title: "Tap Share", detail: "Use the system Share button.")
+                        Divider().padding(.leading, 48)
+                        instructionRow(number: "3", title: "Choose PDFIT", detail: "PDFIT receives only the content the source app chooses to share.")
                     }
 
-                    Label("Add PDFIT to your Share Sheet favorites", systemImage: "star.fill")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Theme.Colors.orangePrimary)
-
-                    Text("PDFIT receives only the content the source app chooses to share.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Add PDFIT to your Share Sheet favorites")
+                            .font(.footnote.weight(.bold))
+                        Text("If PDFIT isn't visible, scroll to the end of the apps row and tap More.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(16)
+                    .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .padding(24)
             }
@@ -246,14 +216,61 @@ struct ShareExtensionTutorialView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func instructionRow(symbol: String,
+    private var shareWorkflow: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 22) {
+                workflowSource("safari", label: "Safari")
+                workflowSource("photo", label: "Photos")
+                workflowSource("folder", label: "Files")
+                workflowSource("message", label: "Messages")
+            }
+            Image(systemName: "arrow.down")
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.title3.weight(.semibold))
+                Image(systemName: "arrow.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                Text("PDFIT")
+                    .font(.headline.weight(.black))
+                    .tracking(0.8)
+                Image(systemName: "arrow.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                Image(systemName: "doc.fill")
+                    .font(.title3)
+                    .foregroundStyle(Theme.Colors.orangePrimary)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .background(Color.secondary.opacity(0.08), in: Capsule())
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func workflowSource(_ symbol: String, label: LocalizedStringKey) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .semibold))
+                .frame(width: 42, height: 42)
+                .background(Color.secondary.opacity(0.09), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+        }
+    }
+
+    private func instructionRow(number: String,
                                 title: LocalizedStringKey,
                                 detail: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 14) {
-            Image(systemName: symbol)
-                .font(.system(size: 17, weight: .semibold))
+            Text(number)
+                .font(.caption.weight(.bold))
                 .foregroundStyle(Theme.Colors.orangePrimary)
-                .frame(width: 30)
+                .frame(width: 30, height: 30)
+                .background(Theme.Colors.orangePrimary.opacity(0.12), in: Circle())
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.body.weight(.semibold))
                 Text(detail).font(.footnote).foregroundStyle(.secondary)
@@ -290,38 +307,20 @@ struct ProFeaturesGuideView: View {
             ScrollView {
                 VStack(spacing: Theme.Spacing.lg) {
                     VStack(spacing: 14) {
-                        ZStack {
-                            Circle()
-                                .fill(Theme.Colors.orangePrimary.opacity(0.18))
-                                .frame(width: 130, height: 130)
-                                .blur(radius: 18)
-
-                            MascotView(type: .crown, size: 120, enableFloatingAnimation: true)
-                        }
+                        MascotView(type: .crown, size: 148, enableFloatingAnimation: false)
                         .accessibilityHidden(true)
 
                         VStack(spacing: 6) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "crown.fill")
-                                    .font(.caption.weight(.black))
-                                Text("PDFIT PRO")
-                                    .font(.caption.weight(.black))
-                                    .tracking(2.2)
-                            }
+                            Text("PDFIT PRO")
+                                .font(.caption.weight(.black))
+                                .tracking(2.2)
                             .foregroundStyle(Theme.Colors.orangePrimary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(Theme.Colors.orangePrimary.opacity(0.14))
-                                    .overlay(Capsule().strokeBorder(Theme.Colors.orangePrimary.opacity(0.35), lineWidth: 1))
-                            )
 
-                            Text("Your Private PDF Superpowers")
-                                .font(.system(size: 24, weight: .heavy, design: .rounded))
+                            Text("What PDFIT PRO unlocks")
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
                                 .multilineTextAlignment(.center)
 
-                            Text("Here is everything unlocked and ready on your iPhone.")
+                            Text("A focused set of tools for creating and working with PDFs.")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)

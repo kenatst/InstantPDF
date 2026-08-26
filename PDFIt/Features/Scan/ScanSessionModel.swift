@@ -154,6 +154,18 @@ struct ScanSessionModel: Equatable {
 
     // MARK: - Batch grouping
 
+    /// Starts a new empty document group. The next captured page is appended
+    /// to it; cancelling that capture removes the empty trailing group.
+    mutating func beginNewGroup() {
+        guard let last = groups.last, !last.pageIDs.isEmpty else { return }
+        groups.append(ScanGroup(name: "Document \(groups.count + 1)"))
+    }
+
+    mutating func discardEmptyTrailingGroup() {
+        guard let last = groups.last, last.pageIDs.isEmpty else { return }
+        groups.removeLast()
+    }
+
     /// Splits trailing pages into a new group starting at `fromPageIndex`.
     mutating func insertGroupBreak(afterPageIndex index: Int) {
         if groups.isEmpty {

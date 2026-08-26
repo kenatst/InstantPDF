@@ -15,25 +15,48 @@ final class ImagePDFConverter {
     static let autoPageMaxDimension: CGFloat = 1100
 
     func convert(imageURLs: [URL], options: ConversionOptions) throws -> Data {
-        var chunks: [Data] = []
+        guard !imageURLs.isEmpty else { throw ConversionError.noUsableContent }
 
-        for url in imageURLs {
-            try Task.checkCancellation()
-            let chunk = autoreleasepool { () -> Data? in
-                guard let image = Self.downsampledImage(at: url,
-                                                        maxPixelDimension: options.imageQuality.maxPixelDimension) else {
-                    return nil
+        // One renderer writes every page directly into the final PDF. The old
+        // path produced one in-memory PDF per photo and then loaded every one
+        // again through PDFKit to merge them, multiplying work and peak memory
+        // for 10–20 camera images.
+        let format = UIGraphicsPDFRendererFormat()
+        let fallbackBounds = CGRect(origin: .zero, size: PDFPaperSize.a4.pointSize)
+        let renderer = UIGraphicsPDFRenderer(bounds: fallbackBounds, format: format)
+        var renderingError: ConversionError?
+        var renderedPageCount = 0
+
+        let data = renderer.pdfData { context in
+            for url in imageURLs where renderingError == nil {
+                if Task.isCancelled {
+                    renderingError = .cancelled
+                    break
                 }
-                return Self.singlePagePDF(for: image, options: options)
+
+                autoreleasepool {
+                    guard let image = Self.downsampledImage(
+                        at: url,
+                        maxPixelDimension: options.imageQuality.maxPixelDimension
+                    ) else {
+                        renderingError = .unreadableFile(name: url.lastPathComponent)
+                        return
+                    }
+
+                    let pageSize = Self.pageSize(for: image, options: options)
+                    let bounds = CGRect(origin: .zero, size: pageSize)
+                    context.beginPage(withBounds: bounds, pageInfo: [:])
+                    Self.draw(image, in: bounds, options: options, context: context.cgContext)
+                    renderedPageCount += 1
+                }
             }
-            if let chunk { chunks.append(chunk) }
         }
 
-        guard !chunks.isEmpty else { throw ConversionError.generationFailed }
-        guard chunks.count == 1, let only = chunks.first else {
-            return try PDFAssembly.merge(chunks)
+        if let renderingError { throw renderingError }
+        guard renderedPageCount == imageURLs.count, !data.isEmpty else {
+            throw ConversionError.generationFailed
         }
-        return only
+        return data
     }
 
     // MARK: - ImageIO downsampling (preserved from the prototype)
@@ -64,21 +87,27 @@ final class ImagePDFConverter {
         let renderer = UIGraphicsPDFRenderer(bounds: bounds, format: format)
         return renderer.pdfData { context in
             context.beginPage()
+            Self.draw(image, in: bounds, options: options, context: context.cgContext)
+        }
+    }
 
-            let margin: CGFloat = 24
-            let contentRect = bounds.insetBy(dx: margin, dy: margin)
-            let drawRect = AspectLayout.rect(aspectRatio: image.size,
-                                             inRect: contentRect,
-                                             mode: options.imageLayout)
+    private static func draw(_ image: UIImage,
+                             in bounds: CGRect,
+                             options: ConversionOptions,
+                             context: CGContext) {
+        let margin: CGFloat = 24
+        let contentRect = bounds.insetBy(dx: margin, dy: margin)
+        let drawRect = AspectLayout.rect(aspectRatio: image.size,
+                                         inRect: contentRect,
+                                         mode: options.imageLayout)
 
-            if options.imageLayout == .fill {
-                context.cgContext.saveGState()
-                context.cgContext.clip(to: contentRect)
-                image.draw(in: drawRect)
-                context.cgContext.restoreGState()
-            } else {
-                image.draw(in: drawRect)
-            }
+        if options.imageLayout == .fill {
+            context.saveGState()
+            context.clip(to: contentRect)
+            image.draw(in: drawRect)
+            context.restoreGState()
+        } else {
+            image.draw(in: drawRect)
         }
     }
 

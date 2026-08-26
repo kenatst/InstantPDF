@@ -16342,6 +16342,136 @@
         }
       }
     },
+    "Some photos couldn't be loaded": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Einige Fotos konnten nicht geladen werden" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Some photos couldn't be loaded" } },
+        "es": { "stringUnit": { "state": "translated", "value": "No se pudieron cargar algunas fotos" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Certaines photos n’ont pas pu être chargées" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Non è stato possibile caricare alcune foto" } }
+      }
+    },
+    "Retry Failed Photos": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Fehlgeschlagene Fotos erneut laden" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Retry Failed Photos" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Reintentar las fotos fallidas" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Réessayer les photos échouées" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Riprova le foto non riuscite" } }
+      }
+    },
+    "Continue with Loaded Photos": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Mit geladenen Fotos fortfahren" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Continue with Loaded Photos" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Continuar con las fotos cargadas" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Continuer avec les photos chargées" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Continua con le foto caricate" } }
+      }
+    },
+    "Retry the items that may still be downloading from iCloud, or continue with the photos already ready.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Versuche die Elemente erneut, die möglicherweise noch aus iCloud geladen werden, oder fahre mit den bereits verfügbaren Fotos fort." } },
+        "en": { "stringUnit": { "state": "translated", "value": "Retry the items that may still be downloading from iCloud, or continue with the photos already ready." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Vuelve a intentar los elementos que quizá aún se estén descargando de iCloud o continúa con las fotos que ya están listas." } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Réessayez les éléments peut-être encore en téléchargement depuis iCloud, ou continuez avec les photos déjà prêtes." } },
+        "it": { "stringUnit": { "state": "translated", "value": "Riprova gli elementi che potrebbero essere ancora in download da iCloud oppure continua con le foto già pronte." } }
+      }
+    },
+    "Preparing Photos": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Fotos werden vorbereitet" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Preparing Photos" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Preparando fotos" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Préparation des photos" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Preparazione delle foto" } }
+      }
+    },
+    "Photos stay on this device.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Die Fotos bleiben auf diesem Gerät." } },
+        "en": { "stringUnit": { "state": "translated", "value": "Photos stay on this device." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Las fotos permanecen en este dispositivo." } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Les photos restent sur cet appareil." } },
+        "it": { "stringUnit": { "state": "translated", "value": "Le foto restano su questo dispositivo." } }
+      }
+    },
+    "Choose your plan": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Tarif auswählen" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Choose your plan" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Elige tu plan" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Choisissez votre formule" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Scegli il tuo piano" } }
+      }
+    },
+    "No active purchases were found.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Keine aktiven Käufe gefunden." } },
+        "en": { "stringUnit": { "state": "translated", "value": "No active purchases were found." } },
+        "es": { "stringUnit": { "state": "translated", "value": "No se encontraron compras activas." } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Aucun achat actif n’a été trouvé." } },
+        "it": { "stringUnit": { "state": "translated", "value": "Non sono stati trovati acquisti attivi." } }
+      }
+    },
+    "The app didn't share content PDFIT can work with.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Die App hat keine mit PDFIT kompatiblen Inhalte geteilt." } },
+        "en": { "stringUnit": { "state": "translated", "value": "The app didn't share content PDFIT can work with." } },
+        "es": { "stringUnit": { "state": "translated", "value": "La app no compartió contenido compatible con PDFIT." } },
+        "fr": { "stringUnit": { "state": "translated", "value": "L’app n’a partagé aucun contenu compatible avec PDFIT." } },
+        "it": { "stringUnit": { "state": "translated", "value": "L’app non ha condiviso contenuti compatibili con PDFIT." } }
+      }
+    },
+    "What PDFIT PRO unlocks": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Was PDFIT PRO freischaltet" } },
+        "en": { "stringUnit": { "state": "translated", "value": "What PDFIT PRO unlocks" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Lo que desbloquea PDFIT PRO" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Ce que PDFIT PRO débloque" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Cosa sblocca PDFIT PRO" } }
+      }
+    },
+    "A focused set of tools for creating and working with PDFs.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Ein gezieltes Werkzeugset zum Erstellen und Bearbeiten von PDFs." } },
+        "en": { "stringUnit": { "state": "translated", "value": "A focused set of tools for creating and working with PDFs." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Un conjunto específico de herramientas para crear y trabajar con PDF." } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Un ensemble ciblé d’outils pour créer et utiliser des PDF." } },
+        "it": { "stringUnit": { "state": "translated", "value": "Un set mirato di strumenti per creare e gestire PDF." } }
+      }
+    },
+    "DEVELOPER": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "ENTWICKLER" } },
+        "en": { "stringUnit": { "state": "translated", "value": "DEVELOPER" } },
+        "es": { "stringUnit": { "state": "translated", "value": "DESARROLLADOR" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "DÉVELOPPEUR" } },
+        "it": { "stringUnit": { "state": "translated", "value": "SVILUPPATORE" } }
+      }
+    },
+    "Close": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Schließen" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Close" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Cerrar" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Fermer" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Chiudi" } }
+      }
+    },
     "PDFIT processes and stores documents locally. Your documents are not uploaded to PDFIT. When you convert a webpage, PDFIT loads the page directly from its source website.": {
       "extractionState": "manual",
       "localizations": {

@@ -40,8 +40,6 @@ struct PDFToolsHostView: View {
     @State private var errorMessage: String?
     // Paywall (locked tool tapped)
     @State private var paywallFeature: ProFeature?
-    /// Post-purchase activation flow, then resume the requested tool.
-    @State private var showingActivationFlow = false
 
     private let storage = StorageManager.shared
 
@@ -98,25 +96,14 @@ struct PDFToolsHostView: View {
             }
             .sheet(item: $paywallFeature) { feature in
                 PaywallView(feature: feature,
-                            onVerifiedPurchase: { _ in
-                    // Verified purchase from a locked tool row: run the
-                    // activation flow; when it finishes, land back on the
-                    // EXACT tool the user originally wanted.
-                    showingActivationFlow = true
+                            onVerifiedPurchase: { purchasedFeature in
+                    section = Self.section(for: purchasedFeature)
+                    PendingProIntent.clear()
                 }, onDemoMode: { intent in
                     // Demo Mode does not impersonate a purchase. Resume the
                     // exact tool immediately and skip the activation ceremony.
                     section = Self.section(for: intent)
                 })
-            }
-            .sheet(isPresented: $showingActivationFlow) {
-                ProActivationFlow { intent in
-                    if let intent {
-                        section = Self.section(for: intent)
-                    } else {
-                        section = .menu
-                    }
-                }
             }
             .alert("Tool failed", isPresented: Binding(get: { errorMessage != nil },
                                                        set: { if !$0 { errorMessage = nil } })) {

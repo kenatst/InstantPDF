@@ -54,6 +54,15 @@ final class ScanFlowModel: ObservableObject {
         showingReview = !session.isEmpty
     }
 
+    func startNewBatchDocument() {
+        session.beginNewGroup()
+        showingCamera = true
+    }
+
+    func cancelPendingBatchDocument() {
+        session.discardEmptyTrailingGroup()
+    }
+
     /// Applies the enhancement preset for one page in place on disk.
     /// Runs synchronously per page — callers dispatch to background.
     nonisolated static func enhance(page: inout ScannedPage, store: TempFileStore) {

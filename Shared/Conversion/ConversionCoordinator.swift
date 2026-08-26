@@ -85,6 +85,33 @@ final class ConversionCoordinator {
             }
         }
 
+        // Photos are the common multi-item path. Render the ordered sources
+        // in one streaming pass instead of creating and re-opening one PDF
+        // chunk per image. This also makes a failed image all-or-nothing: the
+        // Library never receives a silently incomplete document.
+        let orderedImageURLs = items.compactMap { item -> URL? in
+            if case .image(let url) = item.kind { return url }
+            return nil
+        }
+        if orderedImageURLs.count == items.count {
+            onStageChange?(.optimizingImages)
+            let rendered = try imageConverter.convert(imageURLs: orderedImageURLs,
+                                                       options: options)
+            var title = Self.fallbackTitle(for: items) ?? "PDF"
+            if let customTitle = customization.trimmedDocumentTitle {
+                title = customTitle
+            }
+            let stamped = PersonalizationApplier.apply(to: rendered,
+                                                       customization: customization,
+                                                       options: options,
+                                                       sourceURL: nil)
+            return ConvertedDocument(data: stamped,
+                                     pageCount: PDFAssembly.pageCount(of: stamped),
+                                     suggestedTitle: title,
+                                     sourceURL: nil,
+                                     source: Self.inferredSource(for: items))
+        }
+
         for item in items {
             try Task.checkCancellation()
 

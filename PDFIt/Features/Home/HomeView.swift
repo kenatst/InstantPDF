@@ -62,6 +62,28 @@ struct HomeView: View {
         .onChange(of: importer.photoSelections, initial: false) { _, _ in
             importer.handlePhotoSelections()
         }
+        .overlay {
+            if importer.isLoadingPhotos || importer.isConverting {
+                ImportProgressOverlay(importer: importer)
+            }
+        }
+        .alert("Some photos couldn't be loaded",
+               isPresented: Binding(get: { importer.photoImportIssue != nil },
+                                    set: { if !$0 { importer.photoImportIssue = nil } })) {
+            Button("Retry Failed Photos") {
+                importer.retryFailedPhotos()
+            }
+            if importer.photoImportIssue?.loadedCount ?? 0 > 0 {
+                Button("Continue with Loaded Photos") {
+                    importer.continueWithLoadedPhotos()
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                importer.cancelPhotoImport()
+            }
+        } message: {
+            Text("Retry the items that may still be downloading from iCloud, or continue with the photos already ready.")
+        }
         .sheet(isPresented: $showingScanner, onDismiss: finishScanPresentation) {
             ScanFlowSheet(model: scanModel) { documents in
                 // REAL persistence: every document must be saved or the user
@@ -134,9 +156,10 @@ struct HomeView: View {
         .sheet(isPresented: $importer.showingPaywall) {
             PaywallView(feature: importer.requiresPro ?? .webConversion,
                         onVerifiedPurchase: { feature in
-                // Contextual purchase (Link, etc.): run the activation flow,
-                // then RESUME the exact action that was requested.
-                showingProActivation = true
+                // Contextual purchases resume the exact staged URL/options
+                // immediately. Product education must never make the user
+                // rebuild the request that brought them here.
+                handleProActivationCompletion(feature)
             }, onDemoMode: { intent in
                 // Demo Mode is not a purchase: resume immediately without
                 // celebration or changing real purchase state.
@@ -163,7 +186,7 @@ struct HomeView: View {
             PhotosPickerSheet(selection: $importer.photoSelections)
                 .presentationDetents([.large])
         }
-        .sheet(isPresented: $importer.showingResult) {
+        .sheet(isPresented: $importer.showingResult, onDismiss: openSavedImport) {
             if let result = importer.result {
                 ConversionResultSheet(document: result)
             }
@@ -455,10 +478,17 @@ struct HomeView: View {
         presentedViewerID = id
     }
 
+    private func openSavedImport() {
+        guard let id = importer.consumeSavedRecordID() else { return }
+        reloadRecords()
+        presentedViewerID = id
+    }
+
     /// Called when the activation flow finishes. If the purchase originated
     /// from a concrete action (Sign/Compress/OCR/Link…), resume it now.
     @MainActor
     private func handleProActivationCompletion(_ intent: ProFeature?) {
+        defer { PendingProIntent.clear() }
         switch intent {
         case .linkConversion, .webConversion:
             if !importer.resumePendingProConversion() {
@@ -477,6 +507,43 @@ struct HomeView: View {
     // MARK: - Home intentionally hides the system navigation bar: the custom
     // brand header above IS the product header (brand + Settings gear).
     // Nothing else lives in toolbar content.
+}
+
+private struct ImportProgressOverlay: View {
+    @ObservedObject var importer: ImportFlowModel
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.38)
+                .ignoresSafeArea()
+
+            VStack(spacing: 14) {
+                ProgressView()
+                    .tint(Theme.Colors.orangePrimary)
+
+                Text(importer.isLoadingPhotos ? "Preparing Photos" : "Creating PDF")
+                    .font(.headline.weight(.semibold))
+
+                if importer.isLoadingPhotos, importer.totalPhotoCount > 0 {
+                    ProgressView(value: Double(importer.loadedPhotoCount),
+                                 total: Double(importer.totalPhotoCount))
+                        .tint(Theme.Colors.orangePrimary)
+                    Text("Photos stay on this device.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Button("Cancel") { importer.cancel() }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.Colors.orangePrimary)
+            }
+            .padding(24)
+            .frame(maxWidth: 300)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .shadow(color: .black.opacity(0.22), radius: 24, y: 12)
+        }
+        .transition(.opacity)
+    }
 }
 
 /// Navigation routes shared by Home and Library. Viewer routes carry the

@@ -5,7 +5,7 @@ import StoreKit
 /// onboarding (with "Continue with Free"). Prices come from StoreKit, never
 /// hardcoded; when no products are configured the state is explicit —
 /// never an endless spinner.
-struct PaywallView: View {
+private struct LegacyPaywallView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     /// The feature that triggered the paywall — used for the headline.
@@ -89,7 +89,7 @@ struct PaywallView: View {
 
             VStack(spacing: 8) {
                 HStack(spacing: 6) {
-                    Image(systemName: "crown.fill")
+                    Image(systemName: "doc.text")
                         .font(.caption.weight(.black))
                     Text("PDFIT PRO")
                         .font(.caption.weight(.black))
@@ -361,7 +361,7 @@ struct PaywallView: View {
             onDemoMode?(intent)
         } label: {
             HStack(spacing: Theme.Spacing.xs) {
-                Image(systemName: "sparkles")
+                Image(systemName: "wrench.and.screwdriver")
                 Text("Try Pro — Demo Mode")
                     .fontWeight(.bold)
             }
@@ -496,6 +496,377 @@ struct PaywallView: View {
             .font(.caption2.weight(.semibold))
         }
         .padding(.top, 6)
+    }
+}
+
+/// Release paywall: the Crown mascot carries the identity; the rest is a
+/// restrained editorial composition with outcome-led copy and StoreKit plans.
+struct PaywallView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var feature: ProFeature = .webConversion
+    var showsContinueFree = false
+    var onVerifiedPurchase: ((ProFeature) -> Void)? = nil
+    var onDemoMode: ((ProIntent) -> Void)? = nil
+
+    @ObservedObject private var entitlements = EntitlementCenter.shared
+    @State private var selectedProductID: String?
+    @State private var busyProductID: String?
+    @State private var message: String?
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 26) {
+                    hero
+                    outcomes
+                    trustStrip
+
+                    if entitlements.isPro {
+                        alreadyPro
+                    } else {
+                        plans
+                        purchaseButton
+                        purchaseLinks
+#if DEBUG
+                        developerDemo
+#endif
+                    }
+
+                    if let message {
+                        Text(message)
+                            .font(.footnote)
+                            .foregroundStyle(Color.white.opacity(0.62))
+                            .multilineTextAlignment(.center)
+                    }
+
+                    legal
+                }
+                .padding(.horizontal, 22)
+                .padding(.top, 18)
+                .padding(.bottom, 34)
+            }
+            .scrollIndicators(.hidden)
+            .background(
+                LinearGradient(colors: [Color(hex: "141519"), Color(hex: "0B0C0E")],
+                               startPoint: .top,
+                               endPoint: .bottom)
+                    .ignoresSafeArea()
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 34, height: 34)
+                            .background(Color.white.opacity(0.09), in: Circle())
+                    }
+                    .accessibilityLabel("Close")
+                }
+            }
+            .task {
+                entitlements.start()
+                chooseDefaultProductIfNeeded()
+            }
+            .onChange(of: entitlements.products) { _, _ in
+                chooseDefaultProductIfNeeded()
+            }
+        }
+        .tint(Theme.Colors.orangePrimary)
+        .preferredColorScheme(.dark)
+        .presentationDetents([.large])
+    }
+
+    private var hero: some View {
+        VStack(spacing: 14) {
+            MascotView(type: .crown, size: 190, enableFloatingAnimation: false)
+                .accessibilityHidden(true)
+
+            Text("PDFIT PRO")
+                .font(.system(size: 12, weight: .black, design: .rounded))
+                .tracking(2.6)
+                .foregroundStyle(Theme.Colors.orangePrimary)
+
+            Text("Your complete private PDF toolkit.")
+                .font(.system(size: 31, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(contextHeadline)
+                .font(.subheadline)
+                .foregroundStyle(Color.white.opacity(0.58))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 8)
+        }
+    }
+
+    private var outcomes: some View {
+        VStack(spacing: 0) {
+            outcome(symbol: "square.and.arrow.up", title: "Share from any app", detail: "Create PDFs from the Share Sheet.")
+            outcomeDivider
+            outcome(symbol: "signature", title: "Sign & Search on Device", detail: "Sign documents without uploading them anywhere.")
+            outcomeDivider
+            outcome(symbol: "arrow.down.doc", title: "Compress", detail: "Shrink image-heavy PDFs honestly — never bigger copies.")
+            outcomeDivider
+            outcome(symbol: "rectangle.stack", title: "Batch and organize", detail: "Scan several documents at once. Unlimited folders and merge.")
+        }
+    }
+
+    private var outcomeDivider: some View {
+        Divider().overlay(Color.white.opacity(0.08)).padding(.leading, 48)
+    }
+
+    private func outcome(symbol: String,
+                         title: LocalizedStringKey,
+                         detail: LocalizedStringKey) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: symbol)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Theme.Colors.orangePrimary)
+                .frame(width: 34)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
+                Text(detail).font(.caption).foregroundStyle(Color.white.opacity(0.5))
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 13)
+    }
+
+    private var trustStrip: some View {
+        HStack(spacing: 0) {
+            trustItem(symbol: "person.crop.circle.badge.xmark", text: "No account")
+            trustItem(symbol: "icloud.slash", text: "No PDFIT uploads")
+            trustItem(symbol: "cpu", text: "On-device OCR")
+        }
+        .padding(.vertical, 15)
+        .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .strokeBorder(Color.white.opacity(0.07), lineWidth: 1))
+    }
+
+    private func trustItem(symbol: String, text: LocalizedStringKey) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.68))
+            Text(text)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.62))
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var plans: some View {
+        if entitlements.products.isEmpty {
+            productUnavailable
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Choose your plan")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white)
+                if let monthly = entitlements.monthlyProduct { planRow(monthly, recommended: false) }
+                if let annual = entitlements.annualProduct { planRow(annual, recommended: true) }
+                if let lifetime = entitlements.lifetimeProduct { planRow(lifetime, recommended: false) }
+            }
+        }
+    }
+
+    private func planRow(_ product: Product, recommended: Bool) -> some View {
+        let selected = selectedProductID == product.id
+        return Button {
+            selectedProductID = product.id
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(selected ? Theme.Colors.orangePrimary : Color.white.opacity(0.28))
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text(product.displayName).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
+                        if recommended {
+                            Text("Recommended")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(Theme.Colors.orangePrimary)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(Theme.Colors.orangePrimary.opacity(0.12), in: Capsule())
+                        }
+                    }
+                    Text(product.description)
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.48))
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                Text(product.displayPrice).font(.subheadline.weight(.bold)).foregroundStyle(.white)
+            }
+            .padding(15)
+            .contentShape(Rectangle())
+            .background(selected ? Color.white.opacity(0.085) : Color.white.opacity(0.035),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(selected ? Theme.Colors.orangePrimary.opacity(0.72) : Color.white.opacity(0.07),
+                              lineWidth: selected ? 1.5 : 1))
+        }
+        .buttonStyle(.plain)
+        .disabled(busyProductID != nil)
+    }
+
+    @ViewBuilder
+    private var purchaseButton: some View {
+        if let selectedProduct {
+            Button { purchase(selectedProduct) } label: {
+                VStack(spacing: 2) {
+                    if busyProductID == selectedProduct.id {
+                        ProgressView().tint(Color(hex: "3A1D08"))
+                    } else {
+                        Text("Continue").font(.headline.weight(.bold))
+                        Text(selectedProduct.displayPrice).font(.caption.weight(.semibold)).opacity(0.72)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .primaryOrangeButton()
+            .disabled(busyProductID != nil)
+        }
+    }
+
+    private var purchaseLinks: some View {
+        VStack(spacing: 12) {
+            Button("Restore Purchases") {
+                Task {
+                    await entitlements.restore()
+                    if entitlements.isPro {
+                        dismiss()
+                        onVerifiedPurchase?(feature)
+                    } else {
+                        message = String(localized: "No active purchases were found.", bundle: LanguageManager.bundle)
+                    }
+                }
+            }
+            .font(.subheadline.weight(.semibold))
+            Button("Continue Free") { dismiss() }
+                .font(.subheadline)
+                .foregroundStyle(Color.white.opacity(0.56))
+        }
+    }
+
+#if DEBUG
+    private var developerDemo: some View {
+        VStack(spacing: 10) {
+            Divider().overlay(Color.white.opacity(0.08))
+            Text("DEVELOPER")
+                .font(.system(size: 9, weight: .bold))
+                .tracking(1.6)
+                .foregroundStyle(Color.white.opacity(0.32))
+            Button("Try Pro — Demo Mode") {
+                let intent = ProDemoMode.activate(feature, entitlementCenter: entitlements)
+                dismiss()
+                onDemoMode?(intent)
+            }
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Theme.Colors.orangePrimary)
+            .accessibilityIdentifier("paywall_demo_mode")
+        }
+        .padding(.top, 4)
+    }
+#endif
+
+    private var productUnavailable: some View {
+        VStack(spacing: 10) {
+            if entitlements.status == .loading {
+                ProgressView()
+                Text("Loading plans…").font(.footnote).foregroundStyle(Color.white.opacity(0.5))
+            } else {
+                Text("Purchases are temporarily unavailable.")
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(.white)
+                Button("Retry") { entitlements.refreshProducts() }
+                    .font(.footnote.weight(.bold)).foregroundStyle(Theme.Colors.orangePrimary)
+                Button("Continue Free") { dismiss() }
+                    .font(.footnote).foregroundStyle(Color.white.opacity(0.5))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 18)
+    }
+
+    private var alreadyPro: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 30)).foregroundStyle(Theme.Colors.orangePrimary)
+            Text("You're all set").font(.headline.weight(.bold)).foregroundStyle(.white)
+            Button("Done") { dismiss() }.primaryOrangeButton()
+        }
+    }
+
+    private var legal: some View {
+        VStack(spacing: 9) {
+            Text("Subscriptions auto-renew until cancelled in your App Store settings. Lifetime is a one-time purchase.")
+                .font(.caption2)
+                .foregroundStyle(Color.white.opacity(0.34))
+                .multilineTextAlignment(.center)
+            HStack(spacing: 18) {
+                Link("Terms", destination: ExternalLinks.termsOfUse)
+                Link("Privacy", destination: ExternalLinks.privacyPolicy)
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(Color.white.opacity(0.56))
+        }
+    }
+
+    private var selectedProduct: Product? {
+        entitlements.products.first { $0.id == selectedProductID }
+    }
+
+    private func chooseDefaultProductIfNeeded() {
+        guard selectedProduct == nil else { return }
+        selectedProductID = entitlements.annualProduct?.id
+            ?? entitlements.monthlyProduct?.id
+            ?? entitlements.lifetimeProduct?.id
+    }
+
+    private func purchase(_ product: Product) {
+        busyProductID = product.id
+        message = nil
+        PendingProIntent.stage(feature)
+        Task {
+            let outcome = await entitlements.purchase(product)
+            busyProductID = nil
+            switch outcome {
+            case .success:
+                dismiss()
+                onVerifiedPurchase?(feature)
+            case .userCancelled:
+                break
+            case .pending:
+                message = String(localized: "Purchase pending approval.", bundle: LanguageManager.bundle)
+            case .failed(let reason):
+                message = reason
+            }
+        }
+    }
+
+    private var contextHeadline: LocalizedStringKey {
+        switch feature {
+        case .webConversion, .linkConversion: return "Turn any webpage or link into a clean PDF."
+        case .shareExtension: return "Convert content directly from any app."
+        case .cleanMode, .readerMode: return "Readable, polished webpage documents."
+        case .ocr: return "Make scans searchable with on-device OCR."
+        case .compression: return "Shrink heavy PDFs without losing quality."
+        case .signature: return "Sign documents by hand, locally."
+        case .extractPages, .organizePages: return "Reorder, rotate and extract pages."
+        case .advancedBatch: return "Scan several documents in one pass."
+        case .unlimitedFolders, .unlimitedMerge: return "Unlimited folders and merging."
+        case .advancedCustomization: return "Covers, page numbers, footers and more."
+        }
     }
 }
 

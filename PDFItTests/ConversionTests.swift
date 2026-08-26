@@ -115,6 +115,56 @@ final class ConversionTests: XCTestCase {
         XCTAssertEqual(document.pageCount, 3, "One image per page, order preserved")
     }
 
+    func testTwentyPhotosPreserveSelectionOrderAndOrientation() throws {
+        let imageURLs = try (0..<20).map { index -> URL in
+            let portrait = index.isMultiple(of: 2)
+            let size = portrait
+                ? CGSize(width: 360, height: 640)
+                : CGSize(width: 640, height: 360)
+            let url = tempDirectory.appendingPathComponent("ordered-\(index).png")
+            let image = UIGraphicsImageRenderer(size: size).image { context in
+                UIColor(hue: CGFloat(index) / 20, saturation: 0.8, brightness: 0.9, alpha: 1).setFill()
+                context.fill(CGRect(origin: .zero, size: size))
+            }
+            try XCTUnwrap(image.pngData()).write(to: url)
+            return url
+        }
+
+        let data = try ImagePDFConverter().convert(imageURLs: imageURLs,
+                                                   options: ConversionOptions())
+        let document = try XCTUnwrap(PDFDocument(data: data))
+        XCTAssertEqual(document.pageCount, 20)
+
+        for index in 0..<20 {
+            let bounds = try XCTUnwrap(document.page(at: index)).bounds(for: .mediaBox)
+            if index.isMultiple(of: 2) {
+                XCTAssertGreaterThan(bounds.height, bounds.width, "Portrait photo \(index) moved or rotated")
+            } else {
+                XCTAssertGreaterThan(bounds.width, bounds.height, "Landscape photo \(index) moved or rotated")
+            }
+        }
+    }
+
+    func testPhotoCollectionFailsInsteadOfSavingMissingPages() throws {
+        let validURL = tempDirectory.appendingPathComponent("valid.png")
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 320, height: 480)).image { context in
+            UIColor.systemOrange.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 320, height: 480))
+        }
+        try XCTUnwrap(image.pngData()).write(to: validURL)
+        let brokenURL = tempDirectory.appendingPathComponent("broken.heic")
+        try Data("not an image".utf8).write(to: brokenURL)
+
+        XCTAssertThrowsError(
+            try ImagePDFConverter().convert(imageURLs: [validURL, brokenURL, validURL],
+                                            options: ConversionOptions())
+        ) { error in
+            guard case ConversionError.unreadableFile = error else {
+                return XCTFail("Expected unreadableFile, got \(error)")
+            }
+        }
+    }
+
     func testImageAutoPageKeepsAspectRatio() throws {
         let url = tempDirectory.appendingPathComponent("wide.png")
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 2000, height: 1000))

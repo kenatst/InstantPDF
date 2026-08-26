@@ -88,28 +88,15 @@ struct OnboardingView: View {
     // MARK: - 1. Any source, one destination
 
     private var conversionPage: some View {
-        OnboardingPage(title: "Anything to PDF",
-                       subtitle: "Turn photos, links, text, and files into beautiful PDFs instantly.") {
-            ZStack {
-                OnboardingStage()
-
-                MascotView(type: .hero, size: 194, enableFloatingAnimation: !reduceMotion)
-                    .offset(y: 18)
-
-                SourcePortrait(type: .photos, label: "Photos")
-                    .offset(x: -104, y: -78)
-                SourcePortrait(type: .link, label: "Link")
-                    .offset(x: 104, y: -64)
-                SourcePortrait(type: .text, label: "Text")
-                    .offset(x: -104, y: 84)
-                SourcePortrait(type: .files, label: "Files")
-                    .offset(x: 102, y: 92)
-
-                ScanMark()
-                    .offset(y: 135)
+        OnboardingPage(title: "Anything → PDF",
+                       subtitle: "Scan, convert, organize and edit PDFs — privately on your device.") {
+            VStack(spacing: 20) {
+                MascotView(type: .hero, size: 238, enableFloatingAnimation: !reduceMotion)
+                    .accessibilityHidden(true)
+                OnboardingSourceRail()
             }
             .frame(maxWidth: 390)
-            .frame(height: 370)
+            .frame(height: 350)
         }
     }
 
@@ -117,20 +104,10 @@ struct OnboardingView: View {
 
     private var sharePage: some View {
         OnboardingPage(title: "Share. PDFIT. Done.",
-                       subtitle: "Use the share sheet. We'll handle the rest.") {
-            ZStack(alignment: .top) {
-                OnboardingStage()
-
-                MascotView(type: .hero, size: 108, enableFloatingAnimation: false)
-                    .offset(y: -72)
-                    .zIndex(2)
-
-                ShareSheetConcept()
-                    .padding(.horizontal, 22)
-                    .padding(.top, 50)
-            }
+                       subtitle: "Turn shared content into a PDF without leaving the app you're using.") {
+            OnboardingShareFlow()
             .frame(maxWidth: 390)
-            .frame(height: 370)
+            .frame(height: 350)
         }
     }
 
@@ -138,35 +115,19 @@ struct OnboardingView: View {
 
     private var privacyPage: some View {
         OnboardingPage(title: "Private & Local",
-                       subtitle: "On-device processing. No account. Nothing uploaded to PDFIT.") {
-            VStack(spacing: 0) {
-                ZStack {
-                    OnboardingStage()
-
-                    LocalArchiveScene()
-
-                    MascotView(type: .library, size: 228, enableFloatingAnimation: !reduceMotion)
-                        .offset(y: 8)
-
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 19, weight: .bold))
-                        .foregroundStyle(Theme.Colors.orangeLight)
-                        .padding(14)
-                        .background(.black.opacity(0.52), in: Circle())
-                        .overlay(Circle().strokeBorder(Theme.Colors.orangePrimary.opacity(0.58), lineWidth: 1))
-                        .offset(y: -132)
-                }
-                .frame(maxWidth: 390)
-                .frame(height: 310)
-
-                Text("PDF It processes and stores documents locally. Your documents are not uploaded to PDF It. When you convert a webpage, PDF It loads the page directly from its source website.")
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(Color.white.opacity(0.68))
+                       subtitle: "No uploads. No account. Everything stays on your device.") {
+            VStack(spacing: 18) {
+                MascotView(type: .library, size: 224, enableFloatingAnimation: !reduceMotion)
+                    .accessibilityHidden(true)
+                OnboardingTrustRow()
+                Text("PDFIT processes and stores documents locally. Your documents are not uploaded to PDFIT. When you convert a webpage, PDFIT loads the page directly from its source website.")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.54))
                     .multilineTextAlignment(.center)
-                    .lineSpacing(2)
-                    .padding(.horizontal, 18)
-                    .padding(.top, 2)
+                    .padding(.horizontal, 26)
             }
+            .frame(maxWidth: 390)
+            .frame(height: 350)
         }
     }
 
@@ -233,15 +194,114 @@ private struct OnboardingBackdrop: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Color(hex: "050505"), Color(hex: "0B0806"), Color(hex: "060606")],
+            LinearGradient(colors: [Color(hex: "08090B"), Color(hex: "111216"), Color(hex: "090A0C")],
                            startPoint: .top,
                            endPoint: .bottom)
-            RadialGradient(colors: [Theme.Colors.orangePrimary.opacity(page == 1 ? 0.18 : 0.11), .clear],
-                           center: .bottom,
-                           startRadius: 8,
-                           endRadius: 420)
             LinearGradient(colors: [.white.opacity(0.035), .clear], startPoint: .top, endPoint: .center)
         }
+    }
+}
+
+private struct OnboardingSourceRail: View {
+    private let sources: [(LocalizedStringKey, String)] = [
+        ("Scan", "viewfinder"),
+        ("Photos", "photo"),
+        ("Files", "folder"),
+        ("Text", "doc.text"),
+        ("Web", "safari")
+    ]
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(sources.enumerated()), id: \.offset) { _, source in
+                VStack(spacing: 7) {
+                    Image(systemName: source.1)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Theme.Colors.orangeLight)
+                    Text(source.0)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(0.62))
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 14)
+    }
+}
+
+private struct OnboardingShareFlow: View {
+    var body: some View {
+        VStack(spacing: 18) {
+            HStack(spacing: 26) {
+                source("safari", "Safari")
+                source("photo", "Photos")
+                source("folder", "Files")
+                source("message", "Messages")
+            }
+            flowArrow
+            Label("Share", systemImage: "square.and.arrow.up")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 22)
+                .padding(.vertical, 14)
+                .background(Color.white.opacity(0.07), in: Capsule())
+            flowArrow
+            HStack(spacing: 12) {
+                Text("PDFIT")
+                    .font(.title3.weight(.black))
+                    .tracking(1)
+                Image(systemName: "arrow.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                Image(systemName: "doc.fill")
+                    .font(.title2)
+                    .foregroundStyle(Theme.Colors.orangePrimary)
+                Text("PDF")
+                    .font(.headline.weight(.bold))
+            }
+            .foregroundStyle(.white)
+        }
+    }
+
+    private var flowArrow: some View {
+        Image(systemName: "arrow.down")
+            .font(.caption.weight(.bold))
+            .foregroundStyle(Theme.Colors.orangePrimary)
+    }
+
+    private func source(_ symbol: String, _ label: LocalizedStringKey) -> some View {
+        VStack(spacing: 7) {
+            Image(systemName: symbol)
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(.white)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(Color.white.opacity(0.58))
+        }
+    }
+}
+
+private struct OnboardingTrustRow: View {
+    var body: some View {
+        HStack(spacing: 0) {
+            trust("person.crop.circle.badge.xmark", "No account")
+            trust("icloud.slash", "No PDFIT uploads")
+            trust("cpu", "On-device OCR")
+        }
+    }
+
+    private func trust(_ symbol: String, _ text: LocalizedStringKey) -> some View {
+        VStack(spacing: 7) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(Theme.Colors.orangeLight)
+            Text(text)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.62))
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
