@@ -6,7 +6,8 @@ import PDFKit
 /// written straight into the host's placement state — what you see is EXACTLY
 /// what gets stamped into the PDF.
 struct SignaturePlacementCanvas: View {
-    let recordID: UUID
+    private let recordID: UUID?
+    private let documentData: Data?
     let pageNumber: Int
     let signature: UIImage
     @Binding var normalizedX: CGFloat
@@ -15,6 +16,36 @@ struct SignaturePlacementCanvas: View {
 
     @State private var pageSize: CGSize = CGSize(width: 612, height: 792)
     @State private var pageImage: UIImage?
+
+    init(recordID: UUID,
+         pageNumber: Int,
+         signature: UIImage,
+         normalizedX: Binding<CGFloat>,
+         normalizedY: Binding<CGFloat>,
+         scale: Binding<CGFloat>) {
+        self.recordID = recordID
+        self.documentData = nil
+        self.pageNumber = pageNumber
+        self.signature = signature
+        _normalizedX = normalizedX
+        _normalizedY = normalizedY
+        _scale = scale
+    }
+
+    init(documentData: Data,
+         pageNumber: Int,
+         signature: UIImage,
+         normalizedX: Binding<CGFloat>,
+         normalizedY: Binding<CGFloat>,
+         scale: Binding<CGFloat>) {
+        self.recordID = nil
+        self.documentData = documentData
+        self.pageNumber = pageNumber
+        self.signature = signature
+        _normalizedX = normalizedX
+        _normalizedY = normalizedY
+        _scale = scale
+    }
 
     private var inkAspect: CGFloat {
         max(signature.size.width / max(signature.size.height, 1), 0.2)
@@ -77,13 +108,22 @@ struct SignaturePlacementCanvas: View {
         .task(id: pageNumber) {
             loadPage()
         }
+        .onChange(of: documentData) { _, _ in loadPage() }
         .onAppear { loadPage() }
     }
 
     private func loadPage() {
-        guard let record = StorageManager.shared.record(withID: recordID),
-              let url = StorageManager.shared.fileURL(for: record),
-              let document = PDFDocument(url: url),
+        let document: PDFDocument?
+        if let documentData {
+            document = PDFDocument(data: documentData)
+        } else if let recordID,
+                  let record = StorageManager.shared.record(withID: recordID),
+                  let url = StorageManager.shared.fileURL(for: record) {
+            document = PDFDocument(url: url)
+        } else {
+            document = nil
+        }
+        guard let document,
               let page = document.page(at: max(0, pageNumber - 1)) else { return }
         let bounds = page.bounds(for: .mediaBox)
         pageSize = bounds.size

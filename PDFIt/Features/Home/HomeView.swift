@@ -229,10 +229,8 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $importer.showingTextEntry) {
-            TextEntrySheet { text, title in
-                importer.convert(items: [IncomingItem(kind: .text(text),
-                                                      title: title,
-                                                      source: .textEditor)])
+            TextEntrySheet { document in
+                importer.savePreparedDocument(document)
             }
         }
     }

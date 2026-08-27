@@ -113,7 +113,7 @@ final class ScreenshotGeneratorTests: XCTestCase {
 
         // 3. Import Sheets
         snapshotView(LinkEntrySheet(onConvert: { _, _, _ in }), name: "06_paste_link_sheet")
-        snapshotView(TextEntrySheet(onConvert: { _, _ in }), name: "07_paste_text_sheet")
+        snapshotView(TextEntrySheet(onCreate: { _ in }), name: "07_text_document_composer")
         snapshotView(ConversionErrorSheet(error: .pageUnreachable(reason: "Server returned 404"),
                                           onRetry: {},
                                           offerLinkAsPDF: true,

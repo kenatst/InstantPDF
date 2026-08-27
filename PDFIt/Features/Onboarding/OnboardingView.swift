@@ -1,8 +1,6 @@
 import SwiftUI
 
-/// A short, editorial onboarding that introduces the product's three core promises.
-/// The scenes are native SwiftUI compositions rather than fake screenshots, so they
-/// remain legible at every Dynamic Type size and in every supported language.
+/// A focused three-page introduction to PDFIT's conversion, sharing, and privacy promises.
 struct OnboardingView: View {
     @AppStorage(AppSettingsKeys.hasCompletedOnboarding)
     private var hasCompletedOnboarding = false
@@ -13,64 +11,80 @@ struct OnboardingView: View {
     var onComplete: (() -> Void)?
 
     init(initialPage: Int = 0, onComplete: (() -> Void)? = nil) {
-        _page = State(initialValue: initialPage)
+        _page = State(initialValue: min(max(initialPage, 0), 2))
         self.onComplete = onComplete
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                OnboardingBackdrop(page: page)
-                    .ignoresSafeArea()
+        ZStack {
+            OnboardingBackdrop(page: page)
+                .ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    TabView(selection: $page) {
-                        conversionPage.tag(0)
-                        sharePage.tag(1)
-                        privacyPage.tag(2)
-                    }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
-                    .animation(.easeInOut(duration: 0.35), value: page)
+            VStack(spacing: 0) {
+                topBar
 
-                    pageControl
-                        .padding(.top, 6)
-                        .padding(.bottom, 18)
-
-                    Button(action: advance) {
-                        HStack(spacing: 10) {
-                            Text(page < 2 ? LocalizedStringKey("Continue") : LocalizedStringKey("Get Started"))
-                            Image(systemName: page < 2 ? "arrow.right" : "arrow.right.circle.fill")
-                                .font(.headline.weight(.bold))
-                        }
-                    }
-                    .primaryOrangeButton()
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 18)
-                    .accessibilityHint(page < 2 ? Text("Show the next page") : Text("Start using PDFIT"))
+                TabView(selection: $page) {
+                    conversionPage.tag(0)
+                    sharePage.tag(1)
+                    privacyPage.tag(2)
                 }
-                .opacity(hasAppeared ? 1 : 0)
-                .offset(y: hasAppeared ? 0 : 10)
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Skip", action: completeOnboarding)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.white.opacity(0.72))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.white.opacity(0.07), in: Capsule())
+                .tabViewStyle(.page(indexDisplayMode: .never))
+
+                pageControl
+                    .padding(.top, 10)
+                    .padding(.bottom, 20)
+
+                Button(action: advance) {
+                    HStack(spacing: 10) {
+                        Text(page < 2 ? LocalizedStringKey("Continue") : LocalizedStringKey("Get Started"))
+                        Image(systemName: "arrow.right")
+                            .font(.headline.weight(.bold))
+                    }
                 }
+                .primaryOrangeButton()
+                .padding(.horizontal, 24)
+                .padding(.bottom, 14)
+                .accessibilityHint(page < 2 ? Text("Show the next page") : Text("Start using PDFIT"))
             }
-            .preferredColorScheme(.dark)
-            .onAppear {
-                guard !hasAppeared else { return }
-                if reduceMotion {
+            .opacity(hasAppeared ? 1 : 0)
+            .offset(y: hasAppeared ? 0 : 8)
+        }
+        .preferredColorScheme(.dark)
+        .onAppear {
+            guard !hasAppeared else { return }
+            if reduceMotion {
+                hasAppeared = true
+            } else {
+                withAnimation(.easeOut(duration: 0.45)) {
                     hasAppeared = true
-                } else {
-                    withAnimation(.easeOut(duration: 0.5)) { hasAppeared = true }
                 }
             }
         }
+    }
+
+    private var topBar: some View {
+        HStack {
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(Theme.Colors.orangePrimary)
+                    .frame(width: 4, height: 18)
+
+                Text("PDFIT")
+                    .font(.system(.headline, design: .rounded, weight: .black))
+                    .tracking(1.1)
+                    .foregroundStyle(.white)
+            }
+
+            Spacer()
+
+            Button("Skip", action: completeOnboarding)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.68))
+                .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 12)
+        .padding(.bottom, 2)
     }
 
     private var pageControl: some View {
@@ -82,52 +96,33 @@ struct OnboardingView: View {
                     .animation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.8), value: page)
             }
         }
-        .accessibilityElement(children: .ignore)
+        .accessibilityHidden(true)
     }
-
-    // MARK: - 1. Any source, one destination
 
     private var conversionPage: some View {
-        OnboardingPage(title: "Anything → PDF",
-                       subtitle: "Scan, convert, organize and edit PDFs — privately on your device.") {
-            VStack(spacing: 20) {
-                MascotView(type: .hero, size: 238, enableFloatingAnimation: !reduceMotion)
-                    .accessibilityHidden(true)
-                OnboardingSourceRail()
-            }
-            .frame(maxWidth: 390)
-            .frame(height: 350)
+        OnboardingPage(
+            title: "Anything to PDF",
+            subtitle: "Transform photos, links, text, and files into beautiful PDFs in seconds."
+        ) {
+            OnboardingHero(assetName: "MascotOnboarding1", isActive: page == 0)
         }
     }
-
-    // MARK: - 2. Share extension, made understandable at a glance
 
     private var sharePage: some View {
-        OnboardingPage(title: "Share. PDFIT. Done.",
-                       subtitle: "Turn shared content into a PDF without leaving the app you're using.") {
-            OnboardingShareFlow()
-            .frame(maxWidth: 390)
-            .frame(height: 350)
+        OnboardingPage(
+            title: "Share. PDFIT. Done.",
+            subtitle: "Use the Share Sheet from your apps. PDFIT turns shared content into a PDF fast."
+        ) {
+            OnboardingHero(assetName: "MascotOnboarding2", isActive: page == 1)
         }
     }
 
-    // MARK: - 3. Truthful, local privacy story
-
     private var privacyPage: some View {
-        OnboardingPage(title: "Private & Local",
-                       subtitle: "No uploads. No account. Everything stays on your device.") {
-            VStack(spacing: 18) {
-                MascotView(type: .library, size: 224, enableFloatingAnimation: !reduceMotion)
-                    .accessibilityHidden(true)
-                OnboardingTrustRow()
-                Text("PDFIT processes and stores documents locally. Your documents are not uploaded to PDFIT. When you convert a webpage, PDFIT loads the page directly from its source website.")
-                    .font(.caption)
-                    .foregroundStyle(Color.white.opacity(0.54))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 26)
-            }
-            .frame(maxWidth: 390)
-            .frame(height: 350)
+        OnboardingPage(
+            title: "Private & Local",
+            subtitle: "No account. No PDFIT uploads. On-device OCR. Web pages load from their source."
+        ) {
+            OnboardingHero(assetName: "MascotOnboarding3", isActive: page == 2)
         }
     }
 
@@ -163,28 +158,45 @@ private struct OnboardingPage<Artwork: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            VStack(spacing: 11) {
+        GeometryReader { proxy in
+            let compact = proxy.size.height < 560
+            let heroHeight = min(
+                max(proxy.size.height * (compact ? 0.50 : 0.56), compact ? 224 : 270),
+                430
+            )
+
+            VStack(spacing: 0) {
+                Spacer(minLength: compact ? 8 : 18)
+
                 Text(title)
-                    .font(.system(size: 34, weight: .black, design: .rounded))
-                    .tracking(-0.7)
+                    .font(.system(size: compact ? 32 : 38, weight: .bold, design: .rounded))
+                    .tracking(-0.8)
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.8)
+                    .lineLimit(2)
+                    .padding(.horizontal, 24)
                     .accessibilityAddTraits(.isHeader)
 
-                Text(subtitle)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color.white.opacity(0.69))
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.top, 22)
-            .padding(.horizontal, 24)
+                Spacer(minLength: compact ? 8 : 14)
 
-            Spacer(minLength: 12)
-            artwork
-            Spacer(minLength: 8)
+                artwork
+                    .frame(height: heroHeight)
+                    .padding(.horizontal, 14)
+
+                Spacer(minLength: compact ? 8 : 18)
+
+                Text(subtitle)
+                    .font(.system(.body, design: .rounded, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.70))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, compact ? 24 : 34)
+
+                Spacer(minLength: compact ? 6 : 14)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
     }
 }
@@ -194,11 +206,68 @@ private struct OnboardingBackdrop: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Color(hex: "08090B"), Color(hex: "111216"), Color(hex: "090A0C")],
-                           startPoint: .top,
-                           endPoint: .bottom)
-            LinearGradient(colors: [.white.opacity(0.035), .clear], startPoint: .top, endPoint: .center)
+            LinearGradient(
+                colors: [Color(hex: "070809"), Color(hex: "101114"), Color(hex: "08090B")],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            RadialGradient(
+                colors: [Theme.Colors.orangeDark.opacity(0.12), .clear],
+                center: glowCenter,
+                startRadius: 0,
+                endRadius: 390
+            )
+            .animation(.easeInOut(duration: 0.5), value: page)
+
+            LinearGradient(
+                colors: [Color.white.opacity(0.025), .clear],
+                startPoint: .top,
+                endPoint: .center
+            )
         }
+    }
+
+    private var glowCenter: UnitPoint {
+        switch page {
+        case 0: UnitPoint(x: 0.18, y: 0.12)
+        case 1: UnitPoint(x: 0.82, y: 0.12)
+        default: .center
+        }
+    }
+}
+
+private struct OnboardingHero: View {
+    let assetName: String
+    let isActive: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        ZStack {
+            RadialGradient(
+                colors: [Theme.Colors.orangePrimary.opacity(0.14), .clear],
+                center: .center,
+                startRadius: 20,
+                endRadius: 210
+            )
+            .scaleEffect(x: 1.18, y: 0.82)
+            .accessibilityHidden(true)
+
+            Image(assetName)
+                .resizable()
+                .scaledToFit()
+                .padding(4)
+                .scaleEffect(isActive ? 1 : 0.965)
+                .opacity(isActive ? 1 : 0.78)
+                .shadow(color: .black.opacity(0.34), radius: 22, y: 14)
+                .animation(
+                    reduceMotion ? nil : .easeOut(duration: 0.42),
+                    value: isActive
+                )
+                .accessibilityHidden(true)
+        }
+        .frame(maxWidth: 500)
     }
 }
 

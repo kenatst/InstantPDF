@@ -114,6 +114,7 @@
 		A10000000000000012D /* ScanPersistenceContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000012E /* ScanPersistenceContractTests.swift */; };
 		A1000000000000000FF /* PDFItUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000010A /* PDFItUITests.swift */; };
 		A100000000000000174 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000172 /* Theme.swift */; };
+		A200000000000000002 /* TextDocumentComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000000000000001 /* TextDocumentComposerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -198,6 +199,7 @@
 		A100000000000000168 /* LocalizationAndProductTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationAndProductTests.swift; sourceTree = "<group>"; };
 		A100000000000000170 /* ScreenshotGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotGeneratorTests.swift; sourceTree = "<group>"; };
 		A100000000000000172 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		A200000000000000001 /* TextDocumentComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextDocumentComposerView.swift; sourceTree = "<group>"; };
 		A100000000000000180 /* URLPayloadNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLPayloadNormalizer.swift; sourceTree = "<group>"; };
 		A100000000000000183 /* PDFLibraryFolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFLibraryFolder.swift; sourceTree = "<group>"; };
 		A100000000000000186 /* PDFCustomization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFCustomization.swift; sourceTree = "<group>"; };
@@ -340,6 +342,7 @@
 			isa = PBXGroup;
 			children = (
 				A100000000000000006 /* ImportFlowModel.swift */,
+				A200000000000000001 /* TextDocumentComposerView.swift */,
 				A100000000000000204 /* CustomizePDFSheet.swift */,
 			);
 			path = Import;
@@ -696,6 +699,7 @@
 				A100000000000000001 /* PDFItApp.swift in Sources */,
 				A100000000000000003 /* HomeView.swift in Sources */,
 				A100000000000000005 /* ImportFlowModel.swift in Sources */,
+				A200000000000000002 /* TextDocumentComposerView.swift in Sources */,
 				A100000000000000007 /* LibraryView.swift in Sources */,
 				A100000000000000009 /* PDFViewerView.swift in Sources */,
 				A100000000000000011 /* OnboardingView.swift in Sources */,
@@ -950,7 +954,9 @@
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_ENTITLEMENTS = Config/PDFIt.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 2;
+				DEPLOYMENT_POSTPROCESSING = NO;
 				DEVELOPMENT_TEAM = 67R4AKNPXZ;
 				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -968,6 +974,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+				STRIP_INSTALLED_PRODUCT = NO;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -1012,7 +1019,9 @@
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_ENTITLEMENTS = Config/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 2;
+				DEPLOYMENT_POSTPROCESSING = NO;
 				DEVELOPMENT_TEAM = 67R4AKNPXZ;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/ShareExtension-Info.plist";
@@ -1031,6 +1040,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+				STRIP_INSTALLED_PRODUCT = NO;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) EXTENSION";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

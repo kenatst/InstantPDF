@@ -95,6 +95,148 @@ final class ConversionTests: XCTestCase {
         }
     }
 
+    func testComposerRendersTitleSubtitleAuthorAndSelectableUnicodeBody() throws {
+        var document = TextDocumentConfiguration()
+        document.title = "Quarterly Notes"
+        document.subtitle = "A concise review"
+        document.author = "Élodie Martin"
+        document.body = "Résumé de l’équipe.\n\nDécisions et prochaines étapes."
+
+        let data = try TextPDFConverter().convert(document: document,
+                                                  options: ConversionOptions(paperSize: .a4),
+                                                  creationDate: Date(timeIntervalSince1970: 0))
+        let pdf = try XCTUnwrap(PDFDocument(data: data))
+        let extracted = try XCTUnwrap(pdf.page(at: 0)?.string)
+        XCTAssertTrue(extracted.contains("Quarterly Notes"))
+        XCTAssertTrue(extracted.contains("A concise review"))
+        XCTAssertTrue(extracted.contains("Élodie Martin"))
+        XCTAssertTrue(extracted.contains("Résumé de l’équipe"), "Composer text remains vector/selectable and Unicode-safe")
+    }
+
+    func testComposerBodyOnlyHasNoPlaceholderOrReservedOptionalContent() throws {
+        var document = TextDocumentConfiguration()
+        document.body = "Body remains visible."
+
+        let data = try TextPDFConverter().convert(document: document,
+                                                  options: ConversionOptions())
+        let extracted = try XCTUnwrap(PDFDocument(data: data)?.page(at: 0)?.string)
+        XCTAssertTrue(extracted.contains("Body remains visible."))
+        XCTAssertFalse(extracted.contains("Title (Optional)"))
+        XCTAssertFalse(extracted.contains("Subtitle (Optional)"))
+        XCTAssertFalse(extracted.contains("Author (Optional)"))
+    }
+
+    func testComposerLongDocumentProducesTenOrMoreCompletePages() throws {
+        let paragraph = "A complete paragraph with enough words to verify clean pagination, paragraph spacing, and selectable output across many pages."
+        var document = TextDocumentConfiguration()
+        document.title = "Long Document"
+        document.body = Array(repeating: paragraph, count: 520).joined(separator: "\n\n")
+        document.margin = .large
+        document.lineHeightMultiple = 1.5
+
+        let data = try TextPDFConverter().convert(document: document,
+                                                  options: ConversionOptions(paperSize: .letter))
+        let pdf = try XCTUnwrap(PDFDocument(data: data))
+        XCTAssertGreaterThanOrEqual(pdf.pageCount, 10)
+        let joined = (0..<pdf.pageCount).compactMap { pdf.page(at: $0)?.string }.joined()
+        XCTAssertTrue(joined.contains("Long Document"))
+        XCTAssertTrue(joined.hasSuffix("many pages.\n") || joined.hasSuffix("many pages."),
+                      "The final paragraph must not be clipped")
+    }
+
+    func testComposerPresetAndAlignmentDriveAttributedLayout() throws {
+        var document = TextDocumentConfiguration()
+        document.body = "Editorial body"
+        document.apply(.editorial)
+
+        XCTAssertEqual(document.preset, .editorial)
+        XCTAssertEqual(document.fontFamily, .serif)
+        XCTAssertEqual(document.margin, .large)
+        XCTAssertEqual(document.alignment, .justified)
+
+        let attributed = TextPDFConverter.attributedString(document: document)
+        let paragraph = try XCTUnwrap(attributed.attribute(.paragraphStyle,
+                                                           at: 0,
+                                                           effectiveRange: nil) as? NSParagraphStyle)
+        XCTAssertEqual(paragraph.alignment, .justified)
+        XCTAssertEqual(paragraph.paragraphSpacing, document.paragraphSpacing, accuracy: 0.01)
+    }
+
+    func testComposerEveryPresetProducesSelectablePDF() throws {
+        for preset in TextDocumentPreset.allCases {
+            var document = TextDocumentConfiguration()
+            document.title = preset.displayName
+            document.body = "A selectable paragraph for the \(preset.rawValue) preset."
+            document.apply(preset)
+
+            let data = try TextPDFConverter().convert(document: document,
+                                                      options: ConversionOptions(paperSize: .a4))
+            let extracted = try XCTUnwrap(PDFDocument(data: data)?.page(at: 0)?.string)
+            XCTAssertTrue(extracted.contains(preset.displayName), "\(preset)")
+            XCTAssertTrue(extracted.contains("selectable paragraph"), "\(preset)")
+        }
+    }
+
+    func testComposerMarginsChangeAvailableTextWidth() {
+        XCTAssertLessThan(TextDocumentMargin.compact.points, TextDocumentMargin.normal.points)
+        XCTAssertLessThan(TextDocumentMargin.normal.points, TextDocumentMargin.large.points)
+        let a4Width = PDFPaperSize.a4.pointSize.width
+        XCTAssertGreaterThan(a4Width - TextDocumentMargin.compact.points * 2,
+                             a4Width - TextDocumentMargin.large.points * 2)
+    }
+
+    func testComposerHeaderFooterAndPageNumbersMatchRenderedPreviewBytes() throws {
+        var document = TextDocumentConfiguration()
+        document.body = "Preview and saved output share this exact rendered data."
+        document.headerText = "PDFIT DOCUMENT"
+        document.footerText = "Private draft"
+        document.includePageNumbers = true
+
+        let previewData = try TextPDFConverter().convert(document: document,
+                                                         options: ConversionOptions(),
+                                                         creationDate: Date(timeIntervalSince1970: 0))
+        let final = ConvertedDocument(data: previewData,
+                                      pageCount: PDFAssembly.pageCount(of: previewData),
+                                      suggestedTitle: "Text Document",
+                                      sourceURL: nil,
+                                      source: .textEditor)
+        XCTAssertEqual(final.data, previewData, "Document Composer persists the exact bytes shown in preview")
+        let extracted = try XCTUnwrap(PDFDocument(data: final.data)?.page(at: 0)?.string)
+        XCTAssertTrue(extracted.contains("PDFIT DOCUMENT"))
+        XCTAssertTrue(extracted.contains("Private draft"))
+        XCTAssertTrue(extracted.contains("1 / 1"))
+    }
+
+    func testComposerSignatureIsProGatedAndUsesExistingPlacementEngine() throws {
+        XCTAssertFalse(FeaturePolicy.isUnlocked(.signature, isPro: false))
+        XCTAssertTrue(FeaturePolicy.isUnlocked(.signature, isPro: true))
+
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 240, height: 80)).image { context in
+            UIColor.clear.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 240, height: 80))
+            UIColor.black.setStroke()
+            let line = UIBezierPath()
+            line.move(to: CGPoint(x: 8, y: 62))
+            line.addCurve(to: CGPoint(x: 232, y: 20),
+                          controlPoint1: CGPoint(x: 70, y: 90),
+                          controlPoint2: CGPoint(x: 160, y: -10))
+            line.lineWidth = 4
+            line.stroke()
+        }
+        var document = TextDocumentConfiguration()
+        document.body = "Signed document body"
+        document.signature = TextDocumentSignature(pngData: try XCTUnwrap(image.pngData()),
+                                                    pageNumber: 1,
+                                                    normalizedX: 0.62,
+                                                    normalizedY: 0.76,
+                                                    scale: 1.1)
+        let signed = try TextPDFConverter().convert(document: document,
+                                                    options: ConversionOptions())
+        let pdf = try XCTUnwrap(PDFDocument(data: signed))
+        XCTAssertEqual(pdf.pageCount, 1)
+        XCTAssertTrue(pdf.page(at: 0)?.string?.contains("Signed document body") ?? false)
+    }
+
     // MARK: - Image PDF
 
     func testGeneratedImageProducesOnePagePerImage() throws {

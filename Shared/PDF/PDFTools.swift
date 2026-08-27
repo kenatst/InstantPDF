@@ -238,11 +238,25 @@ enum PDFTools {
                                on sourceURL: URL,
                                pages: [Int],
                                normalizedRect: CGRect) throws -> Data {
+        guard let data = try? Data(contentsOf: sourceURL) else {
+            throw ConversionError.generationFailed
+        }
+        return try placeSignature(pngData: pngData,
+                                  on: data,
+                                  pages: pages,
+                                  normalizedRect: normalizedRect)
+    }
+
+    /// In-memory overload used by Document Composer so preview and saved PDF
+    /// stay byte-for-byte identical without creating an intermediate record.
+    static func placeSignature(pngData: Data,
+                               on data: Data,
+                               pages: [Int],
+                               normalizedRect: CGRect) throws -> Data {
         guard let signature = UIImage(data: pngData) else {
             throw ConversionError.generationFailed
         }
-        guard let data = try? Data(contentsOf: sourceURL),
-              let provider = CGDataProvider(data: data as CFData),
+        guard let provider = CGDataProvider(data: data as CFData),
               let document = CGPDFDocument(provider), document.numberOfPages > 0 else {
             throw ConversionError.generationFailed
         }

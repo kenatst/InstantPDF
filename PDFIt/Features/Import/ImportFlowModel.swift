@@ -458,6 +458,44 @@ final class ImportFlowModel: ObservableObject {
         return savedRecordID
     }
 
+    /// Persists bytes already rendered by Document Composer. The success
+    /// sheet receives those exact bytes, so preview and output cannot drift.
+    func savePreparedDocument(_ document: ConvertedDocument) {
+        conversionTask?.cancel()
+        savedRecordID = nil
+        isConverting = true
+        stage = .creatingPDF
+        let storage = self.storage
+
+        conversionTask = Task { [weak self] in
+            let outcome = await Task.detached(priority: .userInitiated) {
+                () -> BackgroundConversionResult in
+                do {
+                    let record = try storage.save(document: document)
+                    return .success(document, record.id)
+                } catch is CancellationError {
+                    return .cancelled
+                } catch {
+                    return .failure(.generationFailed)
+                }
+            }.value
+            guard let self else { return }
+            switch outcome {
+            case .success(let saved, let recordID):
+                self.result = saved
+                self.savedRecordID = recordID
+                self.isConverting = false
+                self.showingResult = true
+            case .failure(let error):
+                self.failure = error
+                self.isConverting = false
+                self.showingError = true
+            case .cancelled:
+                self.isConverting = false
+            }
+        }
+    }
+
     /// Applies the user's image ordering (if any) to the item list.
     private func orderedImageItems(original: [IncomingItem]) -> [IncomingItem] {
         guard !pendingImageOrder.isEmpty else { return original }
@@ -698,73 +736,6 @@ struct LinkEntrySheet: View {
             return nil
         }
         return url
-    }
-}
-
-/// Paste-text sheet with dark editor card.
-struct TextEntrySheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var title = ""
-    @State private var text = ""
-    let onConvert: (String, String?) -> Void
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                VStack(alignment: .leading, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Title (Optional)")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.secondary)
-
-                        TextField("Meeting Notes", text: $title)
-                            .padding(12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Color(hex: "F2F4F7"))
-                            )
-                    }
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Content")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.secondary)
-
-                        TextEditor(text: $text)
-                            .frame(minHeight: 160)
-                            .padding(8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(colorScheme == .dark ? Theme.Colors.darkCardSecondary : Color(hex: "F2F4F7"))
-                            )
-                    }
-                }
-                .premiumCard()
-
-                Button {
-                    dismiss()
-                    onConvert(text, title.isEmpty ? nil : title)
-                } label: {
-                    Text("Convert to PDF")
-                }
-                .primaryOrangeButton()
-                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .themeBackground()
-            .navigationTitle("Paste Text")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundStyle(Theme.Colors.orangePrimary)
-                }
-            }
-        }
     }
 }
 

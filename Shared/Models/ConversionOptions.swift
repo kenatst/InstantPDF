@@ -91,7 +91,7 @@ enum ImageQuality: String, Codable, CaseIterable, Identifiable {
 }
 
 /// Everything the conversion engine needs to know, in one value.
-struct ConversionOptions {
+struct ConversionOptions: Equatable {
     var mode: ConversionMode = .quick
     var paperSize: PDFPaperSize = .automatic
     var imageLayout: ImageLayout = .fit
